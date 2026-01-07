@@ -22,7 +22,16 @@
     /* Module Resolution */
     "esModuleInterop": true,
     "moduleResolution": "node",
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+
+    "baseUrl": "./",
+    "paths": {
+      "@app-core/*": ["src/core/*"],
+      "@app-types/*": ["src/core/types/*"],
+      "@app-utils/*": ["src/utils/*"],
+      "@app-rc/*": ["src/rc/*"],
+      "@app-strg/*": ["src/strengthening/*"]
+    },
   },
   "include": ["src"],
   "exclude": ["node_modules"]
