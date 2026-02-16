@@ -1,5 +1,5 @@
 import { RCDesignError, Errors } from "@app-core/errors/rc-design.error";
-import * as MyMath from "src/utils/math";
+import * as MyMath from "@app-utils/math";
 
 import {
   RectBeamSection,
@@ -17,8 +17,18 @@ import * as RCConstants from "@app-core/constants/rc.constant";
 
 import { concreteBeta, concreteElasticModulus } from "./general";
 
+/**
+ * Calculates the nominal moment capacity (φMn) of a rectangular RC beam section.
+ *
+ * Supports both singly and doubly reinforced sections. Automatically determines
+ * the reinforcement configuration from the input and applies ACI 318-19 checks.
+ *
+ * @param section - Beam cross-section properties (singly or doubly reinforced)
+ * @returns Object containing `phiMn` (kN·m), `calculationDetails`, `unit`, and `warnings`
+ * @throws {RCDesignError} If the tensile steel does not yield
+ */
 export const rectBeamMomentCapacity = (section: RectBeamSection) => {
-  let warnings: Warnings = [];
+  const warnings: Warnings = [];
   const concreteUltimateStrain = RCConstants.CONCRETE_ULTIMATE_STRAIN;
   const steelYieldStrain = section.fy / section.Es;
   const beta1 = concreteBeta(section.fc_);
@@ -48,7 +58,7 @@ export const rectBeamMomentCapacity = (section: RectBeamSection) => {
   let calculationDetails: any;
   if (isSinglyReinforced(section)) {
     // Singly reinforced section
-    let result = calculateRectSinglyMn({
+    const result = calculateRectSinglyMn({
       Es: section.Es,
       fy: section.fy,
       fc_: section.fc_,
@@ -63,7 +73,7 @@ export const rectBeamMomentCapacity = (section: RectBeamSection) => {
   } else {
     // Doubly reinforced section
     const doublySection = section as RectDoublyBeamSection;
-    let result = calculateRectDoublyMn({
+    const result = calculateRectDoublyMn({
       Es: doublySection.Es,
       fy: doublySection.fy,
       fc_: doublySection.fc_,
@@ -96,13 +106,13 @@ const calculateRectSinglyMn = (
 ): calculationResult => {
   const { Es, fy, fc_, As, b, h, d } = singlySection;
 
-  let warnings: Warnings = [];
+  const warnings: Warnings = [];
   const steelYieldStrain = fy / Es;
-  let Ac = (As * fy) / (0.85 * fc_);
-  let beta1 = concreteBeta(fc_);
-  let a = Ac / b;
-  let c = a / beta1;
-  let tensileSteelStrain = (RCConstants.CONCRETE_ULTIMATE_STRAIN * (d - c)) / c;
+  const Ac = (As * fy) / (0.85 * fc_);
+  const beta1 = concreteBeta(fc_);
+  const a = Ac / b;
+  const c = a / beta1;
+  const tensileSteelStrain = (RCConstants.CONCRETE_ULTIMATE_STRAIN * (d - c)) / c;
 
   if (
     tensileSteelStrain <
@@ -126,9 +136,9 @@ const calculateRectDoublyMn = (
   doublySection: RectDoublyBeamSection,
 ): calculationResult => {
   const { Es, fy, fc_, As, As_, b, h, d, d_ } = doublySection;
-  let warnings: Warnings = [];
+  const warnings: Warnings = [];
   const steelYieldStrain = fy / Es;
-  let beta1 = concreteBeta(fc_);
+  const beta1 = concreteBeta(fc_);
 
   // Assume Compression steel is not yielding and tensile steel is yielding.
   // Solving for c using quadratic equation
@@ -136,12 +146,12 @@ const calculateRectDoublyMn = (
   const B = RCConstants.CONCRETE_ULTIMATE_STRAIN * As_ * Es - As * fy;
   const C = -RCConstants.CONCRETE_ULTIMATE_STRAIN * As_ * Es * d_;
 
-  let quadResults = MyMath.solveQuadratic(A, B, C);
-  let c = Math.max(...quadResults); // Take the maximum root for c
-  let a = c * beta1;
+  const quadResults = MyMath.solveQuadratic(A, B, C);
+  const c = Math.max(...quadResults); // Take the maximum root for c
+  const a = c * beta1;
 
-  let tensileSteelStrain = (RCConstants.CONCRETE_ULTIMATE_STRAIN * (d - c)) / c;
-  let compressionSteelStrain =
+  const tensileSteelStrain = (RCConstants.CONCRETE_ULTIMATE_STRAIN * (d - c)) / c;
+  const compressionSteelStrain =
     (RCConstants.CONCRETE_ULTIMATE_STRAIN * (c - d_)) / c;
 
   if (
@@ -159,13 +169,6 @@ const calculateRectDoublyMn = (
 
   const Ac = b * a;
   const fs_ = Es * compressionSteelStrain;
-
-  console.log({
-    b,
-    h,
-    d,
-    d_,
-  });
 
   return {
     Mn: (0.85 * fc_ * Ac * (d - y_) + As_ * fs_ * (d - d_)) * 0.001 * 0.001, // Convert to kN-m

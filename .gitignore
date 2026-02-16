@@ -26,6 +26,9 @@ Thumbs.db
 # TypeScript cache
 *.tsbuildinfo
 
+# ESLint cache
+.eslintcache
+
 # Optional: lockfiles (usually committed, uncomment if you prefer to ignore)
 # pnpm-lock.yaml
 

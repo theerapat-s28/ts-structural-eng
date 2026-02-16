@@ -1,29 +1,37 @@
 import { rectBeamMomentCapacity } from "@app-rc/rc-beam-design";
-import { roundToDecimalPlaces } from "src/utils/math";
-
-import { unit } from "@app-core/types/unit.type";
+import { roundToDecimalPlaces } from "@app-utils/math";
 
 import {
   RectBeamSection,
-  RectSinglyBeamSection,
   RectDoublyBeamSection,
   isSinglyReinforced,
 } from "@app-core/types/rc-beam.type";
 
 import { SteelJacketedProps } from "@app-core/types/plate-jacketing.type";
 
-import {
-  Warnings,
-  calculationResult,
-} from "@app-core/types/output-message.type";
+import { Warnings } from "@app-core/types/output-message.type";
 
 import { mergeWarnings } from "@app-utils/merge-warning";
 
+/**
+ * Calculates the moment capacity of an RC beam strengthened with steel plate jacketing.
+ *
+ * Converts steel plate areas into equivalent rebar areas, adjusts the effective depth,
+ * and delegates to `rectBeamMomentCapacity` for the actual capacity calculation.
+ *
+ * @param section - Original beam cross-section properties
+ * @param jacketedProperties - Steel plate dimensions, modulus, and yield strength
+ * @returns Object containing `phiMn` (kN·m), `calculationDetails`, `unit`, and `warnings`
+ */
 export const calculateSteelJacketedBeamMomentCapacity = (
   section: RectBeamSection,
   jacketedProperties: SteelJacketedProps,
 ) => {
-  let warnings: Warnings = [];
+  const warnings: Warnings = [];
+
+  // Calculate the moment capacity of the original (before strengthening) section
+  const originalResult = rectBeamMomentCapacity(section);
+
   // Convert steel plate strength to the same as rebar strength
   const n = jacketedProperties.fy / section.fy;
 
@@ -40,7 +48,7 @@ export const calculateSteelJacketedBeamMomentCapacity = (
       (jacketedProperties.topSteelThickness +
         section.h +
         jacketedProperties.bottomSteelThickness / 2) *
-        plateBottomSteelArea) /
+      plateBottomSteelArea) /
     (section.As + plateBottomSteelArea);
   let newD_ = undefined;
 
@@ -75,10 +83,13 @@ export const calculateSteelJacketedBeamMomentCapacity = (
     newD_ = roundToDecimalPlaces(newD_, 3);
   }
 
-  // Calculate the moment capacity of the modified section
-  let result = rectBeamMomentCapacity(modifiedSection);
+  // Calculate the moment capacity of the modified (after strengthening) section
+  let jacketedResult = rectBeamMomentCapacity(modifiedSection);
 
-  result = { ...result, warnings: mergeWarnings(result.warnings, warnings) };
+  jacketedResult = { ...jacketedResult, warnings: mergeWarnings(jacketedResult.warnings, warnings) };
 
-  return result;
+  return {
+    before: originalResult,
+    after: jacketedResult,
+  };
 };

@@ -1,22 +1,71 @@
 {
   "name": "ts-structural-eng-tools",
   "version": "1.0.0",
-  "description": "A TypeScript project for structural engineering tools that can be copied and reused across TypeScript frameworks",
+  "description": "TypeScript structural-engineering helper functions and beam design utilities",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "scripts": {
-    "dev": "ts-node -r tsconfig-paths/register src/index.ts",
-    "build": "tsc -p tsconfig.json",
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./rc": {
+      "types": "./dist/rc/index.d.ts",
+      "default": "./dist/rc/index.js"
+    },
+    "./strengthening": {
+      "types": "./dist/strengthening/index.d.ts",
+      "default": "./dist/strengthening/index.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "default": "./dist/core/index.js"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "default": "./dist/utils/index.js"
+    }
   },
-  "keywords": [],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "ts-node -r tsconfig-paths/register examples/basic-usage.ts",
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"examples/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"examples/**/*.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "structural-engineering",
+    "beam-design",
+    "reinforced-concrete",
+    "ACI-318",
+    "moment-capacity",
+    "steel-jacketing",
+    "typescript"
+  ],
   "author": "",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
   "packageManager": "pnpm@10.18.3",
   "devDependencies": {
+    "@eslint/js": "^9.20.0",
     "@types/node": "^24.9.1",
+    "eslint": "^9.20.0",
+    "prettier": "^3.5.3",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.25.0",
+    "vitest": "^3.0.0"
   }
 }
