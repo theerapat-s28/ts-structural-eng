@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RC Beam Design — API Reference</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #f0f2f6;
+      --border: #e2e5ec;
+      --accent: #3b63d8;
+      --accent-dim: rgba(59, 99, 216, 0.08);
+      --green: #1f9d63;
+      --green-dim: rgba(31, 157, 99, 0.10);
+      --red: #d9463c;
+      --red-dim: rgba(217, 70, 60, 0.08);
+      --yellow: #b97d0a;
+      --yellow-dim: rgba(230, 160, 30, 0.12);
+      --purple: #8a4fd0;
+      --purple-dim: rgba(138, 79, 208, 0.10);
+      --text: #1f2430;
+      --text-muted: #5c6474;
+      --text-dim: #8a90a0;
+      --code-bg: #f8f9fb;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ─────────────────────────────────────── */
+    .sidebar {
+      width: 252px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px 40px;
+    }
+    .sidebar__brand { padding: 0 10px 18px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .brand-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .sidebar__brand h2 { font-size: 13.5px; font-weight: 600; }
+    .nav-section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      padding: 0 10px;
+      margin-bottom: 6px;
+    }
+    .nav-section-label + .nav-section-label,
+    nav a + .nav-section-label { margin-top: 8px; }
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      margin-bottom: 2px;
+    }
+    nav a:hover { background: var(--accent-dim); color: var(--text); }
+
+    /* ── Kind badges ─────────────────────────────────── */
+    .mbadge, .kind {
+      font-family: var(--mono);
+      font-weight: 700;
+      border-radius: 5px;
+      flex-shrink: 0;
+    }
+    .mbadge { font-size: 9.5px; padding: 2px 6px; min-width: 34px; text-align: center; }
+    .kind { font-size: 11.5px; padding: 3px 9px; }
+    .m-fn { color: var(--green); background: var(--green-dim); }
+    .m-type { color: var(--accent); background: var(--accent-dim); }
+    .m-const { color: var(--yellow); background: var(--yellow-dim); }
+    .m-error { color: var(--red); background: var(--red-dim); }
+
+    /* ── Scope badges ────────────────────────────────── */
+    .scope-badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .s-public { color: var(--accent); background: var(--accent-dim); }
+    .s-internal { color: var(--purple); background: var(--purple-dim); }
+
+    /* ── Main ────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 40px 48px 120px;
+      min-width: 0;
+    }
+
+    .page-header { margin-bottom: 36px; }
+    .import-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .import-tag .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+    }
+    .import-tag code { background: none; padding: 0; font-size: 12.5px; }
+    .page-header h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+    .page-header p { color: var(--text-muted); max-width: 640px; }
+
+    .section { margin-bottom: 44px; scroll-margin-top: 24px; }
+    .section__title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section p { color: var(--text-muted); margin-bottom: 12px; }
+
+    /* ── Export cards ────────────────────────────────── */
+    .export-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 20px;
+      overflow: hidden;
+      scroll-margin-top: 24px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .export-card__header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .ex-sig { font-family: var(--mono); font-size: 13.5px; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+    .export-card__body { padding: 18px 20px 20px; }
+    .ex-desc { color: var(--text-muted); margin-bottom: 16px; }
+    .sub-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin: 18px 0 8px;
+    }
+    .sub-label:first-of-type { margin-top: 0; }
+
+    /* ── Code blocks ─────────────────────────────────── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .code-block__label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .code-block pre {
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .k { color: #0e7490; }
+    .s { color: #2f7d32; }
+    .n { color: var(--yellow); }
+    .b { color: var(--purple); }
+    .nl { color: var(--text-dim); }
+    .c { color: var(--text-dim); font-style: italic; }
+    .u { color: var(--accent); }
+
+    /* ── Inline code ─────────────────────────────────── */
+    code {
+      font-family: var(--mono);
+      font-size: 0.86em;
+      background: var(--surface-2);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+    pre code { background: none; padding: 0; color: inherit; }
+
+    /* ── Tables ──────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 13.5px; }
+    th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      font-weight: 600;
+      padding: 8px 12px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      color: var(--text-muted);
+    }
+    tr:last-child td { border-bottom: none; }
+    .param-table, .summary-table {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: block;
+      overflow-x: auto;
+    }
+    .param-table td:first-child {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .param-table td:nth-child(2) { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+    .req { color: var(--red); font-size: 12px; font-weight: 500; }
+    .opt { color: var(--text-dim); font-size: 12px; }
+    .summary-table .path-cell { font-family: var(--mono); font-size: 12.5px; color: var(--text); white-space: nowrap; }
+
+    /* ── Alerts ──────────────────────────────────────── */
+    .alert {
+      display: flex;
+      gap: 10px;
+      padding: 11px 14px;
+      border-radius: var(--radius);
+      font-size: 13.5px;
+      margin-bottom: 10px;
+      border: 1px solid;
+      color: var(--text-muted);
+    }
+    .alert strong { color: var(--text); }
+    .alert--error { background: var(--red-dim); border-color: rgba(217, 70, 60, 0.25); }
+    .alert--warn { background: var(--yellow-dim); border-color: rgba(185, 125, 10, 0.25); }
+    .alert--info { background: var(--accent-dim); border-color: rgba(59, 99, 216, 0.25); }
+
+    /* ── Flow steps ──────────────────────────────────── */
+    .flow-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 12px; }
+    .flow-step {
+      display: flex;
+      gap: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .step-num {
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-body { color: var(--text-muted); font-size: 13.5px; }
+    .step-body strong { color: var(--text); }
+
+    /* ── Model grid ──────────────────────────────────── */
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .model-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .model-card__title { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    .model-card__desc { font-size: 12.5px; color: var(--text-muted); }
+
+    @media (max-width: 800px) {
+      .sidebar { display: none; }
+      .main { padding: 24px 20px 80px; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ══════════════ Sidebar ══════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <div class="brand-label">API Reference</div>
+      <h2>RC Beam Design</h2>
+    </div>
+    <nav>
+      <div class="nav-section-label">Getting Started</div>
+      <a href="#overview"><span style="font-size:14px">◈</span> Overview</a>
+      <a href="#design-flow"><span style="font-size:14px">◆</span> Design flow</a>
+
+      <div class="nav-section-label">Flexural Capacity</div>
+      <a href="#rect-beam-moment-capacity"><span class="mbadge m-fn">FN</span> rectBeamMomentCapacity</a>
+
+      <div class="nav-section-label">Shear Capacity</div>
+      <a href="#concrete-shear-capacity"><span class="mbadge m-fn">FN</span> concreteShearCapacity</a>
+      <a href="#stirrup-shear-capacity"><span class="mbadge m-fn">FN</span> stirrupShearCapacity</a>
+      <a href="#check-stirrup-requirement"><span class="mbadge m-fn">FN</span> checkStirrupRequirement</a>
+
+      <div class="nav-section-label">Bar Layout</div>
+      <a href="#rect-beam-bar-layout"><span class="mbadge m-fn">FN</span> rectBeamBarLayout</a>
+
+      <div class="nav-section-label">Material Helpers</div>
+      <a href="#concrete-beta"><span class="mbadge m-fn">FN</span> concreteBeta</a>
+      <a href="#concrete-elastic-modulus"><span class="mbadge m-fn">FN</span> concreteElasticModulus</a>
+      <a href="#psi-to-mpa"><span class="mbadge m-fn">FN</span> psiToMpa</a>
+
+      <div class="nav-section-label">Reference</div>
+      <a href="#errors"><span class="mbadge m-error">ERR</span> RCDesignError codes</a>
+      <a href="#summary"><span style="font-size:14px">☰</span> Export summary</a>
+    </nav>
+  </aside>
+
+  <!-- ══════════════ Main ══════════════ -->
+  <main class="main">
+
+    <div class="page-header">
+      <div class="import-tag">
+        <span class="label">Import from</span>
+        <code>@theerapat-s28/ts-structural-eng-tools/rc</code>
+      </div>
+      <h1>RC Beam Design</h1>
+      <p>Flexural capacity and reinforcement layout of rectangular reinforced-concrete beam sections per ACI 318-19.</p>
+    </div>
+
+    <!-- ── Overview ── -->
+    <div class="section" id="overview">
+      <div class="section__title">Overview</div>
+      <p>
+        The <code>rc</code> module computes the design moment capacity <code>φMn</code> of rectangular
+        RC beam sections — singly or doubly reinforced — the design shear capacity contributions
+        <code>φVc</code> / <code>φVs</code> and whether stirrups are required, and lays out rebar
+        groups into layers that satisfy ACI 318-19 spacing rules. Material helpers cover the β₁
+        stress-block factor, the concrete elastic modulus, and psi→MPa conversion.
+      </p>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>All inputs and outputs use <strong>SI units implicitly</strong>: MPa for stresses, mm / mm² for geometry, kN·m for moments. Each result object states its unit in the <code>unit</code> field.</span>
+      </div>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>Code-provision violations that leave the calculation valid are returned as entries in the <code>warnings</code> array, each citing the exact ACI clause. Broken calculation assumptions <strong>throw</strong> an <code>RCDesignError</code> instead — a result is never silently returned when its assumptions failed.</span>
+      </div>
+
+      <div class="sub-label" style="margin-top:20px">Input Types</div>
+      <div class="model-grid">
+        <div class="model-card">
+          <div class="model-card__title">RectSinglyBeamSection</div>
+          <div class="model-card__desc">Section with tension steel only: materials (Es, fy, f′c), geometry (b, h, d), and steel area As.</div>
+        </div>
+        <div class="model-card">
+          <div class="model-card__title">RectDoublyBeamSection</div>
+          <div class="model-card__desc">Extends the singly section with compression steel As′ at depth d′ from the compression face.</div>
+        </div>
+        <div class="model-card">
+          <div class="model-card__title">RectBeamBarLayoutInput</div>
+          <div class="model-card__desc">Section dimensions, top/bottom bar groups, and optional cover, stirrup diameter, and aggregate size.</div>
+        </div>
+        <div class="model-card">
+          <div class="model-card__title">RebarGroupInput</div>
+          <div class="model-card__desc">A group of same-diameter bars: <code>count</code> and <code>diameter</code> (mm).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Design flow ── -->
+    <div class="section" id="design-flow">
+      <div class="section__title">Design Flow</div>
+      <p>The two main functions are designed to chain: the bar layout produces the effective depths that the capacity calculation consumes.</p>
+      <div class="flow-steps">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>Lay out the reinforcement</strong><br/>
+            Call <code>rectBeamBarLayout</code> with the section size and the top/bottom bar groups.
+            It arranges the bars into the minimum number of layers that satisfy ACI 318-19 spacing rules
+            and returns <code>d</code>, <code>d_</code>, and the steel areas.
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>Compute the capacity</strong><br/>
+            Feed <code>d</code>, <code>d_</code>, and the areas into <code>rectBeamMomentCapacity</code>
+            together with the material properties to get <code>φMn</code> in kN·m.
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>Review the warnings</strong><br/>
+            Check the merged <code>warnings</code> array for code-provision notes
+            (e.g. minimum steel per <strong>ACI318-19, 9.6.1.2</strong>) before accepting the design.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── rectBeamMomentCapacity ── -->
+    <div class="section" id="section-capacity">
+      <div class="section__title">Flexural Capacity <code style="font-size:13px">rc-beam-design.ts</code></div>
+
+      <div class="export-card" id="rect-beam-moment-capacity">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">rectBeamMomentCapacity(section)</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">
+            Calculates the design moment capacity <code>φMn</code> of a rectangular RC beam section.
+            The reinforcement configuration is detected automatically: passing <code>As_</code> and
+            <code>d_</code> greater than zero switches the analysis to a doubly reinforced section
+            (compression steel assumed elastic, solved via the quadratic equilibrium equation);
+            otherwise the section is treated as singly reinforced.
+          </p>
+
+          <div class="sub-label">Parameters — RectBeamSection</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Es</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Elastic modulus of reinforcing steel (typically 200,000)</td></tr>
+              <tr><td>fc_</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Specified compressive strength of concrete f′c</td></tr>
+              <tr><td>fy</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Yield strength of reinforcing steel</td></tr>
+              <tr><td>As</td><td>number</td><td>mm²</td><td><span class="req">Required</span></td><td>Area of tension reinforcement</td></tr>
+              <tr><td>b</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Section width</td></tr>
+              <tr><td>h</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Overall section height</td></tr>
+              <tr><td>d</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Effective depth to the tension steel centroid</td></tr>
+              <tr><td>As_</td><td>number</td><td>mm²</td><td><span class="opt">Optional</span></td><td>Area of compression reinforcement (doubly reinforced only)</td></tr>
+              <tr><td>d_</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Depth to the compression steel centroid from the compression face</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Example</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre><span class="b">import</span> { <span class="u">rectBeamMomentCapacity</span> } <span class="b">from</span> <span class="s">'@theerapat-s28/ts-structural-eng-tools/rc'</span>;
+
+<span class="b">const</span> result = <span class="u">rectBeamMomentCapacity</span>({
+  <span class="k">Es</span>: <span class="n">200000</span>,   <span class="c">// MPa</span>
+  <span class="k">fc_</span>: <span class="n">28</span>,      <span class="c">// MPa</span>
+  <span class="k">fy</span>: <span class="n">390</span>,      <span class="c">// MPa</span>
+  <span class="k">As</span>: <span class="n">1472.6</span>,   <span class="c">// mm² (3-DB25)</span>
+  <span class="k">b</span>: <span class="n">300</span>,       <span class="c">// mm</span>
+  <span class="k">h</span>: <span class="n">500</span>,       <span class="c">// mm</span>
+  <span class="k">d</span>: <span class="n">440</span>,       <span class="c">// mm</span>
+});</pre>
+          </div>
+
+          <div class="sub-label">Returns</div>
+          <div class="code-block">
+            <div class="code-block__label">Result</div>
+            <pre>{
+  <span class="k">phiMn</span>: <span class="n">206.64</span>,              <span class="c">// φ = 0.9 applied, rounded to 2 dp</span>
+  <span class="k">calculationDetails</span>: {
+    <span class="k">ro</span>: <span class="n">0.011156</span>              <span class="c">// reinforcement ratio As / (b·d)</span>
+  },
+  <span class="k">unit</span>: <span class="s">'kN-m'</span>,
+  <span class="k">warnings</span>: []
+}</pre>
+          </div>
+          <p style="font-size:13px">
+            For doubly reinforced sections, <code>calculationDetails</code> additionally includes the
+            neutral-axis depth <code>c</code>, stress-block depth <code>a</code>, <code>beta1</code>,
+            the compression-steel stress <code>fs_</code>, and both reinforcement ratios
+            <code>ro</code> / <code>ro_</code>.
+          </p>
+
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Pushes a warning when <code>As</code> is below the minimum reinforcement <em>max(0.25√f′c·b·d/fy, 1.4·b·d/fy)</em> — <strong>ACI318-19, 9.6.1.2</strong>.</span>
+          </div>
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Pushes a warning when <code>fy</code> exceeds 550 MPa — <strong>ACI318-19, 9.6.1.2</strong>.</span>
+          </div>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws <strong>RCDesignError 102</strong> if the tensile steel strain is out of the tension-controlled region (tensile steel not yielding).</span>
+          </div>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws <strong>RCDesignError 101</strong> (doubly reinforced only) if <code>d_</code> exceeds the neutral-axis depth <code>c</code> — use a singly reinforced section instead.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Shear capacity ── -->
+    <div class="section" id="section-shear">
+      <div class="section__title">Shear Capacity <code style="font-size:13px">rc-beam-design.ts</code></div>
+      <p>
+        Three functions cover ACI 318-19 shear design for rectangular sections without significant
+        axial load: <code>concreteShearCapacity</code> for the concrete contribution φVc,
+        <code>stirrupShearCapacity</code> for the stirrup contribution φVs, and
+        <code>checkStirrupRequirement</code> to determine whether stirrups are required at all,
+        and if so, whether the code minimum suffices or strength-based reinforcement is needed.
+      </p>
+
+      <div class="export-card" id="concrete-shear-capacity">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">concreteShearCapacity(section)</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">
+            Calculates the concrete contribution to shear capacity <code>φVc</code> per
+            <strong>ACI318-19, 22.5.5.1</strong>, Table 22.5.5.1(a):
+            <code>Vc = 0.17·λ·√f′c·bw·d</code>.
+          </p>
+
+          <div class="sub-label">Parameters — RectShearSection</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>fc_</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Specified compressive strength of concrete f′c</td></tr>
+              <tr><td>bw</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Web width</td></tr>
+              <tr><td>d</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Effective depth to the tension steel centroid</td></tr>
+              <tr><td>lambda</td><td>number</td><td>—</td><td><span class="opt">Optional</span></td><td>Concrete density modification factor (default 1.0, normal weight)</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Example</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre><span class="b">import</span> { <span class="u">concreteShearCapacity</span> } <span class="b">from</span> <span class="s">'@theerapat-s28/ts-structural-eng-tools/rc'</span>;
+
+<span class="b">const</span> result = <span class="u">concreteShearCapacity</span>({
+  <span class="k">fc_</span>: <span class="n">25</span>,   <span class="c">// MPa</span>
+  <span class="k">bw</span>: <span class="n">250</span>,  <span class="c">// mm</span>
+  <span class="k">d</span>: <span class="n">450</span>,   <span class="c">// mm</span>
+});</pre>
+          </div>
+
+          <div class="sub-label">Returns</div>
+          <div class="code-block">
+            <div class="code-block__label">Result</div>
+            <pre>{
+  <span class="k">phiVc</span>: <span class="n">71.72</span>,           <span class="c">// φ = 0.75 applied, rounded to 2 dp</span>
+  <span class="k">calculationDetails</span>: {
+    <span class="k">Vc</span>: <span class="n">95.63</span>,          <span class="c">// kN, unreduced</span>
+    <span class="k">lambda</span>: <span class="n">1</span>
+  },
+  <span class="k">unit</span>: <span class="s">'kN'</span>,
+  <span class="k">warnings</span>: []
+}</pre>
+          </div>
+
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Pushes a warning and caps <code>√f′c</code> at 8.3 MPa when it exceeds that limit, unless minimum shear reinforcement per <strong>ACI318-19, 9.6.3.3</strong> is provided elsewhere in the design — <strong>ACI318-19, 22.5.3.1</strong>.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-card" id="stirrup-shear-capacity">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">stirrupShearCapacity(section)</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">
+            Calculates the stirrup contribution to shear capacity <code>φVs</code> per
+            <strong>ACI318-19, 22.5.10.5.3</strong>: <code>Vs = Av·fyt·d / s</code>.
+          </p>
+
+          <div class="sub-label">Parameters — StirrupShearSection</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>fc_</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Specified compressive strength of concrete f′c</td></tr>
+              <tr><td>bw</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Web width</td></tr>
+              <tr><td>d</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Effective depth to the tension steel centroid</td></tr>
+              <tr><td>Av</td><td>number</td><td>mm²</td><td><span class="req">Required</span></td><td>Area of shear reinforcement within spacing s (both legs)</td></tr>
+              <tr><td>fyt</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Yield strength of the stirrup steel</td></tr>
+              <tr><td>s</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Stirrup spacing</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Example</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre><span class="b">import</span> { <span class="u">stirrupShearCapacity</span> } <span class="b">from</span> <span class="s">'@theerapat-s28/ts-structural-eng-tools/rc'</span>;
+
+<span class="b">const</span> result = <span class="u">stirrupShearCapacity</span>({
+  <span class="k">fc_</span>: <span class="n">25</span>,     <span class="c">// MPa</span>
+  <span class="k">bw</span>: <span class="n">250</span>,    <span class="c">// mm</span>
+  <span class="k">d</span>: <span class="n">450</span>,     <span class="c">// mm</span>
+  <span class="k">Av</span>: <span class="n">157</span>,    <span class="c">// mm², 2-legged DB10 stirrup</span>
+  <span class="k">fyt</span>: <span class="n">240</span>,   <span class="c">// MPa</span>
+  <span class="k">s</span>: <span class="n">150</span>,     <span class="c">// mm</span>
+});</pre>
+          </div>
+
+          <div class="sub-label">Returns</div>
+          <div class="code-block">
+            <div class="code-block__label">Result</div>
+            <pre>{
+  <span class="k">phiVs</span>: <span class="n">84.78</span>,          <span class="c">// φ = 0.75 applied, rounded to 2 dp</span>
+  <span class="k">calculationDetails</span>: {
+    <span class="k">Vs</span>: <span class="n">113.04</span>,        <span class="c">// kN, unreduced</span>
+    <span class="k">maxVs</span>: <span class="n">371.25</span>     <span class="c">// kN, ACI318-19 22.5.1.2 ceiling</span>
+  },
+  <span class="k">unit</span>: <span class="s">'kN'</span>,
+  <span class="k">warnings</span>: []
+}</pre>
+          </div>
+
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws <strong>RCDesignError 105</strong> if <code>Vs</code> exceeds <code>0.66·√f′c·bw·d</code> — <strong>ACI318-19, 22.5.1.2</strong>. The section is too small for shear; increase <code>bw</code> or <code>d</code>.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-card" id="check-stirrup-requirement">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">checkStirrupRequirement(input)</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">
+            Determines whether shear reinforcement is required at a section, and whether the code
+            minimum suffices or strength-based design is needed, per <strong>ACI318-19, 9.6.3.1</strong>
+            (requirement thresholds), <strong>9.6.3.3</strong> (Av,min), and <strong>9.7.6.2.2</strong>
+            (max spacing). If <code>Av</code> and <code>s</code> are supplied, the provided
+            reinforcement is checked against the required ratio and spacing, adding warnings on
+            any shortfall.
+          </p>
+
+          <div class="sub-label">Parameters — ShearReinforcementCheckInput</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>fc_</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Specified compressive strength of concrete f′c</td></tr>
+              <tr><td>bw</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Web width</td></tr>
+              <tr><td>d</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Effective depth to the tension steel centroid</td></tr>
+              <tr><td>Vu</td><td>number</td><td>kN</td><td><span class="req">Required</span></td><td>Factored shear force at the section</td></tr>
+              <tr><td>fyt</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Yield strength of the stirrup steel</td></tr>
+              <tr><td>Av</td><td>number</td><td>mm²</td><td><span class="opt">Optional</span></td><td>Provided area of shear reinforcement within spacing s (both legs)</td></tr>
+              <tr><td>s</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Provided stirrup spacing</td></tr>
+              <tr><td>lambda</td><td>number</td><td>—</td><td><span class="opt">Optional</span></td><td>Concrete density modification factor (default 1.0, normal weight)</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Example</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre><span class="b">import</span> { <span class="u">checkStirrupRequirement</span> } <span class="b">from</span> <span class="s">'@theerapat-s28/ts-structural-eng-tools/rc'</span>;
+
+<span class="b">const</span> result = <span class="u">checkStirrupRequirement</span>({
+  <span class="k">fc_</span>: <span class="n">25</span>,    <span class="c">// MPa</span>
+  <span class="k">bw</span>: <span class="n">250</span>,   <span class="c">// mm</span>
+  <span class="k">d</span>: <span class="n">450</span>,    <span class="c">// mm</span>
+  <span class="k">fyt</span>: <span class="n">240</span>,  <span class="c">// MPa</span>
+  <span class="k">Vu</span>: <span class="n">150</span>,   <span class="c">// kN</span>
+});</pre>
+          </div>
+
+          <div class="sub-label">Returns</div>
+          <div class="code-block">
+            <div class="code-block__label">Result</div>
+            <pre>{
+  <span class="k">required</span>: <span class="b">true</span>,
+  <span class="k">minimumOnly</span>: <span class="b">false</span>,       <span class="c">// Vu > phiVc, strength-based design required</span>
+  <span class="k">calculationDetails</span>: {
+    <span class="k">phiVc</span>: <span class="n">71.72</span>,       <span class="c">// kN</span>
+    <span class="k">halfPhiVc</span>: <span class="n">35.86</span>,   <span class="c">// kN</span>
+    <span class="k">requiredAvOverS</span>: <span class="n">0.9664</span>, <span class="c">// mm²/mm, max of strength- and minimum-based ratio</span>
+    <span class="k">maxSpacing</span>: <span class="n">225</span>     <span class="c">// mm</span>
+  },
+  <span class="k">unit</span>: <span class="s">'kN'</span>,
+  <span class="k">warnings</span>: []
+}</pre>
+          </div>
+          <p style="font-size:13px">
+            When <code>Vu ≤ 0.5·φVc</code>, <code>required</code> is <code>false</code> and no
+            stirrups are needed. When <code>0.5·φVc &lt; Vu ≤ φVc</code>, <code>minimumOnly</code>
+            is <code>true</code> and <code>requiredAvOverS</code> reflects only the ACI318-19
+            9.6.3.3 minimum. Otherwise strength-based reinforcement is required and
+            <code>requiredAvOverS</code> is the larger of the minimum and strength ratios.
+          </p>
+
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Pushes a warning (<strong>ACI318-19, 9.6.3.1</strong>) when the provided <code>Av / s</code> is below the required ratio.</span>
+          </div>
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Pushes a warning (<strong>ACI318-19, 9.7.6.2.2</strong>) when the provided spacing <code>s</code> exceeds the computed maximum spacing.</span>
+          </div>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws <strong>RCDesignError 105</strong> if the strength-required <code>Vs</code> exceeds <code>0.66·√f′c·bw·d</code> — the section is too small for the demand even with maximum stirrups.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── rectBeamBarLayout ── -->
+    <div class="section" id="section-bar-layout">
+      <div class="section__title">Bar Layout <code style="font-size:13px">rc-bar-layout.ts</code></div>
+
+      <div class="export-card" id="rect-beam-bar-layout">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">rectBeamBarLayout(input)</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">
+            Lays out top and bottom rebar groups within a rectangular section, splitting each group
+            into the minimum number of layers that satisfies ACI 318-19 minimum clear spacing within
+            a layer (25.2.1) and between layers (25.2.2). Returns the effective depth <code>d</code>
+            and compression-steel depth <code>d_</code>, both measured from the top (compression)
+            face so they plug directly into <code>rectBeamMomentCapacity</code>.
+          </p>
+
+          <div class="sub-label">Parameters — RectBeamBarLayoutInput</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>b</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Section width</td></tr>
+              <tr><td>h</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Overall section height</td></tr>
+              <tr><td>topBars</td><td>RebarGroupInput</td><td>—</td><td><span class="req">Required</span></td><td>Top (compression) bar group: <code>count</code>, <code>diameter</code> (mm)</td></tr>
+              <tr><td>bottomBars</td><td>RebarGroupInput</td><td>—</td><td><span class="req">Required</span></td><td>Bottom (tension) bar group: <code>count</code>, <code>diameter</code> (mm)</td></tr>
+              <tr><td>cover</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Clear cover to the stirrup (default 40)</td></tr>
+              <tr><td>stirrupDiameter</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Stirrup bar diameter (default 10)</td></tr>
+              <tr><td>maxAggregateSize</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Nominal maximum aggregate size (default 20)</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Example</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre><span class="b">import</span> { <span class="u">rectBeamBarLayout</span> } <span class="b">from</span> <span class="s">'@theerapat-s28/ts-structural-eng-tools/rc'</span>;
+
+<span class="b">const</span> layout = <span class="u">rectBeamBarLayout</span>({
+  <span class="k">b</span>: <span class="n">300</span>,                                    <span class="c">// mm</span>
+  <span class="k">h</span>: <span class="n">500</span>,                                    <span class="c">// mm</span>
+  <span class="k">topBars</span>: { <span class="k">count</span>: <span class="n">2</span>, <span class="k">diameter</span>: <span class="n">16</span> },      <span class="c">// 2-DB16</span>
+  <span class="k">bottomBars</span>: { <span class="k">count</span>: <span class="n">5</span>, <span class="k">diameter</span>: <span class="n">25</span> },   <span class="c">// 5-DB25</span>
+});</pre>
+          </div>
+
+          <div class="sub-label">Returns</div>
+          <div class="code-block">
+            <div class="code-block__label">Result</div>
+            <pre>{
+  <span class="k">d</span>: <span class="n">417.5</span>,                    <span class="c">// mm, effective depth to bottom-group centroid</span>
+  <span class="k">d_</span>: <span class="n">58</span>,                      <span class="c">// mm, depth to top-group centroid</span>
+  <span class="k">top</span>: {
+    <span class="k">numberOfLayers</span>: <span class="n">1</span>,
+    <span class="k">barsPerLayer</span>: [<span class="n">2</span>],
+    <span class="k">As</span>: <span class="n">402.1</span>                  <span class="c">// mm²</span>
+  },
+  <span class="k">bottom</span>: {
+    <span class="k">numberOfLayers</span>: <span class="n">2</span>,
+    <span class="k">barsPerLayer</span>: [<span class="n">3</span>, <span class="n">2</span>],       <span class="c">// 5 bars don't fit in one layer of b = 300</span>
+    <span class="k">As</span>: <span class="n">2454.4</span>                 <span class="c">// mm²</span>
+  },
+  <span class="k">unit</span>: <span class="s">'mm'</span>,
+  <span class="k">warnings</span>: []
+}</pre>
+          </div>
+
+          <div class="alert alert--info">
+            <span>ℹ️</span>
+            <span>The defaults for <code>cover</code> (40 mm), <code>stirrupDiameter</code> (10 mm), and <code>maxAggregateSize</code> (20 mm) follow <strong>ACI318-19, Table 20.6.1.3.1</strong> for cast-in-place beams not exposed to weather or in contact with ground.</span>
+          </div>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws <strong>RCDesignError 103</strong> if the section is too narrow to fit even one bar of the given diameter with the required cover and spacing.</span>
+          </div>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws <strong>RCDesignError 104</strong> if the combined top and bottom layers exceed the section height <code>h</code>.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Material helpers ── -->
+    <div class="section" id="section-helpers">
+      <div class="section__title">Material Helpers <code style="font-size:13px">general.ts</code></div>
+
+      <div class="export-card" id="concrete-beta">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">concreteBeta(fc_)</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">
+            Returns the ACI 318 β₁ factor for the equivalent rectangular stress block:
+            0.85 for f′c ≤ 28 MPa, reducing by 0.05 per 7 MPa above 28, clamped at 0.65.
+          </p>
+          <div class="sub-label">Parameters</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>fc_</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Concrete compressive strength f′c</td></tr>
+            </tbody>
+          </table>
+          <div class="sub-label">Example</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre><span class="u">concreteBeta</span>(<span class="n">28</span>);  <span class="c">// → 0.85</span>
+<span class="u">concreteBeta</span>(<span class="n">42</span>);  <span class="c">// → 0.75</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-card" id="concrete-elastic-modulus">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">concreteElasticModulus(fc_)</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">
+            Estimates the modulus of elasticity of normal-weight concrete per ACI 318:
+            <code>Ec = 4700·√f′c</code> (MPa).
+          </p>
+          <div class="sub-label">Parameters</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>fc_</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Concrete compressive strength f′c</td></tr>
+            </tbody>
+          </table>
+          <div class="sub-label">Example</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre><span class="u">concreteElasticModulus</span>(<span class="n">28</span>);  <span class="c">// → 24870.06 MPa</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-card" id="psi-to-mpa">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">psiToMpa(psi)</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Converts a pressure value from psi to MPa (divides by 145.038).</p>
+          <div class="sub-label">Parameters</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>psi</td><td>number</td><td>psi</td><td><span class="req">Required</span></td><td>Pressure in pounds per square inch</td></tr>
+            </tbody>
+          </table>
+          <div class="sub-label">Example</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre><span class="u">psiToMpa</span>(<span class="n">4000</span>);  <span class="c">// → 27.58 MPa</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Error codes ── -->
+    <div class="section" id="errors">
+      <div class="section__title">RCDesignError Codes</div>
+      <p>
+        Thrown errors are instances of <code>RCDesignError</code> (exported from
+        <code>@theerapat-s28/ts-structural-eng-tools/core</code>) with a numeric
+        <code>code</code>. Codes in the 1XX range belong to RC beam design.
+      </p>
+      <table class="summary-table">
+        <thead>
+          <tr><th>Code</th><th>Name</th><th>Thrown by</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="path-cell">101</td>
+            <td class="path-cell">COMP_STEEL_DISTANCE_OVER_AC</td>
+            <td>rectBeamMomentCapacity</td>
+            <td>d′ of the compression steel exceeds the neutral-axis depth c; use a singly reinforced section.</td>
+          </tr>
+          <tr>
+            <td class="path-cell">102</td>
+            <td class="path-cell">TENSILE_STEEL_NOT_YIELDING</td>
+            <td>rectBeamMomentCapacity</td>
+            <td>Out of the tension-controlled region — the tensile steel does not yield.</td>
+          </tr>
+          <tr>
+            <td class="path-cell">103</td>
+            <td class="path-cell">SECTION_TOO_NARROW_FOR_BAR</td>
+            <td>rectBeamBarLayout</td>
+            <td>Not even one bar of the given diameter fits within the width after cover and spacing.</td>
+          </tr>
+          <tr>
+            <td class="path-cell">104</td>
+            <td class="path-cell">BAR_LAYOUT_EXCEEDS_SECTION_HEIGHT</td>
+            <td>rectBeamBarLayout</td>
+            <td>The combined top and bottom rebar layers exceed the section height h.</td>
+          </tr>
+          <tr>
+            <td class="path-cell">105</td>
+            <td class="path-cell">SHEAR_STRENGTH_EXCEEDS_MAX</td>
+            <td>stirrupShearCapacity, checkStirrupRequirement</td>
+            <td>Vs exceeds 0.66·√f′c·bw·d; the section is too small for shear — increase bw or d.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── Summary ── -->
+    <div class="section" id="summary">
+      <div class="section__title">Export Summary</div>
+      <table class="summary-table">
+        <thead>
+          <tr><th>Kind</th><th>Export</th><th>Returns</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="kind m-fn">FN</span></td>
+            <td class="path-cell">rectBeamMomentCapacity</td>
+            <td>{ phiMn, calculationDetails, unit, warnings }</td>
+            <td>Design moment capacity φMn of a singly or doubly reinforced section</td>
+          </tr>
+          <tr>
+            <td><span class="kind m-fn">FN</span></td>
+            <td class="path-cell">concreteShearCapacity</td>
+            <td>{ phiVc, calculationDetails, unit, warnings }</td>
+            <td>Concrete contribution to shear capacity φVc</td>
+          </tr>
+          <tr>
+            <td><span class="kind m-fn">FN</span></td>
+            <td class="path-cell">stirrupShearCapacity</td>
+            <td>{ phiVs, calculationDetails, unit, warnings }</td>
+            <td>Stirrup contribution to shear capacity φVs</td>
+          </tr>
+          <tr>
+            <td><span class="kind m-fn">FN</span></td>
+            <td class="path-cell">checkStirrupRequirement</td>
+            <td>{ required, minimumOnly, calculationDetails, unit, warnings }</td>
+            <td>Whether stirrups are required, and required Av/s and max spacing</td>
+          </tr>
+          <tr>
+            <td><span class="kind m-fn">FN</span></td>
+            <td class="path-cell">rectBeamBarLayout</td>
+            <td>{ d, d_, top, bottom, unit, warnings }</td>
+            <td>Layered bar arrangement with resulting effective depths</td>
+          </tr>
+          <tr>
+            <td><span class="kind m-fn">FN</span></td>
+            <td class="path-cell">concreteBeta</td>
+            <td>number</td>
+            <td>ACI 318 β₁ stress-block factor</td>
+          </tr>
+          <tr>
+            <td><span class="kind m-fn">FN</span></td>
+            <td class="path-cell">concreteElasticModulus</td>
+            <td>number</td>
+            <td>Concrete elastic modulus Ec = 4700√f′c</td>
+          </tr>
+          <tr>
+            <td><span class="kind m-fn">FN</span></td>
+            <td class="path-cell">psiToMpa</td>
+            <td>number</td>
+            <td>psi → MPa conversion</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+</body>
+</html>

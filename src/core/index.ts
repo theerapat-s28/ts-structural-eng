@@ -3,6 +3,11 @@ export type {
     RectBeamSection,
     RectSinglyBeamSection,
     RectDoublyBeamSection,
+    RectShearSection,
+    StirrupShearSection,
+    ShearReinforcementCheckInput,
+    RebarGroupInput,
+    RectBeamBarLayoutInput,
 } from "./types/rc-beam.type";
 export { isSinglyReinforced } from "./types/rc-beam.type";
 export type { SteelJacketedProps } from "./types/plate-jacketing.type";
@@ -13,6 +18,7 @@ export type { unit } from "./types/unit.type";
 export {
     FLEXURAL_STRENGTH_REDUCTION_FACTOR,
     CONCRETE_ULTIMATE_STRAIN,
+    SHEAR_STRENGTH_REDUCTION_FACTOR,
 } from "./constants/rc.constant";
 
 // Errors

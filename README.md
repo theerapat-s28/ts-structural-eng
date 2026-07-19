@@ -40,7 +40,7 @@ src/
 ├── rc/                   # Reinforced concrete design
 │   ├── index.ts          # Module exports
 │   ├── general.ts        # Concrete properties (beta1, Ec, unit conversion)
-│   └── rc-beam-design.ts # Beam moment capacity (singly/doubly reinforced)
+│   └── rc-beam-design.ts # Beam moment capacity (singly/doubly reinforced) and shear capacity (Vc, Vs, stirrup requirement)
 ├── strengthening/        # Strengthening methods
 │   ├── index.ts
 │   └── rc-beam-steel-plate-jacketing.ts
@@ -81,6 +81,9 @@ For runtime resolution, `tsconfig-paths` is registered in the `dev` script.
 ### RC Beam Design
 
 - **`rectBeamMomentCapacity(section)`** — Computes φMn for a rectangular RC beam (singly or doubly reinforced). Returns `phiMn` in kN·m with calculation details and ACI 318-19 warnings.
+- **`concreteShearCapacity(section)`** — Computes φVc, the concrete contribution to shear capacity (ACI 318-19, 22.5.5.1).
+- **`stirrupShearCapacity(section)`** — Computes φVs, the stirrup contribution to shear capacity (ACI 318-19, 22.5.10.5.3).
+- **`checkStirrupRequirement(input)`** — Determines whether stirrups are required, and the required Av/s ratio and max spacing (ACI 318-19, 9.6.3.1, 9.6.3.3, 9.7.6.2.2).
 
 ### Strengthening
 

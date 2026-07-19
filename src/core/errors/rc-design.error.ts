@@ -26,4 +26,19 @@ export const Errors: Record<string, RCDesignErrorType> = {
     code: 102,
     message: "Out of tension controlled region, tensile steel is not yielding.",
   },
+  SECTION_TOO_NARROW_FOR_BAR: {
+    code: 103,
+    message:
+      "Section width is too narrow to fit even one bar of the given diameter with the required cover and spacing.",
+  },
+  BAR_LAYOUT_EXCEEDS_SECTION_HEIGHT: {
+    code: 104,
+    message:
+      "Combined top and bottom rebar layers exceed the section height h.",
+  },
+  SHEAR_STRENGTH_EXCEEDS_MAX: {
+    code: 105,
+    message:
+      "Vs exceeds 0.66*sqrt(fc')*bw*d (ACI318-19, 22.5.1.2); section is too small for shear, increase bw or d.",
+  },
 };

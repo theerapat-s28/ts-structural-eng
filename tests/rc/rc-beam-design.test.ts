@@ -57,6 +57,14 @@ describe("rectBeamMomentCapacity", () => {
         expect(fyWarning).toBeDefined();
     });
 
+    it("passes As_ through as compression rebar in calculationDetails", () => {
+        const result = rectBeamMomentCapacity(baseDoublySection);
+        expect(result.calculationDetails).toHaveProperty("As_", baseDoublySection.As_);
+        expect(result.calculationDetails).toHaveProperty("d_", baseDoublySection.d_);
+        expect(result.calculationDetails.fs_).toBeGreaterThan(0);
+        expect(result.calculationDetails.ro_).toBeGreaterThan(0);
+    });
+
     it("doubly reinforced phiMn ≥ singly reinforced phiMn", () => {
         const singly = rectBeamMomentCapacity(baseSinglySection);
         const doubly = rectBeamMomentCapacity(baseDoublySection);

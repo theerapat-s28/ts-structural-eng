@@ -5,6 +5,9 @@ import {
   RectBeamSection,
   RectSinglyBeamSection,
   RectDoublyBeamSection,
+  RectShearSection,
+  StirrupShearSection,
+  ShearReinforcementCheckInput,
   isSinglyReinforced,
 } from "@app-core/types/rc-beam.type";
 
@@ -98,6 +101,189 @@ export const rectBeamMomentCapacity = (section: RectBeamSection) => {
     calculationDetails: calculationDetails,
     unit: "kN-m",
     warnings: warnings,
+  };
+};
+
+/**
+ * Calculates the concrete contribution to shear capacity (φVc) of a beam section
+ * per ACI 318-19 22.5.5.1, Table 22.5.5.1(a): Vc = 0.17 λ √f'c bw d
+ *
+ * @param section - Shear section properties (fc_, bw, d, optional lambda)
+ * @returns Object containing `phiVc` (kN), `calculationDetails`, `unit`, and `warnings`
+ */
+export const concreteShearCapacity = (section: RectShearSection) => {
+  const warnings: Warnings = [];
+  const lambda = section.lambda ?? 1.0;
+  const sqrtFc = Math.sqrt(section.fc_);
+
+  if (sqrtFc > RCConstants.SQRT_FC_SHEAR_LIMIT) {
+    warnings.push({
+      reference: "ACI318-19, 22.5.3.1",
+      message: `sqrt(fc') (${MyMath.roundToDecimalPlaces(sqrtFc, 2)}) > ${RCConstants.SQRT_FC_SHEAR_LIMIT} MPa limit for Vc; capped at ${RCConstants.SQRT_FC_SHEAR_LIMIT} MPa unless minimum shear reinforcement per 9.6.3.3 is provided.`,
+    });
+  }
+  const cappedSqrtFc = Math.min(sqrtFc, RCConstants.SQRT_FC_SHEAR_LIMIT);
+
+  const Vc =
+    RCConstants.CONCRETE_SHEAR_VC_COEFFICIENT *
+    lambda *
+    cappedSqrtFc *
+    section.bw *
+    section.d; // N
+
+  return {
+    phiVc: MyMath.roundToDecimalPlaces(
+      RCConstants.SHEAR_STRENGTH_REDUCTION_FACTOR * Vc * 0.001,
+      2,
+    ),
+    calculationDetails: {
+      Vc: MyMath.roundToDecimalPlaces(Vc * 0.001, 2),
+      lambda,
+    },
+    unit: "kN",
+    warnings,
+  };
+};
+
+/**
+ * Calculates the stirrup (shear reinforcement) contribution to shear capacity (φVs)
+ * of a beam section per ACI 318-19 22.5.10.5.3: Vs = Av fyt d / s
+ *
+ * @param section - Stirrup shear properties (fc_, bw, d, Av, fyt, s)
+ * @returns Object containing `phiVs` (kN), `calculationDetails`, `unit`, and `warnings`
+ * @throws {RCDesignError} If Vs exceeds the ACI 318-19 22.5.1.2 maximum (section too small)
+ */
+export const stirrupShearCapacity = (section: StirrupShearSection) => {
+  const warnings: Warnings = [];
+  const { fc_, bw, d, Av, fyt, s } = section;
+
+  const Vs = (Av * fyt * d) / s; // N
+  const maxVs = RCConstants.MAX_VS_COEFFICIENT * Math.sqrt(fc_) * bw * d; // N
+
+  if (Vs > maxVs) {
+    throw new RCDesignError(Errors.SHEAR_STRENGTH_EXCEEDS_MAX);
+  }
+
+  return {
+    phiVs: MyMath.roundToDecimalPlaces(
+      RCConstants.SHEAR_STRENGTH_REDUCTION_FACTOR * Vs * 0.001,
+      2,
+    ),
+    calculationDetails: {
+      Vs: MyMath.roundToDecimalPlaces(Vs * 0.001, 2),
+      maxVs: MyMath.roundToDecimalPlaces(maxVs * 0.001, 2),
+    },
+    unit: "kN",
+    warnings,
+  };
+};
+
+/**
+ * Checks whether shear reinforcement (stirrups) is required at a section, and if so,
+ * whether it may be at the code minimum or must be designed for strength, per
+ * ACI 318-19 9.6.3.1 (requirement thresholds), 9.6.3.3 (Av,min), and 9.7.6.2.2 (max spacing).
+ *
+ * If `Av` and `s` are supplied, the provided reinforcement is checked against the
+ * required Av/s ratio and maximum spacing, adding warnings on shortfalls.
+ *
+ * @param input - Section and demand properties (fc_, bw, d, Vu, fyt, optional Av, s, lambda)
+ * @returns Object containing requirement classification, required Av/s and max spacing, and warnings
+ * @throws {RCDesignError} If required Vs exceeds the ACI 318-19 22.5.1.2 maximum (section too small)
+ */
+export const checkStirrupRequirement = (
+  input: ShearReinforcementCheckInput,
+) => {
+  const warnings: Warnings = [];
+  const { fc_, bw, d, Vu, fyt, Av, s } = input;
+
+  const { phiVc, calculationDetails } = concreteShearCapacity({
+    fc_,
+    bw,
+    d,
+    lambda: input.lambda,
+  });
+  const Vc = calculationDetails.Vc; // kN
+
+  const halfPhiVc = 0.5 * phiVc;
+
+  let required = false;
+  let minimumOnly = false;
+  let requiredAvOverS = 0; // mm^2/mm
+  let maxSpacing: number | null = null;
+
+  if (Vu > halfPhiVc) {
+    required = true;
+
+    const sqrtFc = Math.sqrt(fc_);
+    const minAvOverS = Math.max(
+      (RCConstants.MIN_AV_SQRT_FC_COEFFICIENT * sqrtFc * bw) / fyt,
+      (RCConstants.MIN_AV_ABSOLUTE_COEFFICIENT * bw) / fyt,
+    );
+
+    if (Vu <= phiVc) {
+      minimumOnly = true;
+      requiredAvOverS = minAvOverS;
+      maxSpacing =
+        RCConstants.MAX_STIRRUP_SPACING_LOW_VS_DEPTH_FACTOR * d <
+        RCConstants.MAX_STIRRUP_SPACING_LOW_VS
+          ? RCConstants.MAX_STIRRUP_SPACING_LOW_VS_DEPTH_FACTOR * d
+          : RCConstants.MAX_STIRRUP_SPACING_LOW_VS;
+    } else {
+      const requiredVs =
+        Vu / RCConstants.SHEAR_STRENGTH_REDUCTION_FACTOR - Vc; // kN
+      const maxVs =
+        (RCConstants.MAX_VS_COEFFICIENT * sqrtFc * bw * d) * 0.001; // kN
+
+      if (requiredVs > maxVs) {
+        throw new RCDesignError(Errors.SHEAR_STRENGTH_EXCEEDS_MAX);
+      }
+
+      const strengthAvOverS = (requiredVs * 1000) / (fyt * d); // mm^2/mm
+      requiredAvOverS = Math.max(minAvOverS, strengthAvOverS);
+
+      const vsThreshold =
+        (RCConstants.VS_SPACING_THRESHOLD_COEFFICIENT * sqrtFc * bw * d) *
+        0.001; // kN
+      maxSpacing =
+        requiredVs <= vsThreshold
+          ? Math.min(
+              RCConstants.MAX_STIRRUP_SPACING_LOW_VS_DEPTH_FACTOR * d,
+              RCConstants.MAX_STIRRUP_SPACING_LOW_VS,
+            )
+          : Math.min(
+              RCConstants.MAX_STIRRUP_SPACING_HIGH_VS_DEPTH_FACTOR * d,
+              RCConstants.MAX_STIRRUP_SPACING_HIGH_VS,
+            );
+    }
+
+    if (Av !== undefined && s !== undefined) {
+      const providedAvOverS = Av / s;
+      if (providedAvOverS < requiredAvOverS) {
+        warnings.push({
+          reference: "ACI318-19, 9.6.3.1",
+          message: `Provided Av/s (${MyMath.roundToDecimalPlaces(providedAvOverS, 4)} mm2/mm) < required Av/s (${MyMath.roundToDecimalPlaces(requiredAvOverS, 4)} mm2/mm).`,
+        });
+      }
+      if (maxSpacing !== null && s > maxSpacing) {
+        warnings.push({
+          reference: "ACI318-19, 9.7.6.2.2",
+          message: `Provided spacing s (${s} mm) > max allowed spacing (${MyMath.roundToDecimalPlaces(maxSpacing, 2)} mm).`,
+        });
+      }
+    }
+  }
+
+  return {
+    required,
+    minimumOnly,
+    calculationDetails: {
+      phiVc,
+      halfPhiVc: MyMath.roundToDecimalPlaces(halfPhiVc, 2),
+      requiredAvOverS: MyMath.roundToDecimalPlaces(requiredAvOverS, 4),
+      maxSpacing: maxSpacing === null ? null : MyMath.roundToDecimalPlaces(maxSpacing, 2),
+    },
+    unit: "kN",
+    warnings,
   };
 };
 
