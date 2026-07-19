@@ -1,5 +1,5 @@
 {
-  "name": "ts-structural-eng-tools",
+  "name": "@theerapat-s28/ts-structural-eng-tools",
   "version": "1.0.0",
   "description": "TypeScript structural-engineering helper functions and beam design utilities",
   "main": "dist/index.js",
@@ -33,7 +33,7 @@
   ],
   "scripts": {
     "dev": "ts-node -r tsconfig-paths/register examples/basic-usage.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"examples/**/*.ts\"",
@@ -56,6 +56,9 @@
     "type": "git",
     "url": ""
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "packageManager": "pnpm@10.18.3",
   "devDependencies": {
     "@eslint/js": "^9.20.0",
@@ -63,6 +66,7 @@
     "eslint": "^9.20.0",
     "prettier": "^3.5.3",
     "ts-node": "^10.9.2",
+    "tsc-alias": "^1.9.1",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.25.0",
