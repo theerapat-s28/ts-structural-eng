@@ -1,6 +1,7 @@
 // RC Beam Design
 export {
   rectBeamMomentCapacity,
+  rectBeamBarLayout,
   concreteBeta,
   concreteElasticModulus,
   psiToMpa,
@@ -14,6 +15,8 @@ export type {
   RectBeamSection,
   RectSinglyBeamSection,
   RectDoublyBeamSection,
+  RebarGroupInput,
+  RectBeamBarLayoutInput,
   SteelJacketedProps,
   Warnings,
   calculationResult,

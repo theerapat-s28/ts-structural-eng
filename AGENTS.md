@@ -54,3 +54,13 @@ These are domain rules that apply to every new calculation:
 ## Tests
 
 Vitest with `globals: true`; test files live in `tests/` mirroring the `src/` layout (`tests/rc/`, `tests/utils/`), named `*.test.ts`, importing via the path aliases. Tests assert numeric results, warning presence/references, and thrown `RCDesignError`s. Calculation changes should be verified against hand-calculated or textbook values where practical.
+
+## Documentation
+
+User-facing HTML reference pages live at `docs/<module-name>/index.html` (one per top-level module: `rc`, `strengthening`, …), styled per the guide in `docs/DESIGN.md` — read it before touching any doc page.
+
+- **Any change to a module's public surface must be reflected in its doc page in the same change**: new/renamed/removed exports, parameter or return-shape changes, new warnings (with their ACI clause) or `RCDesignError` codes, changed defaults. Check the relevant `docs/<module>/index.html` whenever you touch a barrel export or a public function's signature/behavior.
+- **A new top-level module under `src/` must ship with its own `docs/<module-name>/index.html`**, following the DESIGN.md checklist (copy the full `<style>` block from an existing page).
+- Numeric values shown in doc examples must be real: run the example inputs through the actual library (e.g. a temporary Vitest file under `tests/`, deleted afterward) and paste the produced outputs — never hand-estimate them.
+- Verify every sidebar `href` matches a real element `id` on the page.
+- **`README.md` must be kept up to date alongside `docs/`**: when a module is added, its `src/` tree entry goes into the "Project layout" listing; when a module's exports or scripts change, update the corresponding README section in the same change.
