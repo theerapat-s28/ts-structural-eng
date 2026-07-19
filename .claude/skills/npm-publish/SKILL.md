@@ -5,9 +5,11 @@ description: Publish a new version of @theerapat-s28/ts-structural-eng-tools to 
 
 # Publish to npm
 
-Publishes `@theerapat-s28/ts-structural-eng-tools` (https://www.npmjs.com/package/@theerapat-s28/ts-structural-eng-tools). The package is scoped, so it must be published with public access — `publishConfig.access: "public"` in package.json handles this; don't remove it.
+Prepares a release of `@theerapat-s28/ts-structural-eng-tools` (https://www.npmjs.com/package/@theerapat-s28/ts-structural-eng-tools). The package is scoped, so it must be published with public access — `publishConfig.access: "public"` in package.json handles this; don't remove it.
 
-Follow the steps in order. Stop and report to the user if any step fails — never publish over a failing build or test suite, because a published version can't be replaced (npm forbids re-publishing the same version number, and unpublish is heavily restricted).
+**You do NOT run `pnpm publish` yourself.** The npm account requires browser-based auth on publish, which only works when the user types the command in their own terminal. Your job is steps 1–4 (preflight, verify, version bump, dry run); then hand the final commands to the user (step 5) and stop.
+
+Follow the steps in order. Stop and report to the user if any step fails — never prepare a publish over a failing build or test suite, because a published version can't be replaced (npm forbids re-publishing the same version number, and unpublish is heavily restricted).
 
 ## 1. Preflight
 
@@ -41,32 +43,31 @@ pnpm version patch   # or minor / major
 
 This updates package.json, commits, and creates a git tag `vX.Y.Z`.
 
-## 4. Dry run, then publish
+## 4. Dry run
 
-Always dry-run first and show the user the file list — it catches missing `dist/` files or accidental inclusions before anything goes live:
+Always dry-run and show the user the file list — it catches missing `dist/` files or accidental inclusions before anything goes live:
 
 ```bash
 pnpm publish --dry-run
 ```
 
-If the tarball contents look right, confirm with the user, then:
+Check that the tarball contains `dist/`, README.md, LICENSE, package.json, and that the name/version are right.
+
+## 5. Hand off to the user — do not publish yourself
+
+Publishing triggers npm's browser-based auth, which fails with `EOTP` when run by an agent. Once the dry run looks right, tell the user everything is ready and give them these commands to run themselves, in order:
 
 ```bash
-pnpm publish
-```
-
-## 5. Verify and push
-
-```bash
-npm view @theerapat-s28/ts-structural-eng-tools version   # should now show the new version
+pnpm publish                                              # completes browser auth when prompted
+npm view @theerapat-s28/ts-structural-eng-tools version   # should show the new version
 git push && git push --tags
 ```
 
-Report the published version and the npm URL to the user.
+Report the prepared version and remind them the npm URL is https://www.npmjs.com/package/@theerapat-s28/ts-structural-eng-tools. Your work ends here — do not run `pnpm publish` even if the user seems to expect it; point them back to these commands instead.
 
 ## Troubleshooting
 
 - `ENEEDAUTH` / `npm whoami` fails → `npm login` (user must complete browser auth/OTP themselves).
 - `403 Forbidden` on publish → usually the version already exists on the registry, or the logged-in user isn't `theerapat-s28`. Check `npm view` for existing versions and `npm whoami`.
-- `EOTP` → the account has 2FA; rerun as `pnpm publish --otp=<code>` with a code from the user.
+- `EOTP` when the user publishes → the browser auth wasn't completed; open the URL npm prints and finish authentication, then rerun `pnpm publish`.
 - Publish rejected for unclean git → commit or stash; only bypass with `--no-git-checks` if the user explicitly says so.
