@@ -40,3 +40,20 @@ export const MAX_STIRRUP_SPACING_HIGH_VS_DEPTH_FACTOR = 0.25; // * d
 // ACI 318-19 9.6.3.3: Av,min = max(0.062 * sqrt(fc') * bw * s / fyt, 0.35 * bw * s / fyt)
 export const MIN_AV_SQRT_FC_COEFFICIENT = 0.062;
 export const MIN_AV_ABSOLUTE_COEFFICIENT = 0.35;
+
+// ACI 318-19 Table 17.5.3: strength reduction factor for anchor steel in shear
+export const ANCHOR_SHEAR_STRENGTH_REDUCTION_FACTOR = 0.65;
+
+// ACI 318-19 17.7.1.2b: Vsa = 0.6 * Ase,V * futa
+export const ANCHOR_STEEL_SHEAR_COEFFICIENT = 0.6;
+
+// ACI 318-19 17.6.1.2: futa shall not exceed min(1.9 * fya, 860 MPa)
+export const ANCHOR_FUTA_FYA_FACTOR = 1.9;
+export const MAX_ANCHOR_FUTA = 860; // MPa
+
+// ACI 318-19 17.9.2: min center-to-center spacing of cast-in anchors = 4 * da
+export const MIN_ANCHOR_SPACING_DIAMETER_FACTOR = 4;
+
+// Practical detailing limit on bolt pitch along a bonded strengthening plate,
+// so the plate is restrained against local buckling / peeling between fasteners
+export const MAX_PLATE_BOLT_SPACING = 300; // mm

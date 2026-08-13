@@ -354,6 +354,11 @@
       <div class="nav-section-label">Steel Plate Jacketing</div>
       <a href="#calculate-steel-jacketed-beam-moment-capacity"><span class="mbadge m-fn">FN</span> calculateSteelJacketedBeamMomentCapacity</a>
 
+      <div class="nav-section-label">Plate Interface Bolting</div>
+      <a href="#plate-interface-shear-flow"><span class="mbadge m-fn">FN</span> plateInterfaceShearFlow</a>
+      <a href="#bolt-shear-capacity"><span class="mbadge m-fn">FN</span> boltShearCapacity</a>
+      <a href="#plate-interface-bolt-requirement"><span class="mbadge m-fn">FN</span> plateInterfaceBoltRequirement</a>
+
       <div class="nav-section-label">Reference</div>
       <a href="#summary"><span style="font-size:14px">☰</span> Export summary</a>
     </nav>
@@ -368,7 +373,7 @@
         <code>@theerapat-s28/ts-structural-eng-tools/strengthening</code>
       </div>
       <h1>Strengthening</h1>
-      <p>Moment-capacity calculations for existing RC beams strengthened with steel plate jacketing.</p>
+      <p>Moment-capacity and plate-to-concrete connection calculations for existing RC beams strengthened with steel plate jacketing.</p>
     </div>
 
     <!-- ── Overview ── -->
@@ -390,6 +395,16 @@
         <span>ℹ️</span>
         <span>All inputs and outputs use <strong>SI units implicitly</strong>: MPa for stresses, mm / mm² for geometry, kN·m for moments. Each result object states its unit in the <code>unit</code> field.</span>
       </div>
+      <p style="margin-top:14px">
+        A jacket is only effective if the plates are actually attached, so the module also sizes the
+        <strong>interface bolting</strong> between the concrete and each plate: the interface shear flow
+        <code>q = V·Q/I</code> from an elastic transformed section, the design shear strength of one
+        anchor bolt, and the resulting bolt pitch and count.
+      </p>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>Each plate is <strong>independently optional</strong>. A plate counts as present only when both its width and thickness are positive, so a bottom-only jacket may omit the top plate fields entirely. Interface results are returned per plate, with <code>null</code> where a plate is absent.</span>
+      </div>
 
       <div class="sub-label" style="margin-top:20px">Input Types</div>
       <div class="model-grid">
@@ -399,7 +414,31 @@
         </div>
         <div class="model-card">
           <div class="model-card__title">SteelJacketedProps</div>
-          <div class="model-card__desc">Plate material (Es, fy) and the width / thickness of the top and bottom plates.</div>
+          <div class="model-card__desc">Plate material (Es, fy) and the optional width / thickness of the top and bottom plates.</div>
+        </div>
+        <div class="model-card">
+          <div class="model-card__title">PlateShearFlowInput</div>
+          <div class="model-card__desc">Section, plates, factored shear <code>V</code> (kN) and the <code>sectionState</code> used for the transformed section.</div>
+        </div>
+        <div class="model-card">
+          <div class="model-card__title">BoltProps</div>
+          <div class="model-card__desc">Anchor steel area, strengths and optional diameter — or a direct <code>phiVboltOverride</code>.</div>
+        </div>
+        <div class="model-card">
+          <div class="model-card__title">PlateInterfaceBoltInput</div>
+          <div class="model-card__desc">A <code>PlateShearFlowInput</code> plus the bolt, the bolts per row, and the transfer length.</div>
+        </div>
+      </div>
+
+      <div class="sub-label" style="margin-top:20px">Type Guards</div>
+      <div class="model-grid">
+        <div class="model-card">
+          <div class="model-card__title">hasTopPlate(props)</div>
+          <div class="model-card__desc">True when <code>topSteelWidth</code> and <code>topSteelThickness</code> are both positive.</div>
+        </div>
+        <div class="model-card">
+          <div class="model-card__title">hasBottomPlate(props)</div>
+          <div class="model-card__desc">True when <code>bottomSteelWidth</code> and <code>bottomSteelThickness</code> are both positive.</div>
         </div>
       </div>
     </div>
@@ -487,10 +526,10 @@
             <tbody>
               <tr><td>Es</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Elastic modulus of the steel plates</td></tr>
               <tr><td>fy</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Yield strength of the steel plates</td></tr>
-              <tr><td>topSteelWidth</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Width of the top plate</td></tr>
-              <tr><td>topSteelThickness</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Thickness of the top plate</td></tr>
-              <tr><td>bottomSteelWidth</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Width of the bottom plate</td></tr>
-              <tr><td>bottomSteelThickness</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Thickness of the bottom plate</td></tr>
+              <tr><td>topSteelWidth</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Width of the top plate — omit or set to 0 for no top plate</td></tr>
+              <tr><td>topSteelThickness</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Thickness of the top plate</td></tr>
+              <tr><td>bottomSteelWidth</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Width of the bottom plate — omit or set to 0 for no bottom plate</td></tr>
+              <tr><td>bottomSteelThickness</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Thickness of the bottom plate</td></tr>
             </tbody>
           </table>
 
@@ -559,6 +598,309 @@
       </div>
     </div>
 
+    <!-- ── Plate interface bolting ── -->
+    <div class="section" id="section-interface-bolts">
+      <div class="section__title">Plate Interface Bolting <code style="font-size:13px">rc-beam-plate-interface-bolts.ts</code></div>
+      <p>
+        Horizontal shear must be transferred across the concrete-to-plate interface for the jacket to
+        act compositely. These functions compute that demand from an elastic transformed section and
+        size the bolt group that resists it.
+      </p>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span><strong>Shear flow is per interface, not per beam.</strong> <code>Q</code> at a cut is the first moment of the area beyond it — the plate alone — while <code>ybar</code> and <code>Itr</code> come from a single solve that includes every plate present. Adding a top plate therefore changes the bottom interface result too, so the two cannot be computed independently.</span>
+      </div>
+
+      <!-- ── plateInterfaceShearFlow ── -->
+      <div class="export-card" id="plate-interface-shear-flow">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">plateInterfaceShearFlow(input)</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">
+            Calculates <code>q = V·Q/I</code> at each concrete-to-plate interface using an elastic
+            transformed section. Rebar is transformed with <code>(n−1)</code> because it displaces
+            concrete already counted in the section; the plates sit outside the concrete and take the
+            full <code>n</code>. Both moduli use <code>Ec = 4700√f′c</code>.
+          </p>
+
+          <div class="sub-label">Parameters — input: PlateShearFlowInput</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>section</td><td>RectBeamSection</td><td>—</td><td><span class="req">Required</span></td><td>The original beam section (singly or doubly reinforced)</td></tr>
+              <tr><td>plates</td><td>SteelJacketedProps</td><td>—</td><td><span class="req">Required</span></td><td>Plate material and dimensions; at least one plate must be present</td></tr>
+              <tr><td>V</td><td>number</td><td>kN</td><td><span class="req">Required</span></td><td>Factored shear force at the section under consideration</td></tr>
+              <tr><td>sectionState</td><td>'cracked' | 'uncracked'</td><td>—</td><td><span class="opt">Optional</span></td><td>Transformed section basis (default: <code>'cracked'</code>)</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Example</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre><span class="b">import</span> { <span class="u">plateInterfaceShearFlow</span> } <span class="b">from</span> <span class="s">'@theerapat-s28/ts-structural-eng-tools/strengthening'</span>;
+
+<span class="b">const</span> flow = <span class="u">plateInterfaceShearFlow</span>({
+  <span class="k">section</span>: {
+    <span class="k">Es</span>: <span class="n">200000</span>, <span class="k">fc_</span>: <span class="n">28</span>, <span class="k">fy</span>: <span class="n">400</span>,
+    <span class="k">As</span>: <span class="n">1200</span>, <span class="k">b</span>: <span class="n">300</span>, <span class="k">h</span>: <span class="n">500</span>, <span class="k">d</span>: <span class="n">440</span>,
+  },
+  <span class="k">plates</span>: {
+    <span class="k">Es</span>: <span class="n">200000</span>,
+    <span class="k">fy</span>: <span class="n">250</span>,
+    <span class="k">bottomSteelWidth</span>: <span class="n">200</span>,      <span class="c">// mm — bottom plate only</span>
+    <span class="k">bottomSteelThickness</span>: <span class="n">10</span>,   <span class="c">// mm</span>
+  },
+  <span class="k">V</span>: <span class="n">150</span>,                        <span class="c">// kN</span>
+});</pre>
+          </div>
+
+          <div class="sub-label">Returns</div>
+          <div class="code-block">
+            <div class="code-block__label">Result</div>
+            <pre>{
+  <span class="k">top</span>: <span class="b">null</span>,                        <span class="c">// no top plate in this example</span>
+  <span class="k">bottom</span>: {
+    <span class="k">q</span>: <span class="n">247.71</span>,                    <span class="c">// N/mm of shear flow to transfer</span>
+    <span class="k">Q</span>: <span class="n">4681782</span>,                   <span class="c">// mm³, first moment of the plate about the NA</span>
+    <span class="k">leverArm</span>: <span class="n">291.09</span>              <span class="c">// mm, plate centroid to neutral axis</span>
+  },
+  <span class="k">calculationDetails</span>: {
+    <span class="k">Ec</span>: <span class="n">24870.06</span>,                 <span class="c">// MPa</span>
+    <span class="k">ns</span>: <span class="n">8.042</span>,                    <span class="c">// Es,rebar / Ec</span>
+    <span class="k">np</span>: <span class="n">8.042</span>,                    <span class="c">// Es,plate / Ec</span>
+    <span class="k">ybar</span>: <span class="n">213.91</span>,                 <span class="c">// mm, neutral axis from the datum</span>
+    <span class="k">Itr</span>: <span class="n">2835033974</span>,              <span class="c">// mm⁴</span>
+    <span class="k">sectionState</span>: <span class="s">'cracked'</span>
+  },
+  <span class="k">unit</span>: <span class="s">'N/mm'</span>,
+  <span class="k">warnings</span>: []
+}</pre>
+          </div>
+          <p style="font-size:13px">
+            Depths are measured from a <strong>datum at the top face of the top plate</strong> (the
+            concrete top face when there is no top plate) — the same datum used by
+            <code>calculateSteelJacketedBeamMomentCapacity</code>.
+          </p>
+
+          <div class="alert alert--info">
+            <span>ℹ️</span>
+            <span>The <code>'cracked'</code> default suits a strengthened beam under service load and gives the higher, conservative <code>q</code>. Use <code>'uncracked'</code> only when the beam is known to stay below its cracking moment.</span>
+          </div>
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Warns (<strong>ACI318-19, 22.2.2.1</strong>) when compression reinforcement falls below the cracked neutral axis — it is then transformed as tension steel — or when a top plate centroid lies below the neutral axis, which means the assumed compression-face behaviour does not apply.</span>
+          </div>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws <strong>RCDesignError 201</strong> (V not positive, or no plate present), <strong>203</strong> (inconsistent geometry), or <strong>204</strong> (no cracked neutral axis within the concrete depth).</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── boltShearCapacity ── -->
+      <div class="export-card" id="bolt-shear-capacity">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">boltShearCapacity(bolt)</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">
+            Design shear strength of a single anchor bolt from the steel strength per
+            ACI 318-19 17.7.1.2b, <code>Vsa = 0.6·Ase,V·futa</code>, with <code>φ = 0.65</code>
+            (Table 17.5.3) and the <code>futa</code> cap of 17.6.1.2.
+          </p>
+
+          <div class="sub-label">Parameters — bolt: BoltProps</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Ase</td><td>number</td><td>mm²</td><td><span class="req">Required</span></td><td>Effective cross-sectional area of the anchor in shear</td></tr>
+              <tr><td>futa</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Specified tensile strength of the anchor steel</td></tr>
+              <tr><td>fya</td><td>number</td><td>MPa</td><td><span class="opt">Optional</span></td><td>Specified yield strength; enables the 1.9·fya part of the cap</td></tr>
+              <tr><td>diameter</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Anchor diameter; enables the ACI 17.9.2 minimum spacing check in <code>plateInterfaceBoltRequirement</code></td></tr>
+              <tr><td>shearPlanes</td><td>number</td><td>—</td><td><span class="opt">Optional</span></td><td>Shear planes per bolt (default: 1)</td></tr>
+              <tr><td>phiVboltOverride</td><td>number</td><td>kN</td><td><span class="opt">Optional</span></td><td>Bypasses the computed steel strength — use for post-installed anchors with an ESR value</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Example</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre><span class="b">import</span> { <span class="u">boltShearCapacity</span> } <span class="b">from</span> <span class="s">'@theerapat-s28/ts-structural-eng-tools/strengthening'</span>;
+
+<span class="b">const</span> bolt = <span class="u">boltShearCapacity</span>({
+  <span class="k">Ase</span>: <span class="n">157</span>,        <span class="c">// mm² (M16)</span>
+  <span class="k">futa</span>: <span class="n">400</span>,       <span class="c">// MPa</span>
+  <span class="k">fya</span>: <span class="n">240</span>,        <span class="c">// MPa</span>
+  <span class="k">diameter</span>: <span class="n">16</span>,    <span class="c">// mm</span>
+});</pre>
+          </div>
+
+          <div class="sub-label">Returns</div>
+          <div class="code-block">
+            <div class="code-block__label">Result</div>
+            <pre>{
+  <span class="k">phiVbolt</span>: <span class="n">24.49</span>,                <span class="c">// kN, 0.65 * 37.68</span>
+  <span class="k">calculationDetails</span>: {
+    <span class="k">source</span>: <span class="s">'ACI318-19, 17.7.1.2b'</span>,
+    <span class="k">Vsa</span>: <span class="n">37.68</span>,                   <span class="c">// kN, 0.6 * 157 * 400</span>
+    <span class="k">futaEffective</span>: <span class="n">400</span>,           <span class="c">// MPa, below min(1.9*fya, 860)</span>
+    <span class="k">shearPlanes</span>: <span class="n">1</span>
+  },
+  <span class="k">unit</span>: <span class="s">'kN'</span>,
+  <span class="k">warnings</span>: [
+    {
+      <span class="k">reference</span>: <span class="s">'ACI318-19, 17.7.2'</span>,
+      <span class="k">message</span>: <span class="s">'Only anchor steel strength in shear is evaluated; ...'</span>
+    }
+  ]
+}</pre>
+          </div>
+
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span><strong>Concrete breakout (17.7.2) and pryout (17.7.3) are not evaluated</strong> — they depend on edge distances, anchor spacing and embedment depth. A warning citing <strong>ACI318-19, 17.7.2</strong> is returned on every call, including when <code>phiVboltOverride</code> is used, and these limit states must be checked separately.</span>
+          </div>
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Warns (<strong>ACI318-19, 17.6.1.2</strong>) when <code>futa</code> exceeds <code>min(1.9·fya, 860 MPa)</code> and is capped.</span>
+          </div>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws <strong>RCDesignError 202</strong> when the resolved capacity is not positive.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── plateInterfaceBoltRequirement ── -->
+      <div class="export-card" id="plate-interface-bolt-requirement">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">plateInterfaceBoltRequirement(input)</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">
+            Determines the bolts required at every plate present. For each interface the required pitch
+            follows from the shear flow, <code>s = n·φVbolt / q</code>, and the bolt count is the larger
+            of that pitch over the transfer length and the count needed to develop the full plate yield
+            force, <code>Ap·fy / φVbolt</code>. <code>governedBy</code> reports which one controls.
+          </p>
+
+          <div class="sub-label">Parameters — input: PlateInterfaceBoltInput</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>section</td><td>RectBeamSection</td><td>—</td><td><span class="req">Required</span></td><td>The original beam section</td></tr>
+              <tr><td>plates</td><td>SteelJacketedProps</td><td>—</td><td><span class="req">Required</span></td><td>Plate material and dimensions</td></tr>
+              <tr><td>V</td><td>number</td><td>kN</td><td><span class="req">Required</span></td><td>Factored shear force at the section</td></tr>
+              <tr><td>sectionState</td><td>'cracked' | 'uncracked'</td><td>—</td><td><span class="opt">Optional</span></td><td>Transformed section basis (default: <code>'cracked'</code>)</td></tr>
+              <tr><td>bolt</td><td>BoltProps</td><td>—</td><td><span class="req">Required</span></td><td>Anchor properties, passed to <code>boltShearCapacity</code></td></tr>
+              <tr><td>boltsPerRow</td><td>number</td><td>—</td><td><span class="req">Required</span></td><td>Bolts across the plate width at each pitch location</td></tr>
+              <tr><td>transferLength</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Length over which the plate force is transferred (typically zero moment to maximum moment)</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Example — top and bottom plates</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre><span class="b">import</span> { <span class="u">plateInterfaceBoltRequirement</span> } <span class="b">from</span> <span class="s">'@theerapat-s28/ts-structural-eng-tools/strengthening'</span>;
+
+<span class="b">const</span> bolts = <span class="u">plateInterfaceBoltRequirement</span>({
+  <span class="k">section</span>: {
+    <span class="k">Es</span>: <span class="n">200000</span>, <span class="k">fc_</span>: <span class="n">28</span>, <span class="k">fy</span>: <span class="n">400</span>,
+    <span class="k">As</span>: <span class="n">1200</span>, <span class="k">b</span>: <span class="n">300</span>, <span class="k">h</span>: <span class="n">500</span>, <span class="k">d</span>: <span class="n">440</span>,
+    <span class="k">As_</span>: <span class="n">600</span>, <span class="k">d_</span>: <span class="n">50</span>,
+  },
+  <span class="k">plates</span>: {
+    <span class="k">Es</span>: <span class="n">200000</span>,
+    <span class="k">fy</span>: <span class="n">250</span>,
+    <span class="k">topSteelWidth</span>: <span class="n">200</span>,    <span class="c">// mm</span>
+    <span class="k">topSteelThickness</span>: <span class="n">10</span>,  <span class="c">// mm</span>
+    <span class="k">bottomSteelWidth</span>: <span class="n">200</span>,
+    <span class="k">bottomSteelThickness</span>: <span class="n">10</span>,
+  },
+  <span class="k">V</span>: <span class="n">150</span>,                      <span class="c">// kN</span>
+  <span class="k">bolt</span>: { <span class="k">Ase</span>: <span class="n">157</span>, <span class="k">futa</span>: <span class="n">400</span>, <span class="k">fya</span>: <span class="n">240</span>, <span class="k">diameter</span>: <span class="n">16</span> },
+  <span class="k">boltsPerRow</span>: <span class="n">2</span>,
+  <span class="k">transferLength</span>: <span class="n">2000</span>,        <span class="c">// mm</span>
+});</pre>
+          </div>
+
+          <div class="sub-label">Returns</div>
+          <div class="code-block">
+            <div class="code-block__label">Result</div>
+            <pre>{
+  <span class="k">top</span>: {
+    <span class="k">q</span>: <span class="n">121.2</span>, <span class="k">Q</span>: <span class="n">2870171</span>, <span class="k">leverArm</span>: <span class="n">178.45</span>,
+    <span class="k">requiredSpacing</span>: <span class="n">300</span>,          <span class="c">// mm, capped at the detailing limit</span>
+    <span class="k">boltCount</span>: <span class="n">21</span>,
+    <span class="k">governedBy</span>: <span class="s">'plateForce'</span>,     <span class="c">// near the compression face, q is low</span>
+    <span class="k">calculationDetails</span>: {
+      <span class="k">spacingFromShearFlow</span>: <span class="n">404.1</span>,
+      <span class="k">rows</span>: <span class="n">8</span>,
+      <span class="k">boltCountFromShearFlow</span>: <span class="n">16</span>,
+      <span class="k">boltCountFromPlateForce</span>: <span class="n">21</span>,
+      <span class="k">plateForce</span>: <span class="n">500</span>                <span class="c">// kN, Ap * fy</span>
+    }
+  },
+  <span class="k">bottom</span>: {
+    <span class="k">q</span>: <span class="n">225.17</span>, <span class="k">Q</span>: <span class="n">5332462</span>, <span class="k">leverArm</span>: <span class="n">331.55</span>,
+    <span class="k">requiredSpacing</span>: <span class="n">217.5</span>,
+    <span class="k">boltCount</span>: <span class="n">22</span>,
+    <span class="k">governedBy</span>: <span class="s">'shearFlow'</span>,
+    <span class="k">calculationDetails</span>: {
+      <span class="k">spacingFromShearFlow</span>: <span class="n">217.5</span>,
+      <span class="k">rows</span>: <span class="n">11</span>,
+      <span class="k">boltCountFromShearFlow</span>: <span class="n">22</span>,
+      <span class="k">boltCountFromPlateForce</span>: <span class="n">21</span>,
+      <span class="k">plateForce</span>: <span class="n">500</span>
+    }
+  },
+  <span class="k">calculationDetails</span>: {
+    <span class="k">Ec</span>: <span class="n">24870.06</span>, <span class="k">ns</span>: <span class="n">8.042</span>, <span class="k">np</span>: <span class="n">8.042</span>,
+    <span class="k">ybar</span>: <span class="n">183.45</span>, <span class="k">Itr</span>: <span class="n">3552281591</span>,
+    <span class="k">sectionState</span>: <span class="s">'cracked'</span>,
+    <span class="k">phiVbolt</span>: <span class="n">24.49</span>,
+    <span class="k">boltsPerRow</span>: <span class="n">2</span>,
+    <span class="k">transferLength</span>: <span class="n">2000</span>
+  },
+  <span class="k">unit</span>: <span class="s">'kN'</span>,
+  <span class="k">warnings</span>: [ <span class="c">/* breakout notice + top plate pitch cap */</span> ]
+}</pre>
+          </div>
+          <p style="font-size:13px">
+            <code>rows</code> is <code>ceil(transferLength / requiredSpacing) + 1</code>, so both ends of
+            the transfer length carry a row, and <code>boltCount</code> is <code>rows × boltsPerRow</code>
+            unless the plate force governs.
+          </p>
+
+          <div class="alert alert--info">
+            <span>ℹ️</span>
+            <span>A top plate typically comes out <code>governedBy: 'plateForce'</code> — it sits near the compression face, so its lever arm to the neutral axis is short and <code>q</code> is low, but the plate still has to develop its force somewhere. A bottom plate is usually governed by shear flow.</span>
+          </div>
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>The pitch is capped at a detailing limit of <strong>300 mm</strong> so the plate is restrained between fasteners; a warning is returned when that cap governs. A separate warning citing <strong>ACI318-19, 17.9.2</strong> is returned when the required pitch falls below the minimum anchor spacing of <code>4·da</code> (only checked when <code>diameter</code> is supplied).</span>
+          </div>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Propagates <strong>RCDesignError 201 / 202 / 204</strong> from the two functions it calls, and throws <strong>203</strong> when <code>boltsPerRow</code> or <code>transferLength</code> is not positive.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Summary ── -->
     <div class="section" id="summary">
       <div class="section__title">Export Summary</div>
@@ -572,6 +914,24 @@
             <td class="path-cell">calculateSteelJacketedBeamMomentCapacity</td>
             <td>{ before, after }</td>
             <td>Moment capacity of an RC beam before and after steel plate jacketing</td>
+          </tr>
+          <tr>
+            <td><span class="kind m-fn">FN</span></td>
+            <td class="path-cell">plateInterfaceShearFlow</td>
+            <td>{ top, bottom, calculationDetails, unit, warnings }</td>
+            <td>Shear flow q = V·Q/I at each concrete-to-plate interface</td>
+          </tr>
+          <tr>
+            <td><span class="kind m-fn">FN</span></td>
+            <td class="path-cell">boltShearCapacity</td>
+            <td>{ phiVbolt, calculationDetails, unit, warnings }</td>
+            <td>Design shear strength of one anchor bolt from the steel strength</td>
+          </tr>
+          <tr>
+            <td><span class="kind m-fn">FN</span></td>
+            <td class="path-cell">plateInterfaceBoltRequirement</td>
+            <td>{ top, bottom, calculationDetails, unit, warnings }</td>
+            <td>Required bolt pitch and count at each interface, with the governing requirement</td>
           </tr>
         </tbody>
       </table>

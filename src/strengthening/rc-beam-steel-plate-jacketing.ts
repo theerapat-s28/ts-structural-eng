@@ -7,7 +7,11 @@ import {
   isSinglyReinforced,
 } from "@app-core/types/rc-beam.type";
 
-import { SteelJacketedProps } from "@app-core/types/plate-jacketing.type";
+import {
+  SteelJacketedProps,
+  hasTopPlate,
+  hasBottomPlate,
+} from "@app-core/types/plate-jacketing.type";
 
 import { Warnings } from "@app-core/types/output-message.type";
 
@@ -35,20 +39,26 @@ export const calculateSteelJacketedBeamMomentCapacity = (
   // Convert steel plate strength to the same as rebar strength
   const n = jacketedProperties.fy / section.fy;
 
+  // A plate only counts when both its width and thickness are positive, so a
+  // bottom-only jacket may omit the top plate fields entirely.
+  const topSteelThickness = hasTopPlate(jacketedProperties)
+    ? (jacketedProperties.topSteelThickness as number)
+    : 0;
+  const bottomSteelThickness = hasBottomPlate(jacketedProperties)
+    ? (jacketedProperties.bottomSteelThickness as number)
+    : 0;
+
   // Calculate the effective area of the steel plates converted to rebar.
-  const plateTopSteelArea =
-    n * jacketedProperties.topSteelWidth * jacketedProperties.topSteelThickness;
-  const plateBottomSteelArea =
-    n *
-    jacketedProperties.bottomSteelWidth *
-    jacketedProperties.bottomSteelThickness;
+  const plateTopSteelArea = hasTopPlate(jacketedProperties)
+    ? n * (jacketedProperties.topSteelWidth as number) * topSteelThickness
+    : 0;
+  const plateBottomSteelArea = hasBottomPlate(jacketedProperties)
+    ? n * (jacketedProperties.bottomSteelWidth as number) * bottomSteelThickness
+    : 0;
 
   let newD =
-    ((jacketedProperties.topSteelThickness + section.d) * section.As +
-      (jacketedProperties.topSteelThickness +
-        section.h +
-        jacketedProperties.bottomSteelThickness / 2) *
-      plateBottomSteelArea) /
+    ((topSteelThickness + section.d) * section.As +
+      (topSteelThickness + section.h + bottomSteelThickness / 2) * plateBottomSteelArea) /
     (section.As + plateBottomSteelArea);
   let newD_ = undefined;
 
@@ -65,9 +75,8 @@ export const calculateSteelJacketedBeamMomentCapacity = (
     // Doubly reinforced section
     const doublySection = section as RectDoublyBeamSection;
     newD_ =
-      ((jacketedProperties.topSteelThickness + doublySection.d_) *
-        doublySection.As_ +
-        (jacketedProperties.topSteelThickness / 2) * plateTopSteelArea) /
+      ((topSteelThickness + doublySection.d_) * doublySection.As_ +
+        (topSteelThickness / 2) * plateTopSteelArea) /
       (doublySection.As_ + plateTopSteelArea);
     modifiedSection = {
       ...doublySection,
@@ -86,7 +95,10 @@ export const calculateSteelJacketedBeamMomentCapacity = (
   // Calculate the moment capacity of the modified (after strengthening) section
   let jacketedResult = rectBeamMomentCapacity(modifiedSection);
 
-  jacketedResult = { ...jacketedResult, warnings: mergeWarnings(jacketedResult.warnings, warnings) };
+  jacketedResult = {
+    ...jacketedResult,
+    warnings: mergeWarnings(jacketedResult.warnings, warnings),
+  };
 
   return {
     before: originalResult,

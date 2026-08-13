@@ -43,7 +43,8 @@ src/
 │   └── rc-beam-design.ts # Beam moment capacity (singly/doubly reinforced) and shear capacity (Vc, Vs, stirrup requirement)
 ├── strengthening/        # Strengthening methods
 │   ├── index.ts
-│   └── rc-beam-steel-plate-jacketing.ts
+│   ├── rc-beam-steel-plate-jacketing.ts   # Moment capacity before/after plate jacketing
+│   └── rc-beam-plate-interface-bolts.ts  # Interface shear flow and required interface bolts
 ├── core/                 # Shared infrastructure
 │   ├── index.ts
 │   ├── constants/        # RC design constants (ACI 318)
@@ -57,6 +58,7 @@ examples/
 └── basic-usage.ts        # Example usage of the library
 tests/
 ├── rc/                   # Tests for RC module
+├── strengthening/        # Tests for strengthening module
 └── utils/                # Tests for utilities
 ```
 
@@ -87,7 +89,12 @@ For runtime resolution, `tsconfig-paths` is registered in the `dev` script.
 
 ### Strengthening
 
-- **`calculateSteelJacketedBeamMomentCapacity(section, jacketedProperties)`** — Computes φMn for a beam strengthened with steel plate jacketing.
+- **`calculateSteelJacketedBeamMomentCapacity(section, jacketedProperties)`** — Computes φMn for a beam strengthened with steel plate jacketing, as a `before` / `after` pair.
+- **`plateInterfaceShearFlow(input)`** — Computes the shear flow `q = V·Q/I` (N/mm) to transfer across each concrete-to-plate interface, from a cracked (default) or uncracked elastic transformed section. Returns a per-plate `top` / `bottom` result, `null` where a plate is absent.
+- **`boltShearCapacity(bolt)`** — Computes φVsa for one anchor bolt from the steel strength (ACI 318-19, 17.7.1.2b, φ per Table 17.5.3). Concrete breakout and pryout are not evaluated and must be checked separately.
+- **`plateInterfaceBoltRequirement(input)`** — Computes the required bolt pitch and count at each interface, taking the larger of the shear-flow requirement (`s = n·φVbolt / q`) and the count needed to develop the full plate yield force, and reports which one governs.
+
+Both plates are independently optional: a plate counts as present only when its width and thickness are both positive, so the same functions cover a bottom-only jacket and a top-and-bottom jacket. Use `hasTopPlate(props)` / `hasBottomPlate(props)` to test for presence.
 
 ### General Utilities
 
