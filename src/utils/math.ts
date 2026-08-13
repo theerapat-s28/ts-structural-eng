@@ -24,10 +24,7 @@ export const solveQuadratic = (a: number, b: number, c: number): number[] => {
  * @param decimalPlaces - Number of decimal places to keep
  * @returns The rounded number
  */
-export const roundToDecimalPlaces = (
-  value: number,
-  decimalPlaces: number,
-): number => {
+export const roundToDecimalPlaces = (value: number, decimalPlaces: number): number => {
   const factor = Math.pow(10, decimalPlaces);
   return Math.round(value * factor) / factor;
 };

@@ -11,10 +11,7 @@ import {
   isSinglyReinforced,
 } from "@app-core/types/rc-beam.type";
 
-import {
-  Warnings,
-  calculationResult,
-} from "@app-core/types/output-message.type";
+import { Warnings, calculationResult } from "@app-core/types/output-message.type";
 
 import * as RCConstants from "@app-core/constants/rc.constant";
 
@@ -94,10 +91,7 @@ export const rectBeamMomentCapacity = (section: RectBeamSection) => {
 
   // Return the results
   return {
-    phiMn: MyMath.roundToDecimalPlaces(
-      RCConstants.FLEXURAL_STRENGTH_REDUCTION_FACTOR * Mn,
-      2,
-    ),
+    phiMn: MyMath.roundToDecimalPlaces(RCConstants.FLEXURAL_STRENGTH_REDUCTION_FACTOR * Mn, 2),
     calculationDetails: calculationDetails,
     unit: "kN-m",
     warnings: warnings,
@@ -125,17 +119,10 @@ export const concreteShearCapacity = (section: RectShearSection) => {
   const cappedSqrtFc = Math.min(sqrtFc, RCConstants.SQRT_FC_SHEAR_LIMIT);
 
   const Vc =
-    RCConstants.CONCRETE_SHEAR_VC_COEFFICIENT *
-    lambda *
-    cappedSqrtFc *
-    section.bw *
-    section.d; // N
+    RCConstants.CONCRETE_SHEAR_VC_COEFFICIENT * lambda * cappedSqrtFc * section.bw * section.d; // N
 
   return {
-    phiVc: MyMath.roundToDecimalPlaces(
-      RCConstants.SHEAR_STRENGTH_REDUCTION_FACTOR * Vc * 0.001,
-      2,
-    ),
+    phiVc: MyMath.roundToDecimalPlaces(RCConstants.SHEAR_STRENGTH_REDUCTION_FACTOR * Vc * 0.001, 2),
     calculationDetails: {
       Vc: MyMath.roundToDecimalPlaces(Vc * 0.001, 2),
       lambda,
@@ -165,10 +152,7 @@ export const stirrupShearCapacity = (section: StirrupShearSection) => {
   }
 
   return {
-    phiVs: MyMath.roundToDecimalPlaces(
-      RCConstants.SHEAR_STRENGTH_REDUCTION_FACTOR * Vs * 0.001,
-      2,
-    ),
+    phiVs: MyMath.roundToDecimalPlaces(RCConstants.SHEAR_STRENGTH_REDUCTION_FACTOR * Vs * 0.001, 2),
     calculationDetails: {
       Vs: MyMath.roundToDecimalPlaces(Vs * 0.001, 2),
       maxVs: MyMath.roundToDecimalPlaces(maxVs * 0.001, 2),
@@ -190,9 +174,7 @@ export const stirrupShearCapacity = (section: StirrupShearSection) => {
  * @returns Object containing requirement classification, required Av/s and max spacing, and warnings
  * @throws {RCDesignError} If required Vs exceeds the ACI 318-19 22.5.1.2 maximum (section too small)
  */
-export const checkStirrupRequirement = (
-  input: ShearReinforcementCheckInput,
-) => {
+export const checkStirrupRequirement = (input: ShearReinforcementCheckInput) => {
   const warnings: Warnings = [];
   const { fc_, bw, d, Vu, fyt, Av, s } = input;
 
@@ -229,10 +211,8 @@ export const checkStirrupRequirement = (
           ? RCConstants.MAX_STIRRUP_SPACING_LOW_VS_DEPTH_FACTOR * d
           : RCConstants.MAX_STIRRUP_SPACING_LOW_VS;
     } else {
-      const requiredVs =
-        Vu / RCConstants.SHEAR_STRENGTH_REDUCTION_FACTOR - Vc; // kN
-      const maxVs =
-        (RCConstants.MAX_VS_COEFFICIENT * sqrtFc * bw * d) * 0.001; // kN
+      const requiredVs = Vu / RCConstants.SHEAR_STRENGTH_REDUCTION_FACTOR - Vc; // kN
+      const maxVs = RCConstants.MAX_VS_COEFFICIENT * sqrtFc * bw * d * 0.001; // kN
 
       if (requiredVs > maxVs) {
         throw new RCDesignError(Errors.SHEAR_STRENGTH_EXCEEDS_MAX);
@@ -241,9 +221,7 @@ export const checkStirrupRequirement = (
       const strengthAvOverS = (requiredVs * 1000) / (fyt * d); // mm^2/mm
       requiredAvOverS = Math.max(minAvOverS, strengthAvOverS);
 
-      const vsThreshold =
-        (RCConstants.VS_SPACING_THRESHOLD_COEFFICIENT * sqrtFc * bw * d) *
-        0.001; // kN
+      const vsThreshold = RCConstants.VS_SPACING_THRESHOLD_COEFFICIENT * sqrtFc * bw * d * 0.001; // kN
       maxSpacing =
         requiredVs <= vsThreshold
           ? Math.min(
@@ -287,9 +265,7 @@ export const checkStirrupRequirement = (
   };
 };
 
-const calculateRectSinglyMn = (
-  singlySection: RectSinglyBeamSection,
-): calculationResult => {
+const calculateRectSinglyMn = (singlySection: RectSinglyBeamSection): calculationResult => {
   const { Es, fy, fc_, As, b, h, d } = singlySection;
 
   const warnings: Warnings = [];
@@ -300,10 +276,7 @@ const calculateRectSinglyMn = (
   const c = a / beta1;
   const tensileSteelStrain = (RCConstants.CONCRETE_ULTIMATE_STRAIN * (d - c)) / c;
 
-  if (
-    tensileSteelStrain <
-    steelYieldStrain + RCConstants.CONCRETE_ULTIMATE_STRAIN
-  ) {
+  if (tensileSteelStrain < steelYieldStrain + RCConstants.CONCRETE_ULTIMATE_STRAIN) {
     throw new RCDesignError(Errors.TENSILE_STEEL_NOT_YIELDING);
   }
 
@@ -318,9 +291,7 @@ const calculateRectSinglyMn = (
   };
 };
 
-const calculateRectDoublyMn = (
-  doublySection: RectDoublyBeamSection,
-): calculationResult => {
+const calculateRectDoublyMn = (doublySection: RectDoublyBeamSection): calculationResult => {
   const { Es, fy, fc_, As, As_, b, h, d, d_ } = doublySection;
   const warnings: Warnings = [];
   const steelYieldStrain = fy / Es;
@@ -337,13 +308,9 @@ const calculateRectDoublyMn = (
   const a = c * beta1;
 
   const tensileSteelStrain = (RCConstants.CONCRETE_ULTIMATE_STRAIN * (d - c)) / c;
-  const compressionSteelStrain =
-    (RCConstants.CONCRETE_ULTIMATE_STRAIN * (c - d_)) / c;
+  const compressionSteelStrain = (RCConstants.CONCRETE_ULTIMATE_STRAIN * (c - d_)) / c;
 
-  if (
-    tensileSteelStrain <
-    steelYieldStrain + RCConstants.CONCRETE_ULTIMATE_STRAIN
-  ) {
+  if (tensileSteelStrain < steelYieldStrain + RCConstants.CONCRETE_ULTIMATE_STRAIN) {
     throw new RCDesignError(Errors.TENSILE_STEEL_NOT_YIELDING);
   }
 
@@ -373,4 +340,3 @@ const calculateRectDoublyMn = (
     warnings: warnings,
   };
 };
-

@@ -50,13 +50,6 @@ export interface RectBeamBarLayoutInput {
   maxAggregateSize?: number; // mm, nominal max aggregate size
 }
 
-export function isSinglyReinforced(
-  section: RectBeamSection,
-): section is RectSinglyBeamSection {
-  return (
-    !("As_" in section) ||
-    !("d_" in section) ||
-    section.As_ <= 0 ||
-    section.d_ <= 0
-  );
+export function isSinglyReinforced(section: RectBeamSection): section is RectSinglyBeamSection {
+  return !("As_" in section) || !("d_" in section) || section.As_ <= 0 || section.d_ <= 0;
 }

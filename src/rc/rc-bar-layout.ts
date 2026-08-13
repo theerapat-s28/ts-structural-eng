@@ -1,10 +1,7 @@
 import { RCDesignError, Errors } from "@app-core/errors/rc-design.error";
 import * as MyMath from "@app-utils/math";
 
-import {
-  RebarGroupInput,
-  RectBeamBarLayoutInput,
-} from "@app-core/types/rc-beam.type";
+import { RebarGroupInput, RectBeamBarLayoutInput } from "@app-core/types/rc-beam.type";
 
 import { Warnings } from "@app-core/types/output-message.type";
 
@@ -52,9 +49,7 @@ const calculateBarGroupLayout = (
   const availableWidth = b - 2 * (cover + stirrupDiameter);
   const maxBarsPerLayer = Math.min(
     count,
-    Math.floor(
-      (availableWidth + minClearSpacing) / (diameter + minClearSpacing),
-    ),
+    Math.floor((availableWidth + minClearSpacing) / (diameter + minClearSpacing)),
   );
 
   if (maxBarsPerLayer < 1) {
@@ -108,10 +103,8 @@ const calculateBarGroupLayout = (
 export const rectBeamBarLayout = (input: RectBeamBarLayoutInput) => {
   const warnings: Warnings = [];
   const cover = input.cover ?? RCConstants.DEFAULT_BEAM_COVER;
-  const stirrupDiameter =
-    input.stirrupDiameter ?? RCConstants.DEFAULT_STIRRUP_DIAMETER;
-  const maxAggregateSize =
-    input.maxAggregateSize ?? RCConstants.DEFAULT_MAX_AGGREGATE_SIZE;
+  const stirrupDiameter = input.stirrupDiameter ?? RCConstants.DEFAULT_STIRRUP_DIAMETER;
+  const maxAggregateSize = input.maxAggregateSize ?? RCConstants.DEFAULT_MAX_AGGREGATE_SIZE;
 
   const top = calculateBarGroupLayout(
     input.topBars,
