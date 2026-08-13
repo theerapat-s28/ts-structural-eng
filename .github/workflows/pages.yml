@@ -13,10 +13,11 @@ permissions:
   pages: write
   id-token: write
 
-# Allow one concurrent deployment; queued runs supersede each other.
+# Allow one concurrent deployment, skipping runs queued between the in-progress
+# run and the latest queued one. In-progress deployments are left to finish.
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -34,4 +35,4 @@ jobs:
           path: html-docs
 
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
