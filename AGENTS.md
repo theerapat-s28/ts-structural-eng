@@ -57,10 +57,12 @@ Vitest with `globals: true`; test files live in `tests/` mirroring the `src/` la
 
 ## Documentation
 
-User-facing HTML reference pages live at `docs/<module-name>/index.html` (one per top-level module: `rc`, `strengthening`, …), styled per the guide in `docs/DESIGN.md` — read it before touching any doc page.
+User-facing HTML reference pages live at `html-docs/<module-name>/index.html` (one per top-level module: `rc`, `strengthening`, …), with a landing page at `html-docs/index.html`, styled per the guide in `html-docs/DESIGN.md` — read it before touching any doc page.
 
-- **Any change to a module's public surface must be reflected in its doc page in the same change**: new/renamed/removed exports, parameter or return-shape changes, new warnings (with their ACI clause) or `RCDesignError` codes, changed defaults. Check the relevant `docs/<module>/index.html` whenever you touch a barrel export or a public function's signature/behavior.
-- **A new top-level module under `src/` must ship with its own `docs/<module-name>/index.html`**, following the DESIGN.md checklist (copy the full `<style>` block from an existing page).
+`html-docs/` is deployed verbatim to GitHub Pages (<https://theerapat-s28.github.io/ts-structural-eng/>) by `.github/workflows/pages.yml` on every push to `main` that touches it. The pages are plain static files linked relatively — there is no build step, so never introduce a `/`-rooted path or anything needing a bundler.
+
+- **Any change to a module's public surface must be reflected in its doc page in the same change**: new/renamed/removed exports, parameter or return-shape changes, new warnings (with their ACI clause) or `RCDesignError` codes, changed defaults. Check the relevant `html-docs/<module>/index.html` whenever you touch a barrel export or a public function's signature/behavior.
+- **A new top-level module under `src/` must ship with its own `html-docs/<module-name>/index.html`**, following the DESIGN.md checklist (copy the full `<style>` block from an existing page), and must be added to the module grid and Export Summary table in `html-docs/index.html`.
 - Numeric values shown in doc examples must be real: run the example inputs through the actual library (e.g. a temporary Vitest file under `tests/`, deleted afterward) and paste the produced outputs — never hand-estimate them.
 - Verify every sidebar `href` matches a real element `id` on the page.
-- **`README.md` must be kept up to date alongside `docs/`**: when a module is added, its `src/` tree entry goes into the "Project layout" listing; when a module's exports or scripts change, update the corresponding README section in the same change.
+- **`README.md` must be kept up to date alongside `html-docs/`**: when a module is added, its `src/` tree entry goes into the "Project layout" listing; when a module's exports or scripts change, update the corresponding README section in the same change.

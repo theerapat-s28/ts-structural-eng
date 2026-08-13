@@ -2,9 +2,19 @@
 
 A TypeScript library of structural-engineering helper functions and beam design utilities. Designed to be copied and reused across TypeScript frameworks.
 
+## Documentation
+
+Full API reference, with parameter tables, worked examples, warnings and error codes:
+
+- **[API reference](https://theerapat-s28.github.io/ts-structural-eng/)** — landing page
+- [RC Beam Design](https://theerapat-s28.github.io/ts-structural-eng/rc/) — `@theerapat-s28/ts-structural-eng-tools/rc`
+- [Strengthening](https://theerapat-s28.github.io/ts-structural-eng/strengthening/) — `@theerapat-s28/ts-structural-eng-tools/strengthening`
+
+The pages are served from [`html-docs/`](https://github.com/theerapat-s28/ts-structural-eng/tree/main/html-docs) via GitHub Pages.
+
 ## Quick summary
 
-- Package: `ts-structural-eng-tools`
+- Package: `@theerapat-s28/ts-structural-eng-tools`
 - Entry: `src/index.ts`
 - Build output: `dist/` (JS + `.d.ts` files)
 
@@ -14,6 +24,15 @@ A TypeScript library of structural-engineering helper functions and beam design 
 - pnpm
 
 ## Install
+
+Use the published package:
+
+```bash
+pnpm add @theerapat-s28/ts-structural-eng-tools
+# or: npm install @theerapat-s28/ts-structural-eng-tools
+```
+
+Or install this repository's dependencies to work on the library itself:
 
 ```bash
 pnpm install
@@ -60,6 +79,11 @@ tests/
 ├── rc/                   # Tests for RC module
 ├── strengthening/        # Tests for strengthening module
 └── utils/                # Tests for utilities
+html-docs/                # HTML API reference, deployed to GitHub Pages
+├── DESIGN.md             # Style guide for the doc pages
+├── index.html            # Landing page
+├── rc/index.html
+└── strengthening/index.html
 ```
 
 ## TypeScript path aliases
@@ -79,6 +103,8 @@ This project uses `baseUrl` + `paths` for clean imports:
 For runtime resolution, `tsconfig-paths` is registered in the `dev` script.
 
 ## API
+
+Summarised below; see the [full API reference](https://theerapat-s28.github.io/ts-structural-eng/) for parameter tables, units, warnings and error codes.
 
 ### RC Beam Design
 

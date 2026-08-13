@@ -1,6 +1,6 @@
 # Library Docs Design Reference
 
-Style guide for HTML reference pages under `docs/`. Follow this when adding a new module doc to keep all pages visually consistent.
+Style guide for HTML reference pages under `html-docs/`. Follow this when adding a new module doc to keep all pages visually consistent.
 
 These pages document a **TypeScript library** (functions, parameters, return shapes, warnings, errors) — not HTTP endpoints. Pages use a **light theme** by default.
 
@@ -11,8 +11,9 @@ These pages document a **TypeScript library** (functions, parameters, return sha
 Each module gets its own subdirectory with a single `index.html`:
 
 ```
-docs/
+html-docs/
 ├── DESIGN.md                ← this file
+├── index.html               ← landing page, links to every module
 ├── rc/
 │   └── index.html
 ├── strengthening/
@@ -22,6 +23,11 @@ docs/
 ```
 
 Module names match the package subpath exports (`rc`, `strengthening`, `core`, `utils`).
+
+This directory is published verbatim to GitHub Pages by `.github/workflows/pages.yml` on
+every push to `main` that touches it, so pages must work as plain static files — relative
+links only, no build step. A new module page must also be added to the landing page's
+module grid and Export Summary table in `html-docs/index.html`.
 
 ---
 
@@ -385,4 +391,6 @@ Sidebar `href` values must match the `id` of the target element exactly.
 - [ ] Warnings documented in `.alert--warn` blocks citing the ACI clause
 - [ ] Thrown `RCDesignError`s documented in `.alert--error` blocks naming the error code
 - [ ] Export Summary table is the last section
-- [ ] Saved at `docs/<module-name>/index.html`
+- [ ] Sidebar starts with the `← All modules` link back to `../`
+- [ ] Module added to the grid and Export Summary table in `html-docs/index.html`
+- [ ] Saved at `html-docs/<module-name>/index.html`

@@ -52,9 +52,13 @@
   ],
   "author": "",
   "license": "ISC",
+  "homepage": "https://theerapat-s28.github.io/ts-structural-eng/",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "git+https://github.com/theerapat-s28/ts-structural-eng.git"
+  },
+  "bugs": {
+    "url": "https://github.com/theerapat-s28/ts-structural-eng/issues"
   },
   "publishConfig": {
     "access": "public"
