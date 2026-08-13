@@ -1,5 +1,7 @@
 # ts-structural-eng
 
+**📖 [API Reference — theerapat-s28.github.io/ts-structural-eng](https://theerapat-s28.github.io/ts-structural-eng/)**
+
 A TypeScript library of structural-engineering helper functions and beam design utilities. Designed to be copied and reused across TypeScript frameworks.
 
 ## Documentation
