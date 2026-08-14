@@ -110,14 +110,15 @@ Summarised below; see the [full API reference](https://theerapat-s28.github.io/t
 
 ### RC Beam Design
 
-- **`rectBeamMomentCapacity(section)`** — Computes φMn for a rectangular RC beam (singly or doubly reinforced). Returns `phiMn` in kN·m with calculation details and ACI 318-19 warnings.
+- **`rectBeamMomentCapacity(section)`** — Computes φMn for a rectangular RC beam (singly or doubly reinforced). Returns `phiMn` in kN·m with calculation details and ACI 318-19 warnings. `calculationDetails` reports `c`, `a`, `beta1`, `d`, `As` and `ro` for either section type, plus `d_`, `As_`, `fs_` and `ro_` when compression steel is present.
+- **`rectBeamBarLayout(input)`** — Lays bar groups out into the minimum number of layers that satisfy ACI 318-19 25.2.1 / 25.2.2 spacing, and returns the resulting `d` and `d_` ready to feed into `rectBeamMomentCapacity`. `topBars` is optional; omit it for a section with no top reinforcement.
 - **`concreteShearCapacity(section)`** — Computes φVc, the concrete contribution to shear capacity (ACI 318-19, 22.5.5.1).
 - **`stirrupShearCapacity(section)`** — Computes φVs, the stirrup contribution to shear capacity (ACI 318-19, 22.5.10.5.3).
 - **`checkStirrupRequirement(input)`** — Determines whether stirrups are required, and the required Av/s ratio and max spacing (ACI 318-19, 9.6.3.1, 9.6.3.3, 9.7.6.2.2).
 
 ### Strengthening
 
-- **`calculateSteelJacketedBeamMomentCapacity(section, jacketedProperties)`** — Computes φMn for a beam strengthened with steel plate jacketing, as a `before` / `after` pair.
+- **`calculateSteelJacketedBeamMomentCapacity(section, jacketedProperties)`** — Computes φMn for a beam strengthened with steel plate jacketing, as a `before` / `after` pair. The bottom plate is added to the tension steel and the top plate to the compression steel, which turns an originally singly reinforced section into a doubly reinforced one.
 - **`plateInterfaceShearFlow(input)`** — Computes the shear flow `q = V·Q/I` (N/mm) to transfer across each concrete-to-plate interface, from a cracked (default) or uncracked elastic transformed section. Returns a per-plate `top` / `bottom` result, `null` where a plate is absent.
 - **`boltShearCapacity(bolt)`** — Computes φVsa for one anchor bolt from the steel strength (ACI 318-19, 17.7.1.2b, φ per Table 17.5.3). Concrete breakout and pryout are not evaluated and must be checked separately.
 - **`plateInterfaceBoltRequirement(input)`** — Computes the required bolt pitch and count at each interface, taking the larger of the shear-flow requirement (`s = n·φVbolt / q`) and the count needed to develop the full plate yield force, and reports which one governs.

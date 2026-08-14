@@ -35,8 +35,13 @@ type TransformedPart = {
 
 /**
  * Geometry of the jacketed section, measured from the datum at the top face of
- * the top plate (or the concrete top face when there is no top plate). This is
- * the same datum used by `calculateSteelJacketedBeamMomentCapacity`.
+ * the top plate (or the concrete top face when there is no top plate).
+ *
+ * This differs from `calculateSteelJacketedBeamMomentCapacity`, which measures
+ * from the extreme concrete compression fibre so that its equivalent rectangular
+ * stress block covers concrete only. The elastic transformed section here places
+ * the concrete explicitly at `yConcreteTop`, so it needs no such restriction.
+ * Both are internally consistent; depths are only comparable within one of them.
  */
 type JacketedGeometry = {
   tTop: number; // mm, top plate thickness (0 when absent)

@@ -17,6 +17,14 @@ type RCDesignErrorType = {
 
 export const Errors: Record<string, RCDesignErrorType> = {
   // 1XX : RC Beam Design Errors
+
+  /**
+   * @deprecated Never thrown since 1.4.0. A section whose compression steel
+   * lies below the neutral axis is valid — that steel acts in tension and
+   * `rectBeamMomentCapacity` now returns a reduced Mn with a warning instead.
+   * Retained so existing `Errors.COMP_STEEL_DISTANCE_OVER_AC` references and
+   * `code === 101` checks keep compiling; safe to delete in the next major.
+   */
   COMP_STEEL_DISTANCE_OVER_AC: {
     code: 101,
     message: "d' of compressive steel is greater than c, consider using singly reinforced section.",

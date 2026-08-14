@@ -519,6 +519,11 @@
             <pre>{
   <span class="k">phiMn</span>: <span class="n">206.64</span>,              <span class="c">// φ = 0.9 applied, rounded to 2 dp</span>
   <span class="k">calculationDetails</span>: {
+    <span class="k">c</span>: <span class="n">94.63</span>,                 <span class="c">// mm, neutral-axis depth</span>
+    <span class="k">a</span>: <span class="n">80.44</span>,                 <span class="c">// mm, equivalent stress-block depth</span>
+    <span class="k">beta1</span>: <span class="n">0.85</span>,
+    <span class="k">d</span>: <span class="n">440</span>,                   <span class="c">// mm, as supplied</span>
+    <span class="k">As</span>: <span class="n">1472.6</span>,               <span class="c">// mm², as supplied</span>
     <span class="k">ro</span>: <span class="n">0.011156</span>              <span class="c">// reinforcement ratio As / (b·d)</span>
   },
   <span class="k">unit</span>: <span class="s">'kN-m'</span>,
@@ -526,10 +531,11 @@
 }</pre>
           </div>
           <p style="font-size:13px">
-            For doubly reinforced sections, <code>calculationDetails</code> additionally includes the
-            neutral-axis depth <code>c</code>, stress-block depth <code>a</code>, <code>beta1</code>,
-            the compression-steel stress <code>fs_</code>, and both reinforcement ratios
-            <code>ro</code> / <code>ro_</code>.
+            Every key above is returned for both singly and doubly reinforced sections, so callers
+            need not branch on the section type. A doubly reinforced section adds
+            <code>d_</code>, <code>As_</code>, the compression-steel stress <code>fs_</code>, and the
+            compression ratio <code>ro_</code> = <em>A′<sub>s</sub> / (b·d)</em> — the same basis as
+            <code>ro</code>, so the two are directly comparable.
           </p>
 
           <div class="alert alert--warn">
@@ -540,13 +546,17 @@
             <span>⚠️</span>
             <span>Pushes a warning when <code>fy</code> exceeds 550 MPa — <strong>ACI318-19, 9.6.1.2</strong>.</span>
           </div>
-          <div class="alert alert--error">
+          <div class="alert alert--warn">
             <span>⚠️</span>
-            <span>Throws <strong>RCDesignError 102</strong> if the tensile steel strain is out of the tension-controlled region (tensile steel not yielding).</span>
+            <span>Pushes a warning when <code>d_</code> exceeds the neutral-axis depth <code>c</code> — <strong>ACI318-19, 22.2.1.2</strong>. The compression steel then lies below the neutral axis and acts in tension; <code>fs_</code> is returned negative and <code>Mn</code> accounts for it. This is a valid section, not an error.</span>
+          </div>
+          <div class="alert alert--info">
+            <span>ℹ️</span>
+            <span>The solve first assumes the compression steel stays elastic. If the resulting <code>fs_</code> reaches <code>fy</code> in either direction, equilibrium is re-solved with that steel at yield and <code>fs_</code> is capped at <code>±fy</code> — <strong>ACI318-19, 20.2.2.1</strong>.</span>
           </div>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws <strong>RCDesignError 101</strong> (doubly reinforced only) if <code>d_</code> exceeds the neutral-axis depth <code>c</code> — use a singly reinforced section instead.</span>
+            <span>Throws <strong>RCDesignError 102</strong> if the section is out of the tension-controlled region, i.e. <em>ε<sub>t</sub> &lt; ε<sub>ty</sub> + 0.003</em> (<strong>ACI318-19, Table 21.2.2</strong>), since φ = 0.9 is applied unconditionally.</span>
           </div>
         </div>
       </div>
@@ -799,7 +809,7 @@
             <tbody>
               <tr><td>b</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Section width</td></tr>
               <tr><td>h</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Overall section height</td></tr>
-              <tr><td>topBars</td><td>RebarGroupInput</td><td>—</td><td><span class="req">Required</span></td><td>Top (compression) bar group: <code>count</code>, <code>diameter</code> (mm)</td></tr>
+              <tr><td>topBars</td><td>RebarGroupInput</td><td>—</td><td><span class="opt">Optional</span></td><td>Top (compression) bar group: <code>count</code>, <code>diameter</code> (mm). Omit it for a section with no top reinforcement — <code>d_</code> is then 0.</td></tr>
               <tr><td>bottomBars</td><td>RebarGroupInput</td><td>—</td><td><span class="req">Required</span></td><td>Bottom (tension) bar group: <code>count</code>, <code>diameter</code> (mm)</td></tr>
               <tr><td>cover</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Clear cover to the stirrup (default 40)</td></tr>
               <tr><td>stirrupDiameter</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Stirrup bar diameter (default 10)</td></tr>
@@ -815,7 +825,7 @@
 <span class="b">const</span> layout = <span class="u">rectBeamBarLayout</span>({
   <span class="k">b</span>: <span class="n">300</span>,                                    <span class="c">// mm</span>
   <span class="k">h</span>: <span class="n">500</span>,                                    <span class="c">// mm</span>
-  <span class="k">topBars</span>: { <span class="k">count</span>: <span class="n">2</span>, <span class="k">diameter</span>: <span class="n">16</span> },      <span class="c">// 2-DB16</span>
+  <span class="k">topBars</span>: { <span class="k">count</span>: <span class="n">2</span>, <span class="k">diameter</span>: <span class="n">16</span> },      <span class="c">// 2-DB16 — omit for no top bars</span>
   <span class="k">bottomBars</span>: { <span class="k">count</span>: <span class="n">5</span>, <span class="k">diameter</span>: <span class="n">25</span> },   <span class="c">// 5-DB25</span>
 });</pre>
           </div>
@@ -960,14 +970,14 @@
           <tr>
             <td class="path-cell">101</td>
             <td class="path-cell">COMP_STEEL_DISTANCE_OVER_AC</td>
-            <td>rectBeamMomentCapacity</td>
-            <td>d′ of the compression steel exceeds the neutral-axis depth c; use a singly reinforced section.</td>
+            <td><em>no longer thrown</em></td>
+            <td>Retired in 1.4.0. d′ beyond the neutral axis is now handled by strain compatibility and reported as a warning. The entry remains exported so existing <code>code === 101</code> checks keep compiling.</td>
           </tr>
           <tr>
             <td class="path-cell">102</td>
             <td class="path-cell">TENSILE_STEEL_NOT_YIELDING</td>
             <td>rectBeamMomentCapacity</td>
-            <td>Out of the tension-controlled region — the tensile steel does not yield.</td>
+            <td>Out of the tension-controlled region — ε<sub>t</sub> &lt; ε<sub>ty</sub> + 0.003 (ACI318-19, Table 21.2.2), so φ = 0.9 does not apply.</td>
           </tr>
           <tr>
             <td class="path-cell">103</td>

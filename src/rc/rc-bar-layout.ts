@@ -92,10 +92,11 @@ const calculateBarGroupLayout = (
  * the top (compression) face so they plug directly into
  * {@link rectBeamMomentCapacity}'s `d` / `d_` inputs.
  *
- * @param input - Section dimensions, top/bottom bar groups, and optional
- *   cover / stirrup diameter / max aggregate size (default to ACI 318-19
- *   Table 20.6.1.3.1 values for cast-in-place beams not exposed to weather
- *   or in contact with ground)
+ * @param input - Section dimensions, the bottom bar group, and optional
+ *   `topBars` / cover / stirrup diameter / max aggregate size (the last three
+ *   default to ACI 318-19 Table 20.6.1.3.1 values for cast-in-place beams not
+ *   exposed to weather or in contact with ground). Omit `topBars` for a section
+ *   with no top reinforcement; `d_` is then 0.
  * @returns `d`, `d_`, per-group layer counts and areas, `unit`, and `warnings`
  * @throws {RCDesignError} If a bar does not fit within the section width, or
  *   if the combined top/bottom layers exceed the section height
@@ -107,7 +108,7 @@ export const rectBeamBarLayout = (input: RectBeamBarLayoutInput) => {
   const maxAggregateSize = input.maxAggregateSize ?? RCConstants.DEFAULT_MAX_AGGREGATE_SIZE;
 
   const top = calculateBarGroupLayout(
-    input.topBars,
+    input.topBars ?? { count: 0, diameter: 0 },
     input.b,
     cover,
     stirrupDiameter,

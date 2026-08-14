@@ -15,7 +15,26 @@ import { Warnings, calculationResult } from "@app-core/types/output-message.type
 
 import * as RCConstants from "@app-core/constants/rc.constant";
 
-import { concreteBeta, concreteElasticModulus } from "./general";
+import { concreteBeta } from "./general";
+
+/**
+ * Shape of `rectBeamMomentCapacity`'s `calculationDetails`. The first six keys
+ * are reported for every section; the rest only when compression steel is
+ * present, so callers need not branch on the section type to read the common
+ * ones.
+ */
+type MomentCalculationDetails = {
+  c: number; // mm, neutral-axis depth
+  a: number; // mm, equivalent rectangular stress-block depth
+  beta1: number;
+  d: number; // mm, as supplied
+  As: number; // mm2, as supplied
+  ro: number; // As / (b*d)
+  d_?: number; // mm, negative when the steel sits above the concrete face
+  As_?: number; // mm2
+  fs_?: number; // MPa, negative when that steel is in tension
+  ro_?: number; // As_ / (b*d), same basis as ro
+};
 
 /**
  * Calculates the nominal moment capacity (φMn) of a rectangular RC beam section.
@@ -23,16 +42,15 @@ import { concreteBeta, concreteElasticModulus } from "./general";
  * Supports both singly and doubly reinforced sections. Automatically determines
  * the reinforcement configuration from the input and applies ACI 318-19 checks.
  *
+ * Compression steel below the neutral axis is handled by strain compatibility —
+ * it acts in tension and reduces Mn, with a warning — rather than rejected.
+ *
  * @param section - Beam cross-section properties (singly or doubly reinforced)
  * @returns Object containing `phiMn` (kN·m), `calculationDetails`, `unit`, and `warnings`
- * @throws {RCDesignError} If the tensile steel does not yield
+ * @throws {RCDesignError} 102 if the section is not tension controlled
  */
 export const rectBeamMomentCapacity = (section: RectBeamSection) => {
   const warnings: Warnings = [];
-  const concreteUltimateStrain = RCConstants.CONCRETE_ULTIMATE_STRAIN;
-  const steelYieldStrain = section.fy / section.Es;
-  const beta1 = concreteBeta(section.fc_);
-  const Ec = concreteElasticModulus(section.fc_);
   const minSteel = Math.max(
     (0.25 * Math.sqrt(section.fc_) * section.b * section.d) / section.fy,
     (1.4 * section.b * section.d) / section.fy,
@@ -55,7 +73,7 @@ export const rectBeamMomentCapacity = (section: RectBeamSection) => {
   }
 
   let Mn: number;
-  let calculationDetails: any;
+  let calculationDetails: MomentCalculationDetails;
   if (isSinglyReinforced(section)) {
     // Singly reinforced section
     const result = calculateRectSinglyMn({
@@ -266,7 +284,7 @@ export const checkStirrupRequirement = (input: ShearReinforcementCheckInput) => 
 };
 
 const calculateRectSinglyMn = (singlySection: RectSinglyBeamSection): calculationResult => {
-  const { Es, fy, fc_, As, b, h, d } = singlySection;
+  const { Es, fy, fc_, As, b, d } = singlySection;
 
   const warnings: Warnings = [];
   const steelYieldStrain = fy / Es;
@@ -285,43 +303,88 @@ const calculateRectSinglyMn = (singlySection: RectSinglyBeamSection): calculatio
   return {
     Mn: As * fy * (d - y_) * 0.001 * 0.001, // Convert to kN-m
     calculationDetails: {
-      ro: As / (b * d),
+      c: MyMath.roundToDecimalPlaces(c, 2),
+      a: MyMath.roundToDecimalPlaces(a, 2),
+      beta1: MyMath.roundToDecimalPlaces(beta1, 3),
+      d: d,
+      As: As,
+      ro: MyMath.roundToDecimalPlaces(As / (b * d), 6),
     },
     warnings: warnings,
   };
 };
 
 const calculateRectDoublyMn = (doublySection: RectDoublyBeamSection): calculationResult => {
-  const { Es, fy, fc_, As, As_, b, h, d, d_ } = doublySection;
+  const { Es, fy, fc_, As, As_, b, d, d_ } = doublySection;
   const warnings: Warnings = [];
   const steelYieldStrain = fy / Es;
   const beta1 = concreteBeta(fc_);
 
-  // Assume Compression steel is not yielding and tensile steel is yielding.
-  // Solving for c using quadratic equation
+  // Compression-positive: negative once d_ falls below the neutral axis, where
+  // the "compression" steel is really in tension.
+  const compressionSteelStrainAt = (neutralAxis: number) =>
+    (RCConstants.CONCRETE_ULTIMATE_STRAIN * (neutralAxis - d_)) / neutralAxis;
+  // Tension-positive, the opposite convention.
+  const tensileSteelStrainAt = (neutralAxis: number) =>
+    (RCConstants.CONCRETE_ULTIMATE_STRAIN * (d - neutralAxis)) / neutralAxis;
+
+  // First solve assuming the compression steel stays elastic and the tensile
+  // steel yields, so its force is Es * strain: solve for c by quadratic.
   const A = 0.85 * fc_ * b * beta1;
   const B = RCConstants.CONCRETE_ULTIMATE_STRAIN * As_ * Es - As * fy;
   const C = -RCConstants.CONCRETE_ULTIMATE_STRAIN * As_ * Es * d_;
 
-  const quadResults = MyMath.solveQuadratic(A, B, C);
-  const c = Math.max(...quadResults); // Take the maximum root for c
-  const a = c * beta1;
+  // Compression steel above the concrete face (a top plate) makes d_ negative,
+  // and both roots are then positive — so pick the root the elastic assumption
+  // actually holds for rather than simply the larger one.
+  const roots = MyMath.solveQuadratic(A, B, C).filter((root) => root > 0);
+  const elasticRoot = roots.find((root) => Math.abs(Es * compressionSteelStrainAt(root)) <= fy);
 
-  const tensileSteelStrain = (RCConstants.CONCRETE_ULTIMATE_STRAIN * (d - c)) / c;
-  const compressionSteelStrain = (RCConstants.CONCRETE_ULTIMATE_STRAIN * (c - d_)) / c;
+  let c: number;
+  let fs_: number;
+
+  if (elasticRoot !== undefined) {
+    c = elasticRoot;
+    fs_ = Es * compressionSteelStrainAt(c);
+  } else {
+    // No solution keeps the compression steel elastic, so re-solve equilibrium
+    // with it at its yield stress (ACI318-19, 20.2.2.4). Steel below the
+    // neutral axis yields in tension instead, reversing the sign.
+    const yieldsInCompression = roots.length === 0 || compressionSteelStrainAt(roots[0]) > 0;
+    fs_ = yieldsInCompression ? fy : -fy;
+    c = ((As - (yieldsInCompression ? As_ : -As_)) * fy) / (0.85 * fc_ * b * beta1);
+  }
+
+  if (c <= 0) {
+    // Compression steel alone outweighs the tension steel: no equilibrium
+    // exists with the tension steel yielding, so the section is not tension
+    // controlled by definition.
+    throw new RCDesignError(Errors.TENSILE_STEEL_NOT_YIELDING);
+  }
+
+  const a = c * beta1;
+  const tensileSteelStrain = tensileSteelStrainAt(c);
 
   if (tensileSteelStrain < steelYieldStrain + RCConstants.CONCRETE_ULTIMATE_STRAIN) {
     throw new RCDesignError(Errors.TENSILE_STEEL_NOT_YIELDING);
   }
 
+  // A section whose compression steel sits below the neutral axis is still a
+  // valid section — that steel simply acts in tension and reduces Mn, which
+  // the negative fs_ already accounts for. Warn rather than reject it.
   if (d_ > c) {
-    throw new RCDesignError(Errors.COMP_STEEL_DISTANCE_OVER_AC);
+    warnings.push({
+      reference: "ACI318-19, 22.2.1.2",
+      message:
+        `d' (${MyMath.roundToDecimalPlaces(d_, 2)} mm) > c (${MyMath.roundToDecimalPlaces(c, 2)} mm): ` +
+        `the compression steel lies below the neutral axis and acts in tension ` +
+        `(fs' = ${MyMath.roundToDecimalPlaces(fs_, 2)} MPa), reducing Mn.`,
+    });
   }
 
   const y_ = a / 2;
 
   const Ac = b * a;
-  const fs_ = Es * compressionSteelStrain;
 
   return {
     Mn: (0.85 * fc_ * Ac * (d - y_) + As_ * fs_ * (d - d_)) * 0.001 * 0.001, // Convert to kN-m
@@ -335,7 +398,9 @@ const calculateRectDoublyMn = (doublySection: RectDoublyBeamSection): calculatio
       As_: As_,
       fs_: MyMath.roundToDecimalPlaces(fs_, 2),
       ro: MyMath.roundToDecimalPlaces(As / (b * d), 6),
-      ro_: MyMath.roundToDecimalPlaces(As_ / (b * (h - d_)), 6), // TODO: check if this is correct
+      // Compression reinforcement ratio on the same basis as ro, so the two are
+      // directly comparable.
+      ro_: MyMath.roundToDecimalPlaces(As_ / (b * d), 6),
     },
     warnings: warnings,
   };

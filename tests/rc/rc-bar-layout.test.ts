@@ -46,6 +46,25 @@ describe("rectBeamBarLayout", () => {
     expect(result.bottom.barsPerLayer).toEqual([4]);
   });
 
+  it("treats an omitted topBars group as no top reinforcement", () => {
+    const omitted = rectBeamBarLayout({
+      b: 400,
+      h: 500,
+      bottomBars: { count: 4, diameter: 20 },
+    });
+    const explicitZero = rectBeamBarLayout({
+      b: 400,
+      h: 500,
+      topBars: { count: 0, diameter: 20 },
+      bottomBars: { count: 4, diameter: 20 },
+    });
+
+    expect(omitted.top.numberOfLayers).toBe(0);
+    expect(omitted.top.As).toBe(0);
+    expect(omitted.d_).toBe(0);
+    expect(omitted).toEqual(explicitZero);
+  });
+
   it("respects explicit cover, stirrup diameter, and aggregate size overrides", () => {
     const defaultResult = rectBeamBarLayout({
       b: 300,
