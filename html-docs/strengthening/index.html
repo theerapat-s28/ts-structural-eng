@@ -469,9 +469,10 @@
           <div class="step-num">3</div>
           <div class="step-body">
             <strong>Recompute effective depths</strong><br/>
-            <code>d</code> (and <code>d_</code> for doubly reinforced sections) are replaced by the
-            area-weighted centroids of the combined rebar + plate steel, measured in the jacketed
-            geometry (top plate thickness added above the original section).
+            <code>d</code> (and <code>d_</code> whenever compression steel or a top plate is
+            present) are replaced by the area-weighted centroids of the combined rebar + plate
+            steel, still measured from the extreme concrete compression fibre. The bottom plate
+            sits below the soffit; a top plate sits above the datum and so takes a negative depth.
           </div>
         </div>
         <div class="flow-step">
@@ -499,7 +500,8 @@
           <p class="ex-desc">
             Calculates the design moment capacity of an RC beam before and after strengthening with
             top and bottom steel plates. The bottom plate contributes to the tension steel; the top
-            plate contributes to the compression steel (doubly reinforced sections only).
+            plate contributes to the compression steel — including on an originally singly
+            reinforced section, which a top plate turns into a doubly reinforced one.
           </p>
 
           <div class="sub-label">Parameters — section: RectBeamSection</div>
@@ -567,13 +569,27 @@
             <pre>{
   <span class="k">before</span>: {                      <span class="c">// original section</span>
     <span class="k">phiMn</span>: <span class="n">206.64</span>,
-    <span class="k">calculationDetails</span>: { <span class="k">ro</span>: <span class="n">0.011156</span> },
+    <span class="k">calculationDetails</span>: {
+      <span class="k">c</span>: <span class="n">94.63</span>, <span class="k">a</span>: <span class="n">80.44</span>, <span class="k">beta1</span>: <span class="n">0.85</span>,
+      <span class="k">d</span>: <span class="n">440</span>, <span class="k">As</span>: <span class="n">1472.6</span>, <span class="k">ro</span>: <span class="n">0.011156</span>
+    },
     <span class="k">unit</span>: <span class="s">'kN-m'</span>,
     <span class="k">warnings</span>: []
   },
   <span class="k">after</span>: {                       <span class="c">// jacketed section</span>
-    <span class="k">phiMn</span>: <span class="n">367.58</span>,               <span class="c">// +78% capacity in this example</span>
-    <span class="k">calculationDetails</span>: { <span class="k">ro</span>: <span class="n">0.018332</span> },
+    <span class="k">phiMn</span>: <span class="n">407.47</span>,               <span class="c">// +97% capacity in this example</span>
+    <span class="k">calculationDetails</span>: {
+      <span class="k">c</span>: <span class="n">94.63</span>,                  <span class="c">// mm, neutral axis from the concrete face</span>
+      <span class="k">a</span>: <span class="n">80.44</span>,                  <span class="c">// mm, stress block depth — concrete only</span>
+      <span class="k">beta1</span>: <span class="n">0.85</span>,
+      <span class="k">d</span>: <span class="n">467.364</span>,                <span class="c">// mm, rebar + bottom plate centroid</span>
+      <span class="k">d_</span>: <span class="n">-3</span>,                     <span class="c">// mm, top plate centroid — above the concrete face</span>
+      <span class="k">As</span>: <span class="n">2603.37</span>,               <span class="c">// mm², rebar + bottom plate</span>
+      <span class="k">As_</span>: <span class="n">1130.77</span>,              <span class="c">// mm², top plate as compression steel</span>
+      <span class="k">fs_</span>: <span class="n">390</span>,                    <span class="c">// MPa, capped at fy — the top plate yields</span>
+      <span class="k">ro</span>: <span class="n">0.018568</span>,
+      <span class="k">ro_</span>: <span class="n">0.008065</span>
+    },
     <span class="k">unit</span>: <span class="s">'kN-m'</span>,
     <span class="k">warnings</span>: []
   }
@@ -588,13 +604,13 @@
             <span>ℹ️</span>
             <span>Because the capacity math is delegated, <strong>all warnings and errors of <code>rectBeamMomentCapacity</code> apply</strong> to both the before and after runs — see the <code>rc</code> module reference for the full list.</span>
           </div>
-          <div class="alert alert--warn">
-            <span>⚠️</span>
-            <span>The added plate steel can push the section out of the tension-controlled region: a jacketed section that fails the yielding check throws <strong>RCDesignError 102</strong> even when the original section was fine.</span>
+          <div class="alert alert--info">
+            <span>ℹ️</span>
+            <span>Depths are measured from the <strong>extreme concrete compression fibre</strong> — the top face of the concrete — so the equivalent rectangular stress block covers concrete only. A top plate therefore has a <strong>negative <code>d_</code></strong> (half its thickness above that face), and <code>d</code> is unchanged by adding one. Note this differs from the datum used by the interface-bolting functions below.</span>
           </div>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Propagates <strong>RCDesignError 101 / 102</strong> from <code>rectBeamMomentCapacity</code> — tensile steel not yielding, or compression steel deeper than the neutral axis.</span>
+            <span>Propagates <strong>RCDesignError 102</strong> from <code>rectBeamMomentCapacity</code>: the added plate steel can push a section out of the tension-controlled region even when the original section was fine. Because <code>before</code> and <code>after</code> are computed in one call, a throw from either leg loses both results.</span>
           </div>
         </div>
       </div>
@@ -684,9 +700,13 @@
 }</pre>
           </div>
           <p style="font-size:13px">
-            Depths are measured from a <strong>datum at the top face of the top plate</strong> (the
-            concrete top face when there is no top plate) — the same datum used by
-            <code>calculateSteelJacketedBeamMomentCapacity</code>.
+            Depths here are measured from a <strong>datum at the top face of the top plate</strong>
+            (the concrete top face when there is no top plate), which is what
+            <code>ybar</code> and every <code>y</code> in the transformed section refer to. This is
+            <em>not</em> the datum used by <code>calculateSteelJacketedBeamMomentCapacity</code>,
+            which measures from the extreme concrete compression fibre so that its stress block
+            covers concrete only. Each function is internally consistent; only compare depths
+            within one of them.
           </p>
 
           <div class="alert alert--info">

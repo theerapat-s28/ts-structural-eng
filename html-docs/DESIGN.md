@@ -281,7 +281,7 @@ Always annotate numeric inputs with their SI unit as a `.c` comment — units ar
 <!-- Thrown error / assumption failure -->
 <div class="alert alert--error">
   <span>⚠️</span>
-  <span>Throws <strong>RCDesignError E101</strong> if the tensile steel does not yield.</span>
+  <span>Throws <strong>RCDesignError E102</strong> if the section is not tension controlled.</span>
 </div>
 
 <!-- Code-provision warning pushed to the warnings array -->

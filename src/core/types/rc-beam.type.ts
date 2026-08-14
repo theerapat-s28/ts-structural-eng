@@ -43,13 +43,20 @@ export interface RebarGroupInput {
 export interface RectBeamBarLayoutInput {
   b: number; // mm, section width
   h: number; // mm, section height
-  topBars: RebarGroupInput;
+  topBars?: RebarGroupInput; // omit for a section with no top bars
   bottomBars: RebarGroupInput;
   cover?: number; // mm, clear cover to stirrup (default: ACI 318-19 Table 20.6.1.3.1)
   stirrupDiameter?: number; // mm
   maxAggregateSize?: number; // mm, nominal max aggregate size
 }
 
+/**
+ * A section counts as singly reinforced when it carries no compression steel.
+ *
+ * `d_` is deliberately not sign-checked: it is measured from the extreme
+ * concrete compression fibre, so compression steel above that face — a steel
+ * plate bonded to the top of the beam — legitimately has `d_ <= 0`.
+ */
 export function isSinglyReinforced(section: RectBeamSection): section is RectSinglyBeamSection {
-  return !("As_" in section) || !("d_" in section) || section.As_ <= 0 || section.d_ <= 0;
+  return !("As_" in section) || !("d_" in section) || section.As_ <= 0;
 }

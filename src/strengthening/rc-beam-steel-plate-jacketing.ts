@@ -23,9 +23,16 @@ import { mergeWarnings } from "@app-utils/merge-warning";
  * Converts steel plate areas into equivalent rebar areas, adjusts the effective depth,
  * and delegates to `rectBeamMomentCapacity` for the actual capacity calculation.
  *
+ * The bottom plate is added to the tension steel and the top plate to the
+ * compression steel — including on an originally singly reinforced section,
+ * which a top plate turns into a doubly reinforced one.
+ *
  * @param section - Original beam cross-section properties
  * @param jacketedProperties - Steel plate dimensions, modulus, and yield strength
- * @returns Object containing `phiMn` (kN·m), `calculationDetails`, `unit`, and `warnings`
+ * @returns `before` and `after` results, each with `phiMn` (kN·m), `calculationDetails`,
+ *   `unit`, and `warnings`
+ * @throws {RCDesignError} 102 if either section is not tension controlled — the
+ *   added plate steel can push a jacketed section out of the tension-controlled region
  */
 export const calculateSteelJacketedBeamMomentCapacity = (
   section: RectBeamSection,
@@ -56,40 +63,48 @@ export const calculateSteelJacketedBeamMomentCapacity = (
     ? n * (jacketedProperties.bottomSteelWidth as number) * bottomSteelThickness
     : 0;
 
-  let newD =
-    ((topSteelThickness + section.d) * section.As +
-      (topSteelThickness + section.h + bottomSteelThickness / 2) * plateBottomSteelArea) /
-    (section.As + plateBottomSteelArea);
-  let newD_ = undefined;
+  // Existing compression steel, if any. A section the type guard reports as
+  // singly reinforced contributes nothing here, but a top plate still can.
+  const existingAs_ = isSinglyReinforced(section) ? 0 : (section as RectDoublyBeamSection).As_;
+  const existingD_ = isSinglyReinforced(section) ? 0 : (section as RectDoublyBeamSection).d_;
+
+  // Depths stay measured from the extreme concrete compression fibre — the top
+  // face of the concrete — so the equivalent rectangular stress block that
+  // `rectBeamMomentCapacity` lays down from that datum covers concrete only.
+  // Existing depths are therefore unchanged; the bottom plate sits below the
+  // soffit and the top plate above the datum, at a negative depth.
+  const newD = roundToDecimalPlaces(
+    (section.d * section.As + (section.h + bottomSteelThickness / 2) * plateBottomSteelArea) /
+      (section.As + plateBottomSteelArea),
+    3,
+  );
+
+  const jacketedAs_ = existingAs_ + plateTopSteelArea;
 
   let modifiedSection: RectBeamSection;
-  // Check if the section is singly or doubly reinforced
-  if (isSinglyReinforced(section)) {
-    // Singly reinforced section
+  if (jacketedAs_ <= 0) {
+    // No compression steel and no top plate — the jacketed section stays singly
+    // reinforced.
     modifiedSection = {
       ...section,
       As: section.As + plateBottomSteelArea,
       d: newD,
     };
   } else {
-    // Doubly reinforced section
-    const doublySection = section as RectDoublyBeamSection;
-    newD_ =
-      ((topSteelThickness + doublySection.d_) * doublySection.As_ +
-        (topSteelThickness / 2) * plateTopSteelArea) /
-      (doublySection.As_ + plateTopSteelArea);
+    // A top plate acts as compression steel, so a bare singly reinforced
+    // section becomes doubly reinforced once one is added. Its centroid is half
+    // a plate thickness above the concrete face, hence the negative depth.
+    const newD_ = roundToDecimalPlaces(
+      (existingD_ * existingAs_ + (-topSteelThickness / 2) * plateTopSteelArea) / jacketedAs_,
+      3,
+    );
     modifiedSection = {
-      ...doublySection,
-      As: doublySection.As + plateBottomSteelArea,
-      As_: doublySection.As_ + plateTopSteelArea,
+      ...section,
+      As: section.As + plateBottomSteelArea,
+      As_: jacketedAs_,
       d: newD,
       d_: newD_,
     };
-  }
-
-  newD = roundToDecimalPlaces(newD, 3);
-  if (newD_ !== undefined) {
-    newD_ = roundToDecimalPlaces(newD_, 3);
   }
 
   // Calculate the moment capacity of the modified (after strengthening) section
