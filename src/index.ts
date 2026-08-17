@@ -16,6 +16,9 @@ export {
   plateInterfaceShearFlow,
   boltShearCapacity,
   plateInterfaceBoltRequirement,
+  sidePlateShearCapacityByWebYielding,
+  sidePlateShearCapacityByTensionTie,
+  compareSidePlateShearCapacity,
 } from "./strengthening";
 
 // Core (types, constants, errors)
@@ -33,6 +36,9 @@ export type {
   PlateShearFlowInput,
   BoltProps,
   PlateInterfaceBoltInput,
+  SidePlateConfiguration,
+  SidePlateAnchorage,
+  SidePlateShearProps,
   Warnings,
   calculationResult,
   unit,
@@ -42,11 +48,15 @@ export {
   isSinglyReinforced,
   hasTopPlate,
   hasBottomPlate,
+  hasSidePlate,
   FLEXURAL_STRENGTH_REDUCTION_FACTOR,
   CONCRETE_ULTIMATE_STRAIN,
   SHEAR_STRENGTH_REDUCTION_FACTOR,
   ANCHOR_SHEAR_STRENGTH_REDUCTION_FACTOR,
   MAX_PLATE_BOLT_SPACING,
+  PLATE_SHEAR_YIELD_COEFFICIENT,
+  SIDE_PLATE_EFFECTIVE_STRAIN_LIMIT,
+  SIDE_PLATE_REDUCTION_FACTOR_PSI,
   RCDesignError,
   Errors,
 } from "./core";

@@ -16,8 +16,11 @@ export type {
   PlateShearFlowInput,
   BoltProps,
   PlateInterfaceBoltInput,
+  SidePlateConfiguration,
+  SidePlateAnchorage,
+  SidePlateShearProps,
 } from "./types/plate-jacketing.type";
-export { hasTopPlate, hasBottomPlate } from "./types/plate-jacketing.type";
+export { hasTopPlate, hasBottomPlate, hasSidePlate } from "./types/plate-jacketing.type";
 export type { Warnings, calculationResult } from "./types/output-message.type";
 export type { unit } from "./types/unit.type";
 
@@ -28,6 +31,9 @@ export {
   SHEAR_STRENGTH_REDUCTION_FACTOR,
   ANCHOR_SHEAR_STRENGTH_REDUCTION_FACTOR,
   MAX_PLATE_BOLT_SPACING,
+  PLATE_SHEAR_YIELD_COEFFICIENT,
+  SIDE_PLATE_EFFECTIVE_STRAIN_LIMIT,
+  SIDE_PLATE_REDUCTION_FACTOR_PSI,
 } from "./constants/rc.constant";
 
 // Errors

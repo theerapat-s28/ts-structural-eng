@@ -116,6 +116,17 @@
     .s-public { color: var(--accent); background: var(--accent-dim); }
     .s-internal { color: var(--purple); background: var(--purple-dim); }
 
+    .std-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+      color: var(--yellow);
+      background: var(--yellow-dim);
+    }
+
     /* ── Main ────────────────────────────────────────── */
     .main {
       flex: 1;
@@ -361,6 +372,12 @@
       <a href="#bolt-shear-capacity"><span class="mbadge m-fn">FN</span> boltShearCapacity</a>
       <a href="#plate-interface-bolt-requirement"><span class="mbadge m-fn">FN</span> plateInterfaceBoltRequirement</a>
 
+      <div class="nav-section-label">Side Plate Shear Strengthening</div>
+      <a href="#side-plate-flow"><span style="font-size:14px">◆</span> Shear calculation flow</a>
+      <a href="#side-plate-shear-capacity-by-web-yielding"><span class="mbadge m-fn">FN</span> sidePlateShearCapacityByWebYielding</a>
+      <a href="#side-plate-shear-capacity-by-tension-tie"><span class="mbadge m-fn">FN</span> sidePlateShearCapacityByTensionTie</a>
+      <a href="#compare-side-plate-shear-capacity"><span class="mbadge m-fn">FN</span> compareSidePlateShearCapacity</a>
+
       <div class="nav-section-label">Reference</div>
       <a href="#summary"><span style="font-size:14px">☰</span> Export summary</a>
     </nav>
@@ -375,7 +392,7 @@
         <code>@theerapat-s28/ts-structural-eng-tools/strengthening</code>
       </div>
       <h1>Strengthening</h1>
-      <p>Moment-capacity and plate-to-concrete connection calculations for existing RC beams strengthened with steel plate jacketing.</p>
+      <p>Moment-capacity, shear-capacity and plate-to-concrete connection calculations for existing RC beams strengthened with steel plates.</p>
     </div>
 
     <!-- ── Overview ── -->
@@ -402,6 +419,14 @@
         <strong>interface bolting</strong> between the concrete and each plate: the interface shear flow
         <code>q = V·Q/I</code> from an elastic transformed section, the design shear strength of one
         anchor bolt, and the resulting bolt pitch and count.
+      </p>
+      <p style="margin-top:14px">
+        Plates bolted to the <strong>sides of the web</strong> strengthen the beam in
+        <strong>shear</strong> instead, and are handled by their own pair of functions. ACI 318-19 has
+        no provisions for steel side plates, so the module offers <strong>two independent models</strong>
+        — plate web yielding after <strong>AISC 360 G2.1</strong>, and a tension tie adapted from the FRP
+        provisions of <strong>ACI 440.2R-17 §11.4</strong> — and a comparison helper that reports the lower
+        of the two. Both are engineering adaptations rather than code calculations.
       </p>
       <div class="alert alert--info">
         <span>ℹ️</span>
@@ -430,6 +455,18 @@
           <div class="model-card__title">PlateInterfaceBoltInput</div>
           <div class="model-card__desc">A <code>PlateShearFlowInput</code> plus the bolt, the bolts per row, and the transfer length.</div>
         </div>
+        <div class="model-card">
+          <div class="model-card__title">StirrupShearSection</div>
+          <div class="model-card__desc">The original beam in shear terms (fc_, bw, d, Av, fyt, s) — same type consumed by the <code>rc</code> module's shear functions.</div>
+        </div>
+        <div class="model-card">
+          <div class="model-card__title">SidePlateShearProps</div>
+          <div class="model-card__desc">Side plate material, thickness, engaged depth, layout (<code>'continuous'</code> or <code>'strips'</code>) and optional anchorage.</div>
+        </div>
+        <div class="model-card">
+          <div class="model-card__title">SidePlateAnchorage</div>
+          <div class="model-card__desc">The bolt group holding the side plates on: a <code>BoltProps</code>, the bolts per vertical row, and the row spacing along the span.</div>
+        </div>
       </div>
 
       <div class="sub-label" style="margin-top:20px">Type Guards</div>
@@ -441,6 +478,10 @@
         <div class="model-card">
           <div class="model-card__title">hasBottomPlate(props)</div>
           <div class="model-card__desc">True when <code>bottomSteelWidth</code> and <code>bottomSteelThickness</code> are both positive.</div>
+        </div>
+        <div class="model-card">
+          <div class="model-card__title">hasSidePlate(props)</div>
+          <div class="model-card__desc">True when a <code>SidePlateShearProps</code> has both a positive <code>thickness</code> and a positive <code>depth</code>.</div>
         </div>
       </div>
     </div>
@@ -923,6 +964,481 @@
       </div>
     </div>
 
+    <!-- ── Side plate shear strengthening ── -->
+    <div class="section" id="section-side-plate-shear">
+      <div class="section__title">Side Plate Shear Strengthening <code style="font-size:13px">rc-beam-side-plate-shear.ts</code></div>
+
+      <p>
+        Steel plates bolted to the faces of the web add a shear-resisting path alongside the
+        stirrups. Both functions below return the same <strong>before / after</strong> pair —
+        <code>before</code> is <code>φVc + φVs</code> delegated to the <code>rc</code> module, and
+        <code>after</code> adds the plate contribution <code>φVp</code> — and both accept the same
+        two arguments. They differ only in how <code>Vp</code> is derived.
+      </p>
+      <div class="alert alert--warn">
+        <span>⚠️</span>
+        <span>
+          <strong>ACI 318-19 has no provisions for steel side plates in shear.</strong>
+          The plate term <code>φVp</code> is <strong>not a code-sanctioned calculation</strong> — it comes
+          from <strong>AISC 360 G2.1</strong> (web yielding) or <strong>ACI 440.2R-17 §11.4</strong>
+          (tension tie), neither of which was written for steel plates bolted to a concrete web.
+          Every result carries a warning saying so. Run both and take the lower value —
+          <code>compareSidePlateShearCapacity</code> does exactly that.
+        </span>
+      </div>
+
+      <div class="sub-label" style="margin-top:18px">What is code-based, and what is not</div>
+      <table class="param-table">
+        <thead>
+          <tr><th>Quantity</th><th>Basis</th><th>Standing</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>φVc</td><td>ACI 318-19, 22.5.5.1</td><td>Code</td><td>Delegated to <code>concreteShearCapacity</code></td></tr>
+          <tr><td>φVs</td><td>ACI 318-19, 22.5.10.5.3</td><td>Code</td><td>Delegated to <code>stirrupShearCapacity</code></td></tr>
+          <tr><td>φ = 0.75</td><td>ACI 318-19, 21.2.1</td><td>Code</td><td>Applied to the plate term as well</td></tr>
+          <tr><td>Vs + Vp cap</td><td>ACI 318-19, 22.5.1.2</td><td>Code</td><td>Truncates <code>Vp</code> to the web's remaining headroom; mirrored by <strong>ACI 440.2R-17, 11.4.3</strong> Eq. (11.4.3) at the same 0.66 coefficient</td></tr>
+          <tr><td>Strip pitch limit</td><td>ACI 318-19, 9.7.6.2.2</td><td>Code</td><td>Warning only; tightens to <code>min(d/4, 300)</code> once <code>Vs + Vp</code> passes <code>0.33·√f′c·bw·d</code>. <strong>ACI 440.2R-17, 11.4.2</strong> defers to this same limit</td></tr>
+          <tr><td>Minimum anchor spacing</td><td>ACI 318-19, 17.9.2</td><td>Code</td><td>Warning only, on <code>rowSpacing</code> when the bolt <code>diameter</code> is given</td></tr>
+          <tr><td>φVanchorage</td><td>ACI 318-19, 17.7.1.2b</td><td>Code</td><td>Anchor steel in shear only; breakout and pryout not evaluated</td></tr>
+          <tr><td>φVp — web yielding</td><td>AISC 360 G2.1</td><td><strong>Adaptation</strong></td><td>Written for the web of a steel beam, not a plate bolted to concrete</td></tr>
+          <tr><td>φVp — tension tie</td><td>ACI 440.2R-17 §11.4</td><td><strong>Adaptation</strong></td><td>An ACI <em>guide</em>, not part of ACI 318, and calibrated for FRP — <code>ψf = 0.85</code> and the 0.004 strain cap come from FRP test data</td></tr>
+        </tbody>
+      </table>
+      <div class="alert alert--warn">
+        <span>⚠️</span>
+        <span>
+          Neither model captures <strong>partial interaction</strong> — slip between plate and concrete at
+          the bolts. Tests on bolted side-plated beams consistently show the plate reaching less strain than
+          a rigid-engagement model predicts, so both figures are non-conservative in a way no φ factor here
+          covers. A spread between the two results is a measure of that model uncertainty; confirm the
+          chosen value against test data or a specialist review before relying on it.
+        </span>
+      </div>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>
+          <strong>On citation provenance.</strong> Every <strong>ACI 318-19</strong> and
+          <strong>AISC 360</strong> reference on this page is verified against those documents. Two
+          <strong>ACI 440.2R-17</strong> subsections have since been verified as well:
+          <strong>11.4.2 Spacing</strong>, which defers to the ACI 318 limits for internal steel shear
+          reinforcement and measures strip spacing centreline to centreline, and
+          <strong>11.4.3 Reinforcement limits</strong>, Eq. (11.4.3), which sets
+          <code>Vs + Vf ≤ 0.66·√f′c·bw·d</code>. The remaining two — the subsections carrying the 0.004
+          strain cap and the <code>ψf = 0.85</code> factor — are still cited at <strong>§11.4</strong>
+          only. The <code>wf + d/4</code> strip pitch rule of <strong>ACI 440.2R-08</strong> is
+          deliberately <em>not</em> applied: it did not survive into the 2017 edition, which defers to
+          ACI 318 instead.
+        </span>
+      </div>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>A <strong>continuous</strong> plate is the limiting case of <strong>strips</strong> with <code>width = spacing</code>, so one expression covers both layouts through the coverage ratio <code>wp / s</code> reported as <code>coverageRatio</code>.</span>
+      </div>
+
+      <div class="sub-label" id="side-plate-flow" style="margin-top:22px">Shear calculation flow</div>
+      <div class="flow-steps">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>Baseline capacity</strong><br/>
+            <code>concreteShearCapacity</code> and <code>stirrupShearCapacity</code> from the
+            <code>rc</code> module give <code>φVc + φVs</code>, unchanged — this becomes the
+            <code>before</code> result. A section with <code>Av: 0</code> contributes
+            <code>φVs = 0</code> rather than dividing by a zero spacing.
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>Plate contribution</strong><br/>
+            The chosen model produces a nominal <code>Vp</code> from the plate geometry, reported as
+            <code>Vp</code>. Both models reduce to the coverage ratio <code>wp / s</code>, which is 1
+            for a continuous plate.
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>Web crushing cap</strong><br/>
+            <code>Vp</code> is truncated to the headroom left under
+            <code>0.66·√f′c·bw·d</code> — ACI 318-19 22.5.1.2, mirrored by ACI 440.2R-17 11.4.3 — giving
+            <code>VpEffective</code>. A section with no headroom at all throws
+            <strong>206</strong> instead.
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <strong>Anchorage limit</strong><br/>
+            When <code>anchorage</code> is supplied, <code>φVpPlate = 0.75·VpEffective</code> is compared
+            against <code>φVanchorage</code> from <code>boltShearCapacity</code>, and the lower wins.
+            <code>governedBy</code> names whichever of the three limits set the result.
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <strong>Assemble</strong><br/>
+            <code>after.phiVn = φVc + φVs + φVp</code>, with every intermediate value in
+            <code>calculationDetails</code> and every warning of steps 1–4 merged into
+            <code>after.warnings</code>.
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span><code>before.warnings</code> carries only what the baseline calculation raised, so it is usually empty; <code>after.warnings</code> carries those <strong>plus</strong> every side plate warning. Read <code>after.warnings</code> — it is the complete set.</span>
+      </div>
+      <div class="alert alert--warn">
+        <span>⚠️</span>
+        <span>Propagated from the baseline: a warning citing <strong>ACI318-19, 22.5.3.1</strong> when <code>√f′c</code> exceeds the 8.3 MPa limit used for <code>Vc</code>, i.e. <code>f′c &gt; 68.9 MPa</code>. It appears in both <code>before.warnings</code> and <code>after.warnings</code>.</span>
+      </div>
+
+      <div class="export-card" id="side-plate-shear-capacity-by-web-yielding">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">sidePlateShearCapacityByWebYielding(section, plates)</span>
+          <span class="scope-badge s-public">Public API</span>
+          <span class="std-badge" title="Basis: AISC 360 G2.1 — not ACI 318-19">AISC 360 G2.1</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">
+            Treats each side plate as a supplementary web resisting in-plane shear at the von Mises
+            shear yield stress <code>0.6·fy</code> (<strong>AISC 360 G2.1</strong>, a steel code written
+            for the web of a steel beam — not an ACI 318-19 provision):
+            <code>Vp = nSides · 0.6·fy · tp · dp · wp / s</code>, with <code>wp / s = 1</code> for a
+            continuous plate. Strips are handled as that fraction of a continuous web, which is an
+            approximation — a discrete strip acts more as a tie, which is what
+            <code>sidePlateShearCapacityByTensionTie</code> models.
+          </p>
+
+          <div class="sub-label">Parameters — section: StirrupShearSection</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>fc_</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Specified compressive strength of concrete f′c</td></tr>
+              <tr><td>bw</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Web width</td></tr>
+              <tr><td>d</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Effective depth</td></tr>
+              <tr><td>Av</td><td>number</td><td>mm²</td><td><span class="req">Required</span></td><td>Existing stirrup area within spacing s (both legs); pass <code>0</code> for a beam with no stirrups</td></tr>
+              <tr><td>fyt</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Yield strength of the existing stirrups</td></tr>
+              <tr><td>s</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Existing stirrup spacing; <code>0</code> alongside <code>Av: 0</code></td></tr>
+              <tr><td>lambda</td><td>number</td><td>—</td><td><span class="opt">Optional</span></td><td>Lightweight concrete factor (default: <code>1.0</code>)</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Parameters — plates: SidePlateShearProps</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>fy</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Yield strength of the side plate</td></tr>
+              <tr><td>thickness</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Plate thickness tp</td></tr>
+              <tr><td>depth</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Engaged vertical depth dp; must not exceed <code>d</code></td></tr>
+              <tr><td>configuration</td><td>'continuous' | 'strips'</td><td>—</td><td><span class="req">Required</span></td><td>Layout along the span</td></tr>
+              <tr><td>width</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Strip width wp — required when <code>configuration: 'strips'</code></td></tr>
+              <tr><td>spacing</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Strip pitch s, centreline to centreline per ACI 440.2R-17 11.4.2 — required when <code>configuration: 'strips'</code>; must be ≥ <code>width</code></td></tr>
+              <tr><td>angle</td><td>number</td><td>degrees</td><td><span class="opt">Optional</span></td><td>Strip inclination from the beam axis, in (0, 90] (default: <code>90</code>); used by the tension tie model only</td></tr>
+              <tr><td>Es</td><td>number</td><td>MPa</td><td><span class="opt">Optional</span></td><td>Plate elastic modulus (default: <code>200000</code>)</td></tr>
+              <tr><td>sides</td><td>1 | 2</td><td>—</td><td><span class="opt">Optional</span></td><td>Faces plated (default: <code>2</code>)</td></tr>
+              <tr><td>anchorage</td><td>SidePlateAnchorage</td><td>—</td><td><span class="opt">Optional</span></td><td>Bolt group; omit to report the fully developed plate capacity</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Parameters — plates.anchorage: SidePlateAnchorage</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>bolt</td><td>BoltProps</td><td>—</td><td><span class="req">Required</span></td><td>Anchor properties, passed to <code>boltShearCapacity</code></td></tr>
+              <tr><td>boltsPerRow</td><td>number</td><td>—</td><td><span class="req">Required</span></td><td>Bolts in one vertical row, on one face</td></tr>
+              <tr><td>rowSpacing</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Horizontal pitch of the bolt rows along the span</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Example — 6 mm strips at 250 mm pitch, both faces</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre><span class="b">import</span> { <span class="u">sidePlateShearCapacityByWebYielding</span> } <span class="b">from</span> <span class="s">'@theerapat-s28/ts-structural-eng-tools/strengthening'</span>;
+
+<span class="b">const</span> result = <span class="u">sidePlateShearCapacityByWebYielding</span>(
+  {
+    <span class="k">fc_</span>: <span class="n">35</span>,      <span class="c">// MPa</span>
+    <span class="k">bw</span>: <span class="n">400</span>,      <span class="c">// mm</span>
+    <span class="k">d</span>: <span class="n">550</span>,       <span class="c">// mm</span>
+    <span class="k">Av</span>: <span class="n">157</span>,      <span class="c">// mm², existing stirrups</span>
+    <span class="k">fyt</span>: <span class="n">400</span>,     <span class="c">// MPa</span>
+    <span class="k">s</span>: <span class="n">250</span>,       <span class="c">// mm</span>
+  },
+  {
+    <span class="k">fy</span>: <span class="n">250</span>,             <span class="c">// MPa</span>
+    <span class="k">thickness</span>: <span class="n">6</span>,        <span class="c">// mm</span>
+    <span class="k">depth</span>: <span class="n">500</span>,         <span class="c">// mm</span>
+    <span class="k">configuration</span>: <span class="s">'strips'</span>,
+    <span class="k">width</span>: <span class="n">100</span>,         <span class="c">// mm</span>
+    <span class="k">spacing</span>: <span class="n">250</span>,       <span class="c">// mm</span>
+    <span class="k">anchorage</span>: {
+      <span class="k">bolt</span>: { <span class="k">Ase</span>: <span class="n">157</span>, <span class="k">futa</span>: <span class="n">400</span>, <span class="k">fya</span>: <span class="n">240</span>, <span class="k">diameter</span>: <span class="n">16</span> },
+      <span class="k">boltsPerRow</span>: <span class="n">3</span>,
+      <span class="k">rowSpacing</span>: <span class="n">250</span>,  <span class="c">// mm</span>
+    },
+  },
+);</pre>
+          </div>
+
+          <div class="sub-label">Returns</div>
+          <div class="code-block">
+            <div class="code-block__label">Result</div>
+            <pre>{
+  <span class="k">method</span>: <span class="s">'webYielding'</span>,
+  <span class="k">before</span>: {
+    <span class="k">phiVn</span>: <span class="n">269.57</span>,
+    <span class="k">calculationDetails</span>: { <span class="k">phiVc</span>: <span class="n">165.95</span>, <span class="k">phiVs</span>: <span class="n">103.62</span>, <span class="k">Vc</span>: <span class="n">221.26</span>, <span class="k">Vs</span>: <span class="n">138.16</span> },
+    <span class="k">unit</span>: <span class="s">'kN'</span>,
+    <span class="k">warnings</span>: []
+  },
+  <span class="k">after</span>: {
+    <span class="k">phiVn</span>: <span class="n">539.57</span>,
+    <span class="k">phiVp</span>: <span class="n">270</span>,
+    <span class="k">governedBy</span>: <span class="s">'plateCapacity'</span>,
+    <span class="k">calculationDetails</span>: {
+      <span class="k">phiVc</span>: <span class="n">165.95</span>, <span class="k">phiVs</span>: <span class="n">103.62</span>,
+      <span class="k">Vp</span>: <span class="n">360</span>,                <span class="c">// kN, 2 * 0.6*250 * 6 * 500 * 0.4</span>
+      <span class="k">VpEffective</span>: <span class="n">360</span>,       <span class="c">// kN, after the web crushing cap</span>
+      <span class="k">maxVs</span>: <span class="n">859.01</span>,          <span class="c">// kN, 0.66*sqrt(fc')*bw*d</span>
+      <span class="k">headroom</span>: <span class="n">720.85</span>,       <span class="c">// kN, maxVs - Vs</span>
+      <span class="k">phiVpPlate</span>: <span class="n">270</span>,
+      <span class="k">phiVanchorage</span>: <span class="n">293.88</span>,  <span class="c">// kN, 2 faces * 2 rows * 3 bolts * 24.49</span>
+      <span class="k">anchorageRows</span>: <span class="n">2</span>,
+      <span class="k">phiVbolt</span>: <span class="n">24.49</span>,
+      <span class="k">sides</span>: <span class="n">2</span>,
+      <span class="k">coverageRatio</span>: <span class="n">0.4</span>,
+      <span class="k">tauY</span>: <span class="n">150</span>,               <span class="c">// MPa, 0.6 * fy</span>
+      <span class="k">slenderness</span>: <span class="n">83.3</span>,       <span class="c">// dp / tp</span>
+      <span class="k">slendernessLimit</span>: <span class="n">63.4</span>   <span class="c">// 2.24 * sqrt(Es / fy)</span>
+    },
+    <span class="k">unit</span>: <span class="s">'kN'</span>,
+    <span class="k">warnings</span>: [ <span class="c">/* model notice, partial depth, slenderness, breakout */</span> ]
+  }
+}</pre>
+          </div>
+
+          <div class="sub-label">Returns — after</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>phiVn</td><td>number</td><td>kN</td><td>Strengthened design shear capacity, <code>φVc + φVs + φVp</code></td></tr>
+              <tr><td>phiVp</td><td>number</td><td>kN</td><td>Design contribution of the side plates, after every limit below</td></tr>
+              <tr><td>governedBy</td><td>'plateCapacity' | 'anchorage' | 'webCrushing'</td><td>—</td><td>Which limit set <code>phiVp</code></td></tr>
+              <tr><td>calculationDetails</td><td>object</td><td>kN / MPa</td><td>Every intermediate quantity, including both competing limits</td></tr>
+            </tbody>
+          </table>
+
+          <div class="alert alert--info">
+            <span>ℹ️</span>
+            <span>The plate contribution is the <strong>lowest of three limits</strong>: the plate's own capacity, the bolt group's <code>phiVanchorage</code> (which already carries the anchor φ of 0.65 from <code>boltShearCapacity</code>), and the web crushing headroom. Omitting <code>anchorage</code> skips the second, and a warning says the plate was assumed fully developed.</span>
+          </div>
+          <div class="alert alert--info">
+            <span>ℹ️</span>
+            <span>Anchorage counts the rows crossing an assumed 45° crack, <code>floor(dp / rowSpacing)</code> and at least one — the same <code>dfv / sf</code> counting ACI 440.2R uses for bonded shear reinforcement. A <code>rowSpacing</code> wider than <code>dp</code> falls back to one row, with a warning.</span>
+          </div>
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Truncates <code>Vp</code> to the remaining web capacity and warns when <code>Vs + Vp</code> would pass <code>0.66·√f′c·bw·d</code> — <strong>ACI318-19, 22.5.1.2</strong>. A continuous plate reaches this on almost any realistic thickness, so <code>governedBy: 'webCrushing'</code> is common there.</span>
+          </div>
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Warns when the plate slenderness <code>dp/tp</code> exceeds <code>2.24·√(Es/fy)</code>, beyond which shear buckling may precede yielding — <strong>AISC360-22, G2.1</strong>. It stays a warning because the concrete restrains the inner face.</span>
+          </div>
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Warns when the strip pitch exceeds the maximum shear reinforcement spacing — <strong>ACI318-19, 9.7.6.2.2</strong>. The limit is <code>min(d/2, 600 mm)</code>, tightening to <code>min(d/4, 300 mm)</code> once <code>Vs + Vp</code> passes <code>0.33·√f′c·bw·d</code>. It keys off <code>Vs + Vp</code>, not <code>Vs</code> alone, because the plate is usually what pushes a section into that range. This is the only pitch check applied: <strong>ACI440.2R-17, 11.4.2</strong> defers to the ACI 318 limits for internal steel shear reinforcement rather than imposing its own, so one check satisfies both documents.</span>
+          </div>
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Warns when <code>sides: 1</code> is used: a plate on one face only loads the section eccentrically, and the resulting torsion and out-of-plane twist are outside this in-plane shear model.</span>
+          </div>
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Warns when <code>rowSpacing</code> falls below the minimum anchor spacing of <code>4·da</code> — <strong>ACI318-19, 17.9.2</strong>, the same check <code>plateInterfaceBoltRequirement</code> applies, and only active when the bolt's <code>diameter</code> is supplied. Also warns when <code>depth</code> is less than <code>d</code>, and propagates the anchor breakout notice of <strong>ACI318-19, 17.7.2</strong>.</span>
+          </div>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws <strong>RCDesignError 205</strong> when the plate geometry is inconsistent — non-positive thickness, depth or <code>fy</code>, a depth past <code>d</code>, <code>sides</code> outside 1–2, strips missing a width or spacing, a strip wider than its pitch, an angle outside (0, 90], or an anchorage with no bolts.</span>
+          </div>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws <strong>RCDesignError 206</strong> when the existing <code>Vs</code> already reaches <code>0.66·√f′c·bw·d</code>: the web crushes before any added plate force can be developed, so no side plate helps. Propagates <strong>202</strong> from <code>boltShearCapacity</code> when the anchor properties are invalid.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-card" id="side-plate-shear-capacity-by-tension-tie">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">sidePlateShearCapacityByTensionTie(section, plates)</span>
+          <span class="scope-badge s-public">Public API</span>
+          <span class="std-badge" title="Basis: ACI 440.2R-17 §11.4 — a guide for FRP, not ACI 318-19">ACI 440.2R-17 §11.4</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">
+            Treats each side plate as a tension tie crossing the diagonal crack, following the bonded
+            shear reinforcement model of <strong>ACI 440.2R-17 §11.4</strong> — an ACI guide for
+            externally bonded FRP, not part of ACI 318-19 — with steel in place of FRP:
+            <code>Vp = ψf · nSides · tp · wp · ffe · (sin α + cos α) · dp / s</code>, with
+            <code>ffe = min(fy, Es·0.004)</code> and <code>ψf = 0.85</code>. Takes exactly the same two
+            arguments as <code>sidePlateShearCapacityByWebYielding</code>.
+          </p>
+
+          <div class="alert alert--info">
+            <span>ℹ️</span>
+            <span>For structural steel <code>Es·0.004 = 800 MPa</code> sits above any normal <code>fy</code>, so the 0.004 strain cap does not bind and the tie reaches yield. This model therefore usually returns a <strong>higher</strong> capacity than the web yielding model, whose <code>0.6·fy</code> is the more conservative figure.</span>
+          </div>
+
+          <div class="sub-label">Example — same section and plates as above</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre><span class="b">import</span> { <span class="u">sidePlateShearCapacityByTensionTie</span> } <span class="b">from</span> <span class="s">'@theerapat-s28/ts-structural-eng-tools/strengthening'</span>;
+
+<span class="b">const</span> result = <span class="u">sidePlateShearCapacityByTensionTie</span>(section, plates);</pre>
+          </div>
+
+          <div class="sub-label">Returns</div>
+          <div class="code-block">
+            <div class="code-block__label">Result</div>
+            <pre>{
+  <span class="k">method</span>: <span class="s">'tensionTie'</span>,
+  <span class="k">before</span>: { <span class="k">phiVn</span>: <span class="n">269.57</span>, <span class="c">/* … as above … */</span> },
+  <span class="k">after</span>: {
+    <span class="k">phiVn</span>: <span class="n">563.45</span>,
+    <span class="k">phiVp</span>: <span class="n">293.88</span>,
+    <span class="k">governedBy</span>: <span class="s">'anchorage'</span>,   <span class="c">// the bolts, not the plate, set the limit</span>
+    <span class="k">calculationDetails</span>: {
+      <span class="k">phiVc</span>: <span class="n">165.95</span>, <span class="k">phiVs</span>: <span class="n">103.62</span>,
+      <span class="k">Vp</span>: <span class="n">510</span>,                <span class="c">// kN, 0.85 * 2 * 6 * 250 * 500 * 0.4</span>
+      <span class="k">VpEffective</span>: <span class="n">510</span>,
+      <span class="k">maxVs</span>: <span class="n">859.01</span>, <span class="k">headroom</span>: <span class="n">720.85</span>,
+      <span class="k">phiVpPlate</span>: <span class="n">382.5</span>,       <span class="c">// kN, before the anchorage limit bites</span>
+      <span class="k">phiVanchorage</span>: <span class="n">293.88</span>,
+      <span class="k">anchorageRows</span>: <span class="n">2</span>, <span class="k">phiVbolt</span>: <span class="n">24.49</span>,
+      <span class="k">sides</span>: <span class="n">2</span>, <span class="k">coverageRatio</span>: <span class="n">0.4</span>,
+      <span class="k">ffe</span>: <span class="n">250</span>,                <span class="c">// MPa, min(fy, Es * 0.004)</span>
+      <span class="k">strainLimitedStress</span>: <span class="n">800</span>, <span class="c">// MPa, Es * 0.004</span>
+      <span class="k">orientation</span>: <span class="n">1</span>,          <span class="c">// sin(alpha) + cos(alpha)</span>
+      <span class="k">psi</span>: <span class="n">0.85</span>
+    },
+    <span class="k">unit</span>: <span class="s">'kN'</span>,
+    <span class="k">warnings</span>: [ <span class="c">/* model notice, partial depth, breakout */</span> ]
+  }
+}</pre>
+          </div>
+
+          <div class="sub-label">Example — continuous plate hitting the web crushing cap</div>
+          <div class="code-block">
+            <div class="code-block__label">Result</div>
+            <pre><span class="b">const</span> result = <span class="u">sidePlateShearCapacityByTensionTie</span>(section, {
+  <span class="k">fy</span>: <span class="n">250</span>, <span class="k">thickness</span>: <span class="n">4</span>, <span class="k">depth</span>: <span class="n">500</span>,
+  <span class="k">configuration</span>: <span class="s">'continuous'</span>,
+});
+
+<span class="c">// result.after</span>
+{
+  <span class="k">phiVn</span>: <span class="n">810.21</span>,
+  <span class="k">phiVp</span>: <span class="n">540.64</span>,
+  <span class="k">governedBy</span>: <span class="s">'webCrushing'</span>,
+  <span class="k">calculationDetails</span>: {
+    <span class="k">Vp</span>: <span class="n">850</span>,                  <span class="c">// kN, what the plate could deliver</span>
+    <span class="k">VpEffective</span>: <span class="n">720.85</span>,      <span class="c">// kN, truncated to the headroom</span>
+    <span class="k">maxVs</span>: <span class="n">859.01</span>, <span class="k">headroom</span>: <span class="n">720.85</span>,
+    <span class="k">coverageRatio</span>: <span class="n">1</span>, <span class="k">ffe</span>: <span class="n">250</span>, <span class="k">psi</span>: <span class="n">0.85</span>
+    <span class="c">/* … */</span>
+  }
+}</pre>
+          </div>
+
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Warns when the 0.004 effective strain cap holds the plate below yield, i.e. <code>fy &gt; Es·0.004</code> — <strong>ACI440.2R-17, 11.4</strong>. Only reachable with a very high strength plate.</span>
+          </div>
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Carries every other warning of the web yielding model: the <strong>ACI318-19, 22.5.1.2</strong> truncation, the <strong>ACI318-19, 9.7.6.2.2</strong> strip pitch limit (with the same <code>Vs + Vp</code> switch), the one-sided eccentricity note, and the <strong>ACI318-19, 17.9.2</strong> and <strong>17.7.2</strong> anchor checks. The AISC slenderness check is not applied — buckling of a web panel is not the mechanism this model assumes.</span>
+          </div>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws the same <strong>RCDesignError 205 / 206 / 202</strong> as <code>sidePlateShearCapacityByWebYielding</code>.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-card" id="compare-side-plate-shear-capacity">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">compareSidePlateShearCapacity(section, plates)</span>
+          <span class="scope-badge s-public">Public API</span>
+          <span class="std-badge" title="Runs both models: AISC 360 G2.1 and ACI 440.2R-17 §11.4">both models</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">
+            Runs both models on the same section and reports the lower <code>φVn</code> as governing.
+            This is the intended entry point when selecting a conservative design capacity, since
+            neither model is code-sanctioned for steel side plates.
+          </p>
+
+          <div class="sub-label">Example</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre><span class="b">import</span> { <span class="u">compareSidePlateShearCapacity</span> } <span class="b">from</span> <span class="s">'@theerapat-s28/ts-structural-eng-tools/strengthening'</span>;
+
+<span class="b">const</span> comparison = <span class="u">compareSidePlateShearCapacity</span>(section, plates);</pre>
+          </div>
+
+          <div class="sub-label">Returns</div>
+          <div class="code-block">
+            <div class="code-block__label">Result</div>
+            <pre>{
+  <span class="k">webYielding</span>: { <span class="k">method</span>: <span class="s">'webYielding'</span>, <span class="k">before</span>: { <span class="c">/* … */</span> }, <span class="k">after</span>: { <span class="k">phiVn</span>: <span class="n">539.57</span>, <span class="c">/* … */</span> } },
+  <span class="k">tensionTie</span>:  { <span class="k">method</span>: <span class="s">'tensionTie'</span>,  <span class="k">before</span>: { <span class="c">/* … */</span> }, <span class="k">after</span>: { <span class="k">phiVn</span>: <span class="n">563.45</span>, <span class="c">/* … */</span> } },
+  <span class="k">governing</span>: {
+    <span class="k">method</span>: <span class="s">'webYielding'</span>,
+    <span class="k">phiVn</span>: <span class="n">539.57</span>,           <span class="c">// kN, the lower of the two</span>
+    <span class="k">phiVp</span>: <span class="n">270</span>,
+    <span class="k">governedBy</span>: <span class="s">'plateCapacity'</span>
+  }
+}</pre>
+          </div>
+
+          <div class="sub-label">Returns — governing</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>method</td><td>'webYielding' | 'tensionTie'</td><td>—</td><td>Which model produced the lower capacity</td></tr>
+              <tr><td>phiVn</td><td>number</td><td>kN</td><td>The lower strengthened design shear capacity</td></tr>
+              <tr><td>phiVp</td><td>number</td><td>kN</td><td>Its plate contribution</td></tr>
+              <tr><td>governedBy</td><td>'plateCapacity' | 'anchorage' | 'webCrushing'</td><td>—</td><td>Which limit set that <code>phiVp</code></td></tr>
+            </tbody>
+          </table>
+
+          <div class="alert alert--info">
+            <span>ℹ️</span>
+            <span>The full result of each model is returned alongside <code>governing</code>, so the warnings and every intermediate value stay available for the report.</span>
+          </div>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws whatever either model throws — <strong>RCDesignError 205 / 206 / 202</strong>.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Summary ── -->
     <div class="section" id="summary">
       <div class="section__title">Export Summary</div>
@@ -954,6 +1470,24 @@
             <td class="path-cell">plateInterfaceBoltRequirement</td>
             <td>{ top, bottom, calculationDetails, unit, warnings }</td>
             <td>Required bolt pitch and count at each interface, with the governing requirement</td>
+          </tr>
+          <tr>
+            <td><span class="kind m-fn">FN</span></td>
+            <td class="path-cell">sidePlateShearCapacityByWebYielding</td>
+            <td>{ method, before, after }</td>
+            <td>Shear capacity with side plates taken as supplementary webs yielding at 0.6·fy — <strong>AISC 360 G2.1</strong>, not ACI 318-19</td>
+          </tr>
+          <tr>
+            <td><span class="kind m-fn">FN</span></td>
+            <td class="path-cell">sidePlateShearCapacityByTensionTie</td>
+            <td>{ method, before, after }</td>
+            <td>Shear capacity with side plates taken as ties crossing the crack — <strong>ACI 440.2R-17 §11.4</strong>, a guide for FRP, not ACI 318-19</td>
+          </tr>
+          <tr>
+            <td><span class="kind m-fn">FN</span></td>
+            <td class="path-cell">compareSidePlateShearCapacity</td>
+            <td>{ webYielding, tensionTie, governing }</td>
+            <td>Both side plate shear models with the lower result reported as governing — neither is ACI 318-19</td>
           </tr>
         </tbody>
       </table>

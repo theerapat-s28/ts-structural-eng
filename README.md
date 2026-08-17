@@ -65,7 +65,8 @@ src/
 ├── strengthening/        # Strengthening methods
 │   ├── index.ts
 │   ├── rc-beam-steel-plate-jacketing.ts   # Moment capacity before/after plate jacketing
-│   └── rc-beam-plate-interface-bolts.ts  # Interface shear flow and required interface bolts
+│   ├── rc-beam-plate-interface-bolts.ts  # Interface shear flow and required interface bolts
+│   └── rc-beam-side-plate-shear.ts       # Shear capacity before/after bolted side plates (two models)
 ├── core/                 # Shared infrastructure
 │   ├── index.ts
 │   ├── constants/        # RC design constants (ACI 318)
@@ -124,6 +125,14 @@ Summarised below; see the [full API reference](https://theerapat-s28.github.io/t
 - **`plateInterfaceBoltRequirement(input)`** — Computes the required bolt pitch and count at each interface, taking the larger of the shear-flow requirement (`s = n·φVbolt / q`) and the count needed to develop the full plate yield force, and reports which one governs.
 
 Both plates are independently optional: a plate counts as present only when its width and thickness are both positive, so the same functions cover a bottom-only jacket and a top-and-bottom jacket. Use `hasTopPlate(props)` / `hasBottomPlate(props)` to test for presence.
+
+Plates bolted to the sides of the web strengthen the beam in shear instead. ACI 318-19 has no provisions for steel side plates, so two independent models are offered and both return a `before` / `after` pair of `phiVn` (kN) for a continuous plate or discrete strips, with the plate contribution limited by the bolt anchorage and by the ACI 318-19 22.5.1.2 web-crushing cap. Use `hasSidePlate(props)` to test for presence.
+
+- **`sidePlateShearCapacityByWebYielding(section, plates)`** — Takes each plate as a supplementary web reaching the von Mises shear yield stress `0.6·fy` (AISC 360 G2.1), and warns on plate slenderness beyond `2.24·√(Es/fy)`.
+- **`sidePlateShearCapacityByTensionTie(section, plates)`** — Takes each plate as a tension tie crossing the diagonal crack, per the bonded shear reinforcement model of ACI 440.2R-17 §11.4 with steel in place of FRP: `ffe = min(fy, Es·0.004)` and `psi_f = 0.85`. Supports inclined strips.
+
+ACI 440.2R-17 11.4.2 (spacing, which defers to the ACI 318 limits) and 11.4.3 (`Vs + Vf ≤ 0.66·√f'c·bw·d`) are verified against the guide; the subsections carrying the 0.004 strain cap and `psi_f` are still cited at §11.4 only. See the citation-status note at the top of `src/strengthening/rc-beam-side-plate-shear.ts`.
+- **`compareSidePlateShearCapacity(section, plates)`** — Runs both models and reports the lower `phiVn` as `governing`; the intended entry point for a conservative design capacity.
 
 ### General Utilities
 

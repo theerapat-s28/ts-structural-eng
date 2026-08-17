@@ -69,4 +69,14 @@ export const Errors: Record<string, RCDesignErrorType> = {
     message:
       "No valid cracked neutral axis was found within the concrete depth; check the section and plate properties.",
   },
+  SIDE_PLATE_GEOMETRY_INVALID: {
+    code: 205,
+    message:
+      "Inconsistent side plate geometry; thickness, engaged depth, fy and sides must be positive, the depth must fit within the section, and a stripped layout requires a positive width and spacing.",
+  },
+  STRENGTHENED_SHEAR_NO_HEADROOM: {
+    code: 206,
+    message:
+      "Existing Vs already reaches 0.66*sqrt(fc')*bw*d (ACI318-19, 22.5.1.2); the web crushes before any added side plate force can be developed, so shear strengthening cannot be realised on this section.",
+  },
 };

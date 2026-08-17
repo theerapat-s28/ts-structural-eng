@@ -54,6 +54,32 @@ export const MAX_ANCHOR_FUTA = 860; // MPa
 // ACI 318-19 17.9.2: min center-to-center spacing of cast-in anchors = 4 * da
 export const MIN_ANCHOR_SPACING_DIAMETER_FACTOR = 4;
 
+// Default elastic modulus of structural steel plate, used when the plate props omit Es
+export const DEFAULT_PLATE_ELASTIC_MODULUS = 200000; // MPa
+
+// AISC 360 G2.1 / von Mises: shear yield stress of a steel web = 0.6 * Fy
+export const PLATE_SHEAR_YIELD_COEFFICIENT = 0.6;
+
+// AISC 360 G2.1(a): a web of slenderness h/tw <= 2.24*sqrt(E/Fy) reaches shear
+// yielding before shear buckling
+export const PLATE_SHEAR_SLENDERNESS_COEFFICIENT = 2.24; // * sqrt(Es / fy)
+
+// ACI 440.2R-17, 11.4: effective strain in bonded shear reinforcement is capped
+// to preserve aggregate interlock in the concrete. Subsection unverified — see the
+// TODO in strengthening/rc-beam-side-plate-shear.ts.
+export const SIDE_PLATE_EFFECTIVE_STRAIN_LIMIT = 0.004;
+
+// ACI 440.2R-17, 11.4: additional reduction factor psi_f for two-sided bonded
+// shear strengthening (not fully wrapped). Subsection unverified — see the TODO in
+// strengthening/rc-beam-side-plate-shear.ts.
+export const SIDE_PLATE_REDUCTION_FACTOR_PSI = 0.85;
+
+// Both faces of the web plated, unless the caller says otherwise
+export const DEFAULT_SIDE_PLATE_SIDES = 2;
+
+// Vertical strips, unless the caller gives an inclination
+export const DEFAULT_SIDE_PLATE_ANGLE = 90; // degrees from the beam axis
+
 // Practical detailing limit on bolt pitch along a bonded strengthening plate,
 // so the plate is restrained against local buckling / peeling between fasteners
 export const MAX_PLATE_BOLT_SPACING = 300; // mm

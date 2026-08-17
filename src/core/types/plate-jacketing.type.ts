@@ -44,3 +44,46 @@ export interface PlateInterfaceBoltInput extends PlateShearFlowInput {
   boltsPerRow: number; // bolts across the plate width at each pitch location
   transferLength: number; // mm, length over which the plate force is transferred
 }
+
+/**
+ * How the side plates are laid out along the span.
+ *
+ * `"continuous"` is an unbroken plate over the strengthened length; `"strips"`
+ * are discrete plates of width `width` repeating at pitch `spacing`, acting like
+ * external stirrups.
+ */
+export type SidePlateConfiguration = "continuous" | "strips";
+
+/**
+ * Bolt group anchoring the side plates to the web.
+ *
+ * `rowSpacing` is the horizontal pitch of the vertical bolt rows along the span;
+ * for a stripped layout it is normally the strip spacing itself. `boltsPerRow`
+ * counts the bolts in one vertical row, on one face of the beam.
+ */
+export interface SidePlateAnchorage {
+  bolt: BoltProps;
+  boltsPerRow: number; // bolts in one vertical row, one face
+  rowSpacing: number; // mm, horizontal pitch of the bolt rows along the span
+}
+
+export interface SidePlateShearProps {
+  fy: number; // MPa, plate yield strength
+  Es?: number; // MPa, plate elastic modulus (default: 200000)
+  thickness: number; // tp, mm
+  depth: number; // dp, mm, vertical depth of plate engaged in shear
+  configuration: SidePlateConfiguration;
+  width?: number; // wp, mm, strip width (required for "strips")
+  spacing?: number; // s, mm, strip pitch along the span, centreline to centreline (required for "strips")
+  angle?: number; // degrees from the beam axis, strips only (default: 90)
+  sides?: 1 | 2; // faces plated (default: 2)
+  anchorage?: SidePlateAnchorage; // omit to report the unanchored plate capacity
+}
+
+/**
+ * A side plate counts as present only when both its thickness and engaged depth
+ * are positive.
+ */
+export function hasSidePlate(props: SidePlateShearProps): boolean {
+  return props.thickness > 0 && props.depth > 0;
+}

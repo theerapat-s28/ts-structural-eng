@@ -156,6 +156,26 @@ Shown at the right of export card headers — where the export comes from and ho
 
 Public exports use the accent style; internal helpers (documented for contributors) use purple.
 
+### Standard Badges
+
+Shown after the scope badge in an export card header, naming the standard a calculation is based on.
+Use it **only** where that standard is not ACI 318-19 — an export whose basis is the code needs no
+badge, so the badge itself is the signal that the reader should check the basis before relying on
+the result.
+
+```html
+<span class="std-badge" title="Basis: AISC 360 G2.1 — not ACI 318-19">AISC 360 G2.1</span>
+```
+
+- Yellow (`--yellow` on `--yellow-dim`), monospace, same pill shape as the scope badge.
+- Place it **after** `.scope-badge`, which carries the `margin-left: auto` that pushes both right.
+- Always pair it with a `title` attribute spelling out the basis and what it is *not*.
+- Write the standard the way an engineer would cite it (`AISC 360 G2.1`, `ACI 440.2R-17 §11.4`), not
+  in the compressed form used in runtime `reference` strings (`AISC360-22, G2.1`). Alert text keeps
+  the compressed form so it matches the warnings the library actually returns.
+- Any page carrying such a badge must also give the reader a **basis table** — quantity, basis,
+  whether it is code or an adaptation — near the top of that section.
+
 ### Page Header
 
 Always the first element inside `main.main`. Includes the import path tag, title, and description.
@@ -389,6 +409,7 @@ Sidebar `href` values must match the `id` of the target element exactly.
 - [ ] Param tables use `.req` / `.opt` spans and a Unit column
 - [ ] Code blocks use syntax-highlight spans (`.k`, `.s`, `.n`, `.b`, `.nl`, `.c`) and unit comments on numeric inputs
 - [ ] Warnings documented in `.alert--warn` blocks citing the ACI clause
+- [ ] Any calculation not based on ACI 318-19 carries a `.std-badge` and a basis table
 - [ ] Thrown `RCDesignError`s documented in `.alert--error` blocks naming the error code
 - [ ] Export Summary table is the last section
 - [ ] Sidebar starts with the `← All modules` link back to `../`
