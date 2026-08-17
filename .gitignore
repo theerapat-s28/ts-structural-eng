@@ -35,6 +35,9 @@ Thumbs.db
 # Coverage
 coverage/
 
+# Reference copies of design standards (ACI, AISC, …) — copyrighted, never commit
+related-standards/
+
 # Misc
 coverage-final.json
 report.*.json
