@@ -1,6 +1,6 @@
 {
   "name": "@theerapat-s28/ts-structural-eng-tools",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "TypeScript structural-engineering helper functions and beam design utilities",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
