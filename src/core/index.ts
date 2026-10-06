@@ -21,6 +21,7 @@ export type {
   SidePlateShearProps,
 } from "./types/plate-jacketing.type";
 export { hasTopPlate, hasBottomPlate, hasSidePlate } from "./types/plate-jacketing.type";
+export type { SectionProperties } from "./types/section-properties.type";
 export type { Warnings, calculationResult } from "./types/output-message.type";
 export type { unit } from "./types/unit.type";
 
@@ -36,5 +37,15 @@ export {
   SIDE_PLATE_REDUCTION_FACTOR_PSI,
 } from "./constants/rc.constant";
 
+export {
+  CONCRETE_POISSON_RATIO,
+  BEAM_INERTIA_MODIFIER,
+  COLUMN_INERTIA_MODIFIER,
+  VERTICAL_MEMBER_TOLERANCE,
+  SINGULARITY_TOLERANCE,
+  EQUILIBRIUM_TOLERANCE,
+} from "./constants/frame.constant";
+
 // Errors
 export { RCDesignError, Errors } from "./errors/rc-design.error";
+export { FrameAnalysisError, FrameErrors } from "./errors/frame-analysis.error";

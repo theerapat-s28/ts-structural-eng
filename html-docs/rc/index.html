@@ -375,6 +375,9 @@
       <div class="nav-section-label">Bar Layout</div>
       <a href="#rect-beam-bar-layout"><span class="mbadge m-fn">FN</span> rectBeamBarLayout</a>
 
+      <div class="nav-section-label">Section Properties</div>
+      <a href="#rect-beam-to-section-properties"><span class="mbadge m-fn">FN</span> rectBeamToSectionProperties</a>
+
       <div class="nav-section-label">Material Helpers</div>
       <a href="#concrete-beta"><span class="mbadge m-fn">FN</span> concreteBeta</a>
       <a href="#concrete-elastic-modulus"><span class="mbadge m-fn">FN</span> concreteElasticModulus</a>
@@ -879,6 +882,80 @@
     </div>
 
     <!-- ── Material helpers ── -->
+    <div class="section" id="section-properties">
+      <div class="section__title">Section Properties <code style="font-size:13px">rc-section-properties.ts</code></div>
+
+      <div class="export-card" id="rect-beam-to-section-properties">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">rectBeamToSectionProperties(section, options?)</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">
+            Converts a rectangular RC section into the <code>SectionProperties</code> (E, G, A, I22, I33, J) used by
+            <a href="../frame/#analyze-frame" style="color:var(--accent)">analyzeFrame</a>. Local 2 is taken along the depth
+            <code>h</code> and local 3 along the width <code>b</code>, so <code>I33 = m·b·h³/12</code> (major axis) and
+            <code>I22 = m·h·b³/12</code>, with <code>m</code> the inertia modifier. The modifier applies to the bending
+            inertias only; <code>A</code> and <code>J</code> are gross values.
+          </p>
+
+          <div class="sub-label">Parameters</div>
+          <table class="param-table">
+            <thead>
+              <tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>section.fc_</td><td>number</td><td>MPa</td><td><span class="req">Required</span></td><td>Concrete compressive strength; Ec comes from <code>concreteElasticModulus</code></td></tr>
+              <tr><td>section.b</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Section width</td></tr>
+              <tr><td>section.h</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Section height</td></tr>
+              <tr><td>options.member</td><td>"beam" | "column" | "gross"</td><td>—</td><td><span class="opt">Optional</span></td><td>Picks the modifier 0.35 (beam, default), 0.70 (column) or 1.0 (gross) — ACI318-19, Table 6.6.3.1.1(a)</td></tr>
+              <tr><td>options.inertiaModifier</td><td>number</td><td>—</td><td><span class="opt">Optional</span></td><td>Overrides the modifier chosen by <code>member</code></td></tr>
+              <tr><td>options.poissonRatio</td><td>number</td><td>—</td><td><span class="opt">Optional</span></td><td>For <code>G = E / (2(1 + ν))</code> (default 0.2)</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Example</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre>
+<span class="b">const</span> { sectionProperties } = <span class="u">rectBeamToSectionProperties</span>(
+  { <span class="k">fc_</span>: <span class="n">28</span>, <span class="k">b</span>: <span class="n">300</span>, <span class="k">h</span>: <span class="n">600</span> },  <span class="c">// MPa, mm, mm</span>
+  { <span class="k">member</span>: <span class="s">"beam"</span> },
+);</pre>
+          </div>
+
+          <div class="sub-label">Returns</div>
+          <div class="code-block">
+            <div class="code-block__label">Result</div>
+            <pre>
+{
+  <span class="k">sectionProperties</span>: {
+    <span class="k">E</span>: <span class="n">24870.062324007155</span>,    <span class="c">// MPa</span>
+    <span class="k">G</span>: <span class="n">10362.525968336315</span>,    <span class="c">// MPa</span>
+    <span class="k">A</span>: <span class="n">180000</span>,                <span class="c">// mm²</span>
+    <span class="k">I22</span>: <span class="n">472500000</span>,           <span class="c">// mm⁴, 0.35·h·b³/12</span>
+    <span class="k">I33</span>: <span class="n">1890000000</span>,          <span class="c">// mm⁴, 0.35·b·h³/12</span>
+    <span class="k">J</span>: <span class="n">3707859375</span>,            <span class="c">// mm⁴, gross Saint-Venant constant</span>
+  },
+  <span class="k">calculationDetails</span>: { <span class="k">inertiaModifier</span>: <span class="n">0.35</span>, <span class="k">poissonRatio</span>: <span class="n">0.2</span> },
+  <span class="k">unit</span>: <span class="s">"N, mm, MPa"</span>,
+  <span class="k">warnings</span>: []
+}</pre>
+          </div>
+          <div class="alert alert--info">
+            <span>ℹ️</span>
+            <span>The torsion constant of a solid rectangle uses the standard approximation <code>J = a·t³·(1/3 − 0.21·(t/a)·(1 − t⁴/(12a⁴)))</code>, with <code>a</code> the longer and <code>t</code> the shorter side. It is not reduced for cracking.</span>
+          </div>
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Pushes a warning when the gross inertia is used (<code>member: "gross"</code> or <code>inertiaModifier: 1</code>) — <strong>ACI318-19, 6.6.3.1.1</strong>: elastic analysis at factored load level should use the reduced moments of inertia.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
     <div class="section" id="section-helpers">
       <div class="section__title">Material Helpers <code style="font-size:13px">general.ts</code></div>
 
@@ -1049,6 +1126,12 @@
             <td class="path-cell">rectBeamBarLayout</td>
             <td>{ d, d_, top, bottom, unit, warnings }</td>
             <td>Layered bar arrangement with resulting effective depths</td>
+          </tr>
+          <tr>
+            <td><span class="kind m-fn">FN</span></td>
+            <td class="path-cell">rectBeamToSectionProperties</td>
+            <td>{ sectionProperties, calculationDetails, unit, warnings }</td>
+            <td>E, G, A, I22, I33, J of a rectangular section for frame analysis</td>
           </tr>
           <tr>
             <td><span class="kind m-fn">FN</span></td>

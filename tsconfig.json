@@ -42,6 +42,9 @@
       ],
       "@app-strg/*": [
         "src/strengthening/*"
+      ],
+      "@app-frame/*": [
+        "src/frame/*"
       ]
     },
   },

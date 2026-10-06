@@ -8,7 +8,44 @@ export {
   concreteBeta,
   concreteElasticModulus,
   psiToMpa,
+  rectBeamToSectionProperties,
 } from "./rc";
+export type { SectionPropertiesOptions } from "./rc";
+
+// Frame analysis
+export {
+  analyzeFrame,
+  beam3dLocalStiffness,
+  beam3dLocalStiffnessRightHanded,
+  memberAxes,
+  memberDemandEnvelope,
+} from "./frame";
+export type {
+  AnalyzeFrameOptions,
+  FrameId,
+  FrameNode,
+  DofRestraint,
+  Restraint,
+  MemberEndRelease,
+  Member,
+  NodalLoad,
+  LoadDirection,
+  UniformMemberLoad,
+  PointMemberLoad,
+  MemberLoad,
+  FrameModel,
+  NodalDisplacement,
+  NodalReaction,
+  MemberEndForce,
+  MemberEndForces,
+  MemberStation,
+  StationComponent,
+  ExtremeValue,
+  MemberDiagram,
+  FrameResult,
+  MemberDemandEnvelope,
+  DemandEnvelopeOptions,
+} from "./frame";
 
 // Strengthening
 export {
@@ -39,6 +76,7 @@ export type {
   SidePlateConfiguration,
   SidePlateAnchorage,
   SidePlateShearProps,
+  SectionProperties,
   Warnings,
   calculationResult,
   unit,
@@ -57,9 +95,29 @@ export {
   PLATE_SHEAR_YIELD_COEFFICIENT,
   SIDE_PLATE_EFFECTIVE_STRAIN_LIMIT,
   SIDE_PLATE_REDUCTION_FACTOR_PSI,
+  CONCRETE_POISSON_RATIO,
+  BEAM_INERTIA_MODIFIER,
+  COLUMN_INERTIA_MODIFIER,
+  VERTICAL_MEMBER_TOLERANCE,
+  SINGULARITY_TOLERANCE,
+  EQUILIBRIUM_TOLERANCE,
   RCDesignError,
   Errors,
+  FrameAnalysisError,
+  FrameErrors,
 } from "./core";
 
 // Utilities
-export { solveQuadratic, roundToDecimalPlaces, mergeWarnings } from "./utils";
+export {
+  solveQuadratic,
+  roundToDecimalPlaces,
+  mergeWarnings,
+  zeros,
+  identity,
+  transpose,
+  matMul,
+  matVec,
+  choleskySolve,
+  solveLinearSystem,
+} from "./utils";
+export type { Matrix } from "./utils";

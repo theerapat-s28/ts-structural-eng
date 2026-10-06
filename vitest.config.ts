@@ -13,6 +13,7 @@ export default defineConfig({
             "@app-utils": path.resolve(__dirname, "src/utils"),
             "@app-rc": path.resolve(__dirname, "src/rc"),
             "@app-strg": path.resolve(__dirname, "src/strengthening"),
+            "@app-frame": path.resolve(__dirname, "src/frame"),
         },
     },
 });
