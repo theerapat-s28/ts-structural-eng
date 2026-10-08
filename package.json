@@ -17,9 +17,9 @@
       "types": "./dist/strengthening/index.d.ts",
       "default": "./dist/strengthening/index.js"
     },
-    "./frame": {
-      "types": "./dist/frame/index.d.ts",
-      "default": "./dist/frame/index.js"
+    "./fea": {
+      "types": "./dist/fea/index.d.ts",
+      "default": "./dist/fea/index.js"
     },
     "./core": {
       "types": "./dist/core/index.d.ts",

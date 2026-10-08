@@ -1,7 +1,7 @@
 import {
   beam3dLocalStiffness,
   beam3dLocalStiffnessRightHanded,
-} from "@app-frame/elements/beam-3d-stiffness";
+} from "@app-fea/frame/elements/beam-3d-stiffness";
 import { matVec } from "@app-utils/matrix";
 
 // Distinct values so a swapped property shows up as a wrong cell

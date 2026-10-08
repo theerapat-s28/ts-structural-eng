@@ -393,7 +393,7 @@
       <div class="nav-section-label">Modules</div>
       <a href="rc/"><span class="mbadge m-fn">RC</span> RC Beam Design</a>
       <a href="strengthening/"><span class="mbadge m-const">STRG</span> Strengthening</a>
-      <a href="frame/"><span class="mbadge m-type">FRAME</span> Frame Analysis</a>
+      <a href="fea/"><span class="mbadge m-type">FRAME</span> Frame Analysis</a>
 
       <div class="nav-section-label">Reference</div>
       <a href="#units-reference"><span style="font-size:14px">◇</span> Units &amp; conventions</a>
@@ -427,7 +427,7 @@
       </div>
       <div class="alert alert--info">
         <span>ℹ️</span>
-        <span>Code-provision violations that leave the calculation valid are returned as entries in the <code>warnings</code> array, each citing the exact ACI clause. Broken calculation assumptions <strong>throw</strong> an <code>RCDesignError</code> (or a <code>FrameAnalysisError</code> in the frame module) instead — a result is never silently returned when its assumptions failed.</span>
+        <span>Code-provision violations that leave the calculation valid are returned as entries in the <code>warnings</code> array, each citing the exact ACI clause. Broken calculation assumptions <strong>throw</strong> an <code>RCDesignError</code> (or a <code>FrameAnalysisError</code> in the fea module) instead — a result is never silently returned when its assumptions failed.</span>
       </div>
 
       <div class="sub-label" style="margin-top:20px">Modules</div>
@@ -457,10 +457,10 @@
             compareSidePlateShearCapacity
           </div>
         </a>
-        <a class="module-card" href="frame/">
+        <a class="module-card" href="fea/">
           <div class="module-card__head">
             <span class="kind m-fn">FN</span>
-            <span class="module-card__name">frame</span>
+            <span class="module-card__name">fea</span>
           </div>
           <div class="module-card__desc">Linear-elastic 3D frame analysis by the direct stiffness method — member loads, end releases, spring supports, force diagrams — plus demand envelopes that feed the RC capacity functions.</div>
           <div class="module-card__exports">
@@ -488,7 +488,7 @@ npm install @theerapat-s28/ts-structural-eng-tools</pre>
         <pre><span class="k">import</span> { rectBeamMomentCapacity } <span class="k">from</span> <span class="s">"@theerapat-s28/ts-structural-eng-tools"</span>;
 <span class="k">import</span> { rectBeamMomentCapacity } <span class="k">from</span> <span class="s">"@theerapat-s28/ts-structural-eng-tools/rc"</span>;
 <span class="k">import</span> { calculateSteelJacketedBeamMomentCapacity } <span class="k">from</span> <span class="s">"@theerapat-s28/ts-structural-eng-tools/strengthening"</span>;
-<span class="k">import</span> { analyzeFrame } <span class="k">from</span> <span class="s">"@theerapat-s28/ts-structural-eng-tools/frame"</span>;
+<span class="k">import</span> { analyzeFrame } <span class="k">from</span> <span class="s">"@theerapat-s28/ts-structural-eng-tools/fea"</span>;
 <span class="k">import</span> { RCDesignError } <span class="k">from</span> <span class="s">"@theerapat-s28/ts-structural-eng-tools/core"</span>;
 <span class="k">import</span> { roundToDecimalPlaces } <span class="k">from</span> <span class="s">"@theerapat-s28/ts-structural-eng-tools/utils"</span>;</pre>
       </div>
@@ -567,8 +567,8 @@ console.<span class="nl">log</span>(result.warnings);            <span class="c"
             <td>Steel-plate jacketing, side plate shear strengthening (non-code models per <strong>AISC 360 G2.1</strong> / <strong>ACI 440.2R-17 §11.4</strong>), and plate-to-concrete interface bolting</td>
           </tr>
           <tr>
-            <td class="path-cell">./frame</td>
-            <td><a href="frame/">Frame Analysis</a></td>
+            <td class="path-cell">./fea</td>
+            <td><a href="fea/">Frame Analysis</a></td>
             <td>3D direct-stiffness frame analysis, member loads and releases, force diagrams, design-demand envelopes, reference beam stiffness matrix</td>
           </tr>
           <tr>

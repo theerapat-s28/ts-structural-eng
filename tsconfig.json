@@ -43,8 +43,8 @@
       "@app-strg/*": [
         "src/strengthening/*"
       ],
-      "@app-frame/*": [
-        "src/frame/*"
+      "@app-fea/*": [
+        "src/fea/*"
       ]
     },
   },

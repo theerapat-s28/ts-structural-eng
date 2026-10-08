@@ -1,6 +1,6 @@
 import { FrameAnalysisError, FrameErrors } from "@app-core/errors/frame-analysis.error";
-import { analyzeFrame } from "@app-frame/solver/analyze-frame";
-import type { FrameModel } from "@app-frame/types/model.type";
+import { analyzeFrame } from "@app-fea/frame/solver/analyze-frame";
+import type { FrameModel } from "@app-fea/frame/types/model.type";
 
 const sec = { E: 200000, G: 80000, A: 5000, I22: 8e7, I33: 8e7, J: 1e7 };
 const fixed = { ux: true, uy: true, uz: true, rx: true, ry: true, rz: true };

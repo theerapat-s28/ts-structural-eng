@@ -1,6 +1,6 @@
-import { analyzeFrame } from "@app-frame/solver/analyze-frame";
-import type { FrameModel, Member } from "@app-frame/types/model.type";
-import type { FrameResult } from "@app-frame/types/results.type";
+import { analyzeFrame } from "@app-fea/frame/solver/analyze-frame";
+import type { FrameModel, Member } from "@app-fea/frame/types/model.type";
+import type { FrameResult } from "@app-fea/frame/types/results.type";
 import type { SectionProperties } from "@app-core/types/section-properties.type";
 
 const E = 200000; // MPa

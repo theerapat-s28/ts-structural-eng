@@ -11,7 +11,7 @@ Full API reference, with parameter tables, worked examples, warnings and error c
 - **[API reference](https://theerapat-s28.github.io/ts-structural-eng/)** — landing page
 - [RC Beam Design](https://theerapat-s28.github.io/ts-structural-eng/rc/) — `@theerapat-s28/ts-structural-eng-tools/rc`
 - [Strengthening](https://theerapat-s28.github.io/ts-structural-eng/strengthening/) — `@theerapat-s28/ts-structural-eng-tools/strengthening`
-- [Frame Analysis](https://theerapat-s28.github.io/ts-structural-eng/frame/) — `@theerapat-s28/ts-structural-eng-tools/frame`
+- [FEA — Frame Analysis](https://theerapat-s28.github.io/ts-structural-eng/fea/) — `@theerapat-s28/ts-structural-eng-tools/fea`
 
 The pages are served from [`html-docs/`](https://github.com/theerapat-s28/ts-structural-eng/tree/main/html-docs) via GitHub Pages.
 
@@ -69,13 +69,15 @@ src/
 │   ├── rc-beam-steel-plate-jacketing.ts   # Moment capacity before/after plate jacketing
 │   ├── rc-beam-plate-interface-bolts.ts  # Interface shear flow and required interface bolts
 │   └── rc-beam-side-plate-shear.ts       # Shear capacity before/after bolted side plates (two models)
-├── frame/                # 3D frame analysis (direct stiffness method)
+├── fea/                  # Finite-element analysis
 │   ├── index.ts
-│   ├── elements/         # Reference beam stiffness matrix, fixed-end forces, end-release condensation
-│   ├── transformation/   # ETABS-style local axes and the 12×12 transformation
-│   ├── solver/           # Assembly, boundary conditions, analyzeFrame
-│   ├── post/             # Member force diagrams and demand envelopes
-│   └── types/            # Model and result types
+│   └── frame/            # 3D frame analysis (direct stiffness method)
+│       ├── index.ts
+│       ├── elements/         # Reference beam stiffness matrix, fixed-end forces, end-release condensation
+│       ├── transformation/   # ETABS-style local axes and the 12×12 transformation
+│       ├── solver/           # Assembly, boundary conditions, analyzeFrame
+│       ├── post/             # Member force diagrams and demand envelopes
+│       └── types/            # Model and result types
 ├── core/                 # Shared infrastructure
 │   ├── index.ts
 │   ├── constants/        # RC design constants (ACI 318)
@@ -91,14 +93,14 @@ examples/
 tests/
 ├── rc/                   # Tests for RC module
 ├── strengthening/        # Tests for strengthening module
-├── frame/                # Tests for frame analysis
+├── fea/frame/            # Tests for frame analysis
 └── utils/                # Tests for utilities
 html-docs/                # HTML API reference, deployed to GitHub Pages
 ├── DESIGN.md             # Style guide for the doc pages
 ├── index.html            # Landing page
 ├── rc/index.html
 ├── strengthening/index.html
-└── frame/index.html
+└── fea/index.html
 ```
 
 ## TypeScript path aliases
@@ -112,7 +114,7 @@ This project uses `baseUrl` + `paths` for clean imports:
   "@app-utils/*": ["src/utils/*"],
   "@app-rc/*": ["src/rc/*"],
   "@app-strg/*": ["src/strengthening/*"],
-  "@app-frame/*": ["src/frame/*"]
+  "@app-fea/*": ["src/fea/*"]
 }
 ```
 
@@ -147,9 +149,9 @@ Plates bolted to the sides of the web strengthen the beam in shear instead. ACI 
 ACI 440.2R-17 11.4.2 (spacing, which defers to the ACI 318 limits) and 11.4.3 (`Vs + Vf ≤ 0.66·√f'c·bw·d`) are verified against the guide; the subsections carrying the 0.004 strain cap and `psi_f` are still cited at §11.4 only. See the citation-status note at the top of `src/strengthening/rc-beam-side-plate-shear.ts`.
 - **`compareSidePlateShearCapacity(section, plates)`** — Runs both models and reports the lower `phiVn` as `governing`; the intended entry point for a conservative design capacity.
 
-### Frame Analysis
+### FEA — Frame Analysis
 
-Linear-elastic 3D frame analysis by the direct stiffness method, imported from `@theerapat-s28/ts-structural-eng-tools/frame`. Global axes X, Y, Z (Z up) and ETABS-style local axes 1, 2, 3; inputs in mm, MPa, kN and kN·m, results in kN, kN·m, mm and rad.
+Linear-elastic 3D frame analysis by the direct stiffness method, imported from `@theerapat-s28/ts-structural-eng-tools/fea`. Global axes X, Y, Z (Z up) and ETABS-style local axes 1, 2, 3; inputs in mm, MPa, kN and kN·m, results in kN, kN·m, mm and rad.
 
 - **`analyzeFrame(model, options?)`** — Solves one load case (nodal loads, uniform and point member loads in local or global directions, end releases, fixed or spring supports) and returns displacements, reactions, member end forces, force diagrams (`N`, `V2`, `V3`, `T`, `M2`, `M3`) and a global equilibrium check. Invalid models and mechanisms throw `FrameAnalysisError` (codes 301–308).
 - **`memberDemandEnvelope(result, memberId, options?)`** — Reduces a member's diagrams to `MuPositive`, `MuNegative`, `Vu` (optionally at distance `d` from the supports) and `Nu`, for the RC capacity functions.

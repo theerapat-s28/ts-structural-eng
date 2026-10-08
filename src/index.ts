@@ -12,14 +12,14 @@ export {
 } from "./rc";
 export type { SectionPropertiesOptions } from "./rc";
 
-// Frame analysis
+// FEA — frame analysis
 export {
   analyzeFrame,
   beam3dLocalStiffness,
   beam3dLocalStiffnessRightHanded,
   memberAxes,
   memberDemandEnvelope,
-} from "./frame";
+} from "./fea";
 export type {
   AnalyzeFrameOptions,
   FrameId,
@@ -45,7 +45,7 @@ export type {
   FrameResult,
   MemberDemandEnvelope,
   DemandEnvelopeOptions,
-} from "./frame";
+} from "./fea";
 
 // Strengthening
 export {

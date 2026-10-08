@@ -28,14 +28,15 @@ Layered modules, each with a barrel `index.ts`, dependencies flowing downward on
 - `src/utils/` — generic helpers (quadratic solver, rounding, warning merging). Depends only on core types.
 - `src/rc/` — RC beam design calculations. Depends on core + utils.
 - `src/strengthening/` — strengthening methods. Builds on `rc/`: e.g. steel plate jacketing converts plates to equivalent rebar area and delegates to `rectBeamMomentCapacity` rather than reimplementing capacity math. New strengthening methods should follow this transform-then-delegate pattern where possible.
+- `src/fea/` — finite-element analysis; `fea/frame/` holds 3D frame analysis by the direct stiffness method. Depends on core + utils.
 
 ### Path aliases — three places must stay in sync
 
-`@app-core/*`, `@app-types/*`, `@app-utils/*`, `@app-rc/*`, `@app-strg/*` are defined in **tsconfig.json** (`paths`) and duplicated in **vitest.config.ts** (`resolve.alias`). Runtime resolution for `pnpm run dev` comes from `tsconfig-paths`. Adding or renaming an alias requires updating both config files.
+`@app-core/*`, `@app-types/*`, `@app-utils/*`, `@app-rc/*`, `@app-strg/*`, `@app-fea/*` are defined in **tsconfig.json** (`paths`) and duplicated in **vitest.config.ts** (`resolve.alias`). Runtime resolution for `pnpm run dev` comes from `tsconfig-paths`. Adding or renaming an alias requires updating both config files.
 
 ### npm packaging
 
-`package.json` declares subpath exports (`.`, `./rc`, `./strengthening`, `./core`, `./utils`) pointing into `dist/`. A new top-level module under `src/` needs: its own barrel `index.ts`, re-export from `src/index.ts`, and a matching entry in `package.json` `exports`. Anything not re-exported from a barrel is effectively private. Only `dist/`, `README.md`, and `LICENSE` are published (`files` field).
+`package.json` declares subpath exports (`.`, `./rc`, `./strengthening`, `./fea`, `./core`, `./utils`) pointing into `dist/`. A new top-level module under `src/` needs: its own barrel `index.ts`, re-export from `src/index.ts`, and a matching entry in `package.json` `exports`. Anything not re-exported from a barrel is effectively private. Only `dist/`, `README.md`, and `LICENSE` are published (`files` field).
 
 The publish build uses `tsconfig.build.json` (extends the main tsconfig but roots at `src/` and excludes tests) followed by `tsc-alias`, which rewrites the `@app-*` path aliases into relative paths in the emitted JS — without it the published package cannot resolve its own imports. The main `tsconfig.json` stays as-is for editor/test tooling.
 
@@ -57,7 +58,7 @@ Vitest with `globals: true`; test files live in `tests/` mirroring the `src/` la
 
 ## Documentation
 
-User-facing HTML reference pages live at `html-docs/<module-name>/index.html` (one per top-level module: `rc`, `strengthening`, …), with a landing page at `html-docs/index.html`, styled per the guide in `html-docs/DESIGN.md` — read it before touching any doc page.
+User-facing HTML reference pages live at `html-docs/<module-name>/index.html` (one per top-level module: `rc`, `strengthening`, `fea`, …), with a landing page at `html-docs/index.html`, styled per the guide in `html-docs/DESIGN.md` — read it before touching any doc page.
 
 `html-docs/` is deployed verbatim to GitHub Pages (<https://theerapat-s28.github.io/ts-structural-eng/>) by `.github/workflows/pages.yml` on every push to `main` that touches it. The pages are plain static files linked relatively — there is no build step, so never introduce a `/`-rooted path or anything needing a bundler.
 

@@ -1,6 +1,6 @@
-import { analyzeFrame, memberDemandEnvelope } from "@app-frame/index";
+import { analyzeFrame, memberDemandEnvelope } from "@app-fea/frame/index";
 import { rectBeamToSectionProperties, rectBeamMomentCapacity } from "@app-rc/index";
-import type { FrameModel } from "@app-frame/types/model.type";
+import type { FrameModel } from "@app-fea/frame/types/model.type";
 
 describe("RC beam → frame analysis → demand envelope", () => {
   // Two 5 m spans, 300×600 beam, 40 kN/m factored; rollers at A and C, pin at B
