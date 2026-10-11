@@ -9,4 +9,5 @@ export interface SectionProperties {
   I22: number; // mm⁴, second moment about local 2 (bending in the 1–3 plane, U3–R2)
   I33: number; // mm⁴, second moment about local 3 (bending in the 1–2 plane, U2–R3; major axis)
   J: number; // mm⁴, Saint-Venant torsion constant (about local 1)
+  unitWeight?: number; // kN/m³, used by load-case self-weight; required only when self-weight is applied
 }

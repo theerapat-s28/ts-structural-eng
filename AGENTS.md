@@ -28,7 +28,7 @@ Layered modules, each with a barrel `index.ts`, dependencies flowing downward on
 - `src/utils/` — generic helpers (quadratic solver, rounding, warning merging). Depends only on core types.
 - `src/rc/` — RC beam design calculations. Depends on core + utils.
 - `src/strengthening/` — strengthening methods. Builds on `rc/`: e.g. steel plate jacketing converts plates to equivalent rebar area and delegates to `rectBeamMomentCapacity` rather than reimplementing capacity math. New strengthening methods should follow this transform-then-delegate pattern where possible.
-- `src/fea/` — finite-element analysis; `fea/frame/` holds 3D frame analysis by the direct stiffness method. Depends on core + utils.
+- `src/fea/` — finite-element analysis; `fea/frame/` holds 3D frame analysis by the direct stiffness method. Depends on core + utils. `analyzeFrame` always runs user-defined load cases and forms combinations by superposition: the system is built and factorised once (`solver/frame-system.ts`), each case is solved into an unrounded `RawState` (`solver/load-case-solver.ts`), combinations superpose raw states and rebuild their diagrams, and rounding happens only in `post/present-state.ts`. Keep new result quantities linear in the loads, or superposition breaks. Every model goes through `validation/validate-model.ts` first: new input fields must be validated there (finite numbers, allowed options) and reported with `details` locating them; the solver stores the stiffness in skyline form (`utils/skyline.ts`) and must not build a dense global matrix.
 
 ### Path aliases — three places must stay in sync
 
@@ -38,7 +38,7 @@ Layered modules, each with a barrel `index.ts`, dependencies flowing downward on
 
 `package.json` declares subpath exports (`.`, `./rc`, `./strengthening`, `./fea`, `./core`, `./utils`) pointing into `dist/`. A new top-level module under `src/` needs: its own barrel `index.ts`, re-export from `src/index.ts`, and a matching entry in `package.json` `exports`. Anything not re-exported from a barrel is effectively private. Only `dist/`, `README.md`, and `LICENSE` are published (`files` field).
 
-The publish build uses `tsconfig.build.json` (extends the main tsconfig but roots at `src/` and excludes tests) followed by `tsc-alias`, which rewrites the `@app-*` path aliases into relative paths in the emitted JS — without it the published package cannot resolve its own imports. The main `tsconfig.json` stays as-is for editor/test tooling.
+The publish build uses `tsconfig.build.json` (extends the main tsconfig but roots at `src/` and excludes tests) followed by `tsc-alias`, which rewrites the `@app-*` path aliases into relative paths in the emitted JS — without it the published package cannot resolve its own imports. The main `tsconfig.json` stays as-is for editor/test tooling. A second pass builds the ES-module output into `dist/esm/` from `tsconfig.esm.json` (`tsc-alias --resolve-full-paths` adds the `.js` extensions ESM needs, and the build writes `dist/esm/package.json` with `"type": "module"`); every `exports` entry has `import` → `dist/esm/…` and `require` → `dist/…`, so a new subpath needs both.
 
 To release a new version, use the `npm-publish` skill (`.claude/skills/npm-publish/SKILL.md`): preflight auth/git checks, lint + test + build, `pnpm version`, dry-run, publish, push tags.
 

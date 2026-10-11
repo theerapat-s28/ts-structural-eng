@@ -1,11 +1,12 @@
 import { FrameAnalysisError, FrameErrors } from "@app-core/errors/frame-analysis.error";
 import { analyzeFrame } from "@app-fea/frame/solver/analyze-frame";
 import type { FrameModel } from "@app-fea/frame/types/model.type";
+import { toLoadCaseModel, type SingleCaseModel } from "./single-case";
 
 const sec = { E: 200000, G: 80000, A: 5000, I22: 8e7, I33: 8e7, J: 1e7 };
 const fixed = { ux: true, uy: true, uz: true, rx: true, ry: true, rz: true };
 
-const base = (): FrameModel => ({
+const base = (): SingleCaseModel => ({
   nodes: [
     { id: 1, x: 0, y: 0, z: 0 },
     { id: 2, x: 3000, y: 0, z: 0 },
@@ -15,7 +16,8 @@ const base = (): FrameModel => ({
   nodalLoads: [{ nodeId: 2, fz: -1 }],
 });
 
-const codeOf = (model: FrameModel): number | undefined => {
+const codeOf = (input: SingleCaseModel | FrameModel): number | undefined => {
+  const model = "loadCases" in input ? input : toLoadCaseModel(input);
   try {
     analyzeFrame(model);
   } catch (e) {
@@ -35,7 +37,7 @@ describe("FrameAnalysisError", () => {
 
   it("uses the 3XX group", () => {
     const codes = Object.values(FrameErrors).map((e) => e.code);
-    expect(codes).toEqual([301, 302, 303, 304, 305, 306, 307, 308]);
+    expect(codes).toEqual([301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314]);
   });
 });
 

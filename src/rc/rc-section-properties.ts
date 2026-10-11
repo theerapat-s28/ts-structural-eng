@@ -2,6 +2,7 @@ import {
   BEAM_INERTIA_MODIFIER,
   COLUMN_INERTIA_MODIFIER,
   CONCRETE_POISSON_RATIO,
+  CONCRETE_UNIT_WEIGHT,
 } from "@app-core/constants/frame.constant";
 import type { Warnings } from "@app-core/types/output-message.type";
 import type { RectBeamSection } from "@app-core/types/rc-beam.type";
@@ -16,6 +17,8 @@ export interface SectionPropertiesOptions {
   inertiaModifier?: number;
   /** Poisson's ratio for G = E / (2(1 + ν)). Default 0.2. */
   poissonRatio?: number;
+  /** Unit weight in kN/m³ for load-case self-weight. Default 24 (common practice, not an ACI value). */
+  unitWeight?: number;
 }
 
 /**
@@ -33,7 +36,8 @@ const rectangleTorsionConstant = (b: number, h: number): number => {
  *
  * Local 2 is taken along the depth `h` and local 3 along the width `b`, so
  * `I33 = m·b·h³/12` (major axis) and `I22 = m·h·b³/12`, where m is the inertia modifier.
- * The modifier is applied to the bending inertias only; A and J are gross values.
+ * The modifier is applied to the bending inertias only; A and J are gross values, and the
+ * unit weight (for self-weight) acts on the gross area.
  *
  * @param section - Rectangular RC section (uses `fc_`, `b` and `h`)
  * @param options - Member type or explicit inertia modifier, Poisson's ratio
@@ -49,6 +53,7 @@ export const rectBeamToSectionProperties = (
     options.inertiaModifier ??
     (member === "beam" ? BEAM_INERTIA_MODIFIER : member === "column" ? COLUMN_INERTIA_MODIFIER : 1);
   const nu = options.poissonRatio ?? CONCRETE_POISSON_RATIO;
+  const unitWeight = options.unitWeight ?? CONCRETE_UNIT_WEIGHT;
   const { fc_, b, h } = section;
 
   if (modifier === 1) {
@@ -67,11 +72,12 @@ export const rectBeamToSectionProperties = (
     I22: (modifier * h * b ** 3) / 12,
     I33: (modifier * b * h ** 3) / 12,
     J: rectangleTorsionConstant(b, h),
+    unitWeight,
   };
 
   return {
     sectionProperties,
-    calculationDetails: { inertiaModifier: modifier, poissonRatio: nu },
+    calculationDetails: { inertiaModifier: modifier, poissonRatio: nu, unitWeight },
     unit: "N, mm, MPa",
     warnings,
   };

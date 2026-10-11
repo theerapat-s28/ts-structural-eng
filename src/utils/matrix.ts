@@ -43,14 +43,13 @@ export const matVec = (A: Matrix, x: number[]): number[] =>
   A.map((row) => row.reduce((sum, a, j) => sum + a * x[j], 0));
 
 /**
- * Solves A·x = b for a symmetric positive-definite A by Cholesky factorisation.
+ * Cholesky factorisation A = L·Lᵀ of a symmetric positive-definite matrix.
  *
  * @param A - Symmetric matrix (only the lower triangle is read)
- * @param b - Right-hand side
  * @param tolerance - A pivot at or below `tolerance` times its own diagonal term is treated as zero
- * @returns The solution, or `null` when A is not positive definite (singular or a mechanism)
+ * @returns The lower-triangular factor L, or `null` when A is not positive definite (singular or a mechanism)
  */
-export const choleskySolve = (A: Matrix, b: number[], tolerance = 1e-12): number[] | null => {
+export const choleskyFactor = (A: Matrix, tolerance = 1e-12): Matrix | null => {
   const n = A.length;
   const L = zeros(n, n);
   for (let i = 0; i < n; i++) {
@@ -65,6 +64,18 @@ export const choleskySolve = (A: Matrix, b: number[], tolerance = 1e-12): number
       }
     }
   }
+  return L;
+};
+
+/**
+ * Solves A·x = b from the Cholesky factor L of A (forward then back substitution), so one
+ * factorisation serves any number of right-hand sides.
+ *
+ * @param L - Lower-triangular factor from `choleskyFactor`
+ * @param b - Right-hand side
+ */
+export const choleskySolveFactored = (L: Matrix, b: number[]): number[] => {
+  const n = L.length;
   const y = new Array<number>(n).fill(0);
   for (let i = 0; i < n; i++) {
     let sum = b[i];
@@ -78,6 +89,19 @@ export const choleskySolve = (A: Matrix, b: number[], tolerance = 1e-12): number
     x[i] = sum / L[i][i];
   }
   return x;
+};
+
+/**
+ * Solves A·x = b for a symmetric positive-definite A by Cholesky factorisation.
+ *
+ * @param A - Symmetric matrix (only the lower triangle is read)
+ * @param b - Right-hand side
+ * @param tolerance - A pivot at or below `tolerance` times its own diagonal term is treated as zero
+ * @returns The solution, or `null` when A is not positive definite (singular or a mechanism)
+ */
+export const choleskySolve = (A: Matrix, b: number[], tolerance = 1e-12): number[] | null => {
+  const L = choleskyFactor(A, tolerance);
+  return L ? choleskySolveFactored(L, b) : null;
 };
 
 /**

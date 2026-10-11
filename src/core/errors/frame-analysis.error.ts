@@ -1,13 +1,43 @@
+/**
+ * Where a frame-analysis problem is, so a UI can highlight it. Only the fields that apply are set.
+ */
+export interface FrameErrorDetails {
+  nodeId?: string | number;
+  memberId?: string | number;
+  loadCaseId?: string;
+  combinationId?: string;
+  /** The offending input field, e.g. "x", "fz", "w", "direction", "uz". */
+  field?: string;
+  /** For an unstable structure: a degree of freedom involved in the mechanism. */
+  dof?: "ux" | "uy" | "uz" | "rx" | "ry" | "rz";
+}
+
 export class FrameAnalysisError extends Error {
   code: number; // Error code for identification
   message: string;
+  details: FrameErrorDetails;
+  /** Every problem found when the model was validated; this error is the first of them. */
+  issues: FrameModelIssue[];
 
-  constructor(std: FrameAnalysisErrorType = { code: 0, message: "Unknown error" }) {
+  constructor(
+    std: FrameAnalysisErrorType = { code: 0, message: "Unknown error" },
+    details: FrameErrorDetails = {},
+    issues?: FrameModelIssue[],
+  ) {
     super(std.message);
     this.code = std.code;
     this.message = std.message;
+    this.details = details;
+    this.issues = issues ?? [{ code: std.code, message: std.message, details }];
     Object.setPrototypeOf(this, FrameAnalysisError.prototype);
   }
+}
+
+/** One problem found in a frame model, as returned by `validateFrameModel`. */
+export interface FrameModelIssue {
+  code: number;
+  message: string;
+  details: FrameErrorDetails;
 }
 
 type FrameAnalysisErrorType = {
@@ -27,7 +57,8 @@ export const FrameErrors: Record<string, FrameAnalysisErrorType> = {
   },
   DUPLICATE_ID: {
     code: 303,
-    message: "Node ids, member ids and restrained node ids must each be unique.",
+    message:
+      "Node ids, member ids and restrained node ids must each be unique, and load case and combination ids must be unique across both lists.",
   },
   STRUCTURE_UNSTABLE: {
     code: 304,
@@ -36,7 +67,8 @@ export const FrameErrors: Record<string, FrameAnalysisErrorType> = {
   },
   INVALID_SECTION_PROPERTIES: {
     code: 305,
-    message: "Member section properties E, G, A, I22, I33 and J must all be positive.",
+    message:
+      "Member section properties E, G, A, I22, I33 and J must all be positive, and unitWeight, when given, must not be negative.",
   },
   NO_RESTRAINTS: {
     code: 306,
@@ -50,5 +82,33 @@ export const FrameErrors: Record<string, FrameAnalysisErrorType> = {
   LOAD_OUTSIDE_MEMBER: {
     code: 308,
     message: "A member load lies outside the member, or its start is not before its end.",
+  },
+  UNKNOWN_LOAD_CASE: {
+    code: 309,
+    message:
+      "A load or a load combination term refers to a load case or combination that is not in the model, or a term names neither.",
+  },
+  CIRCULAR_COMBINATION: {
+    code: 310,
+    message: "Load combinations reference each other in a loop.",
+  },
+  INVALID_LOAD_FACTOR: {
+    code: 311,
+    message:
+      "A combination factor or self-weight multiplier is not a finite number, or a load combination has no terms.",
+  },
+  NO_LOAD_CASES: {
+    code: 312,
+    message: "The model has no load cases; define at least one in loadCases.",
+  },
+  MISSING_UNIT_WEIGHT: {
+    code: 313,
+    message:
+      "A load case requests self-weight but a member section has no unitWeight; set unitWeight (0 for a weightless member).",
+  },
+  INVALID_INPUT_VALUE: {
+    code: 314,
+    message:
+      "An input value is invalid: a number that is not finite (NaN, Infinity or not a number), a negative spring stiffness, or a value outside its allowed options.",
   },
 };

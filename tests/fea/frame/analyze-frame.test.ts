@@ -1,6 +1,9 @@
-import { analyzeFrame } from "@app-fea/frame/solver/analyze-frame";
-import type { FrameModel, Member } from "@app-fea/frame/types/model.type";
-import type { FrameResult } from "@app-fea/frame/types/results.type";
+import type { Member } from "@app-fea/frame/types/model.type";
+import type { FrameCaseResult } from "@app-fea/frame/types/results.type";
+import {
+  analyzeSingleCase as analyzeFrame,
+  type SingleCaseModel as FrameModel,
+} from "./single-case";
 import type { SectionProperties } from "@app-core/types/section-properties.type";
 
 const E = 200000; // MPa
@@ -16,10 +19,11 @@ const section = (I22: number, I33: number, A = 5000, J = 1e7): SectionProperties
 const I = 8e7; // mm⁴
 const iso = section(I, I);
 
-const disp = (r: FrameResult, id: string | number) =>
+const disp = (r: FrameCaseResult, id: string | number) =>
   r.nodalDisplacements.find((d) => d.nodeId === id)!;
-const react = (r: FrameResult, id: string | number) => r.reactions.find((d) => d.nodeId === id)!;
-const endForces = (r: FrameResult, id: string | number) =>
+const react = (r: FrameCaseResult, id: string | number) =>
+  r.reactions.find((d) => d.nodeId === id)!;
+const endForces = (r: FrameCaseResult, id: string | number) =>
   r.memberEndForces.find((m) => m.memberId === id)!;
 
 const fixedSupport = { ux: true, uy: true, uz: true, rx: true, ry: true, rz: true };
@@ -106,9 +110,8 @@ describe("analyzeFrame — cantilever (analytical)", () => {
     model.nodalLoads = [{ nodeId: 1, fz: -P, fy: 3, mx: 2 }];
     const r = analyzeFrame(model);
     expect(r.warnings).toHaveLength(0);
-    expect(r.calculationDetails.equilibriumResidual.force).toBeLessThan(1e-6);
-    expect(r.calculationDetails.equilibriumResidual.moment).toBeLessThan(1e-6);
-    expect(r.units).toEqual({ force: "kN", moment: "kN·m", length: "mm", rotation: "rad" });
+    expect(r.equilibriumResidual.force).toBeLessThan(1e-6);
+    expect(r.equilibriumResidual.moment).toBeLessThan(1e-6);
   });
 });
 

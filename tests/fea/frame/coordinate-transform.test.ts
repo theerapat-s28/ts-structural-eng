@@ -1,4 +1,7 @@
-import { memberAxes, transformationMatrix } from "@app-fea/frame/transformation/coordinate-transform";
+import {
+  memberAxes,
+  transformationMatrix,
+} from "@app-fea/frame/transformation/coordinate-transform";
 import { FrameAnalysisError } from "@app-core/errors/frame-analysis.error";
 import { matMul, transpose } from "@app-utils/matrix";
 

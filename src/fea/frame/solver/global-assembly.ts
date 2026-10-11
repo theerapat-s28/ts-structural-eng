@@ -1,11 +1,10 @@
-import { matMul, transpose, zeros, type Matrix } from "@app-utils/matrix";
+import { matMul, transpose, type Matrix } from "@app-utils/matrix";
 
 export interface AssemblyMember {
   startIndex: number; // node index
   endIndex: number; // node index
   T: Matrix; // 12×12 global → local
   k: Matrix; // 12×12 local stiffness, right-hand, N and mm
-  fixedEndForces: number[]; // 12, local, N and N·mm
 }
 
 /** Global DOF numbers (6 per node) of a member's 12 end DOFs. */
@@ -17,25 +16,25 @@ export const memberDofs = (member: Pick<AssemblyMember, "startIndex" | "endIndex
   return dofs;
 };
 
+/** A member's stiffness in global axes, `Tᵀ·k·T` (N and mm). */
+export const memberGlobalStiffness = (member: AssemblyMember): Matrix =>
+  matMul(transpose(member.T), matMul(member.k, member.T));
+
 /**
- * Assembles the global stiffness matrix `K += Tᵀ·k·T` and the equivalent member-load vector
- * `F -= Tᵀ·f_fixed` (N and N·mm).
+ * Adds `sign · Tᵀ·f` of one member's local end-force vector to a global vector (N and N·mm).
+ * With `sign = −1` and fixed-end forces this adds the equivalent nodal loads; with `sign = +1`
+ * and `k·u` it adds the member's elastic end forces.
  */
-export const assembleGlobal = (
-  members: AssemblyMember[],
-  dofCount: number,
-): { K: Matrix; memberLoadVector: number[] } => {
-  const K = zeros(dofCount, dofCount);
-  const memberLoadVector = new Array<number>(dofCount).fill(0);
-  for (const member of members) {
-    const Tt = transpose(member.T);
-    const kGlobal = matMul(Tt, matMul(member.k, member.T));
-    const fGlobal = Tt.map((row) => row.reduce((s, t, j) => s + t * member.fixedEndForces[j], 0));
-    const dofs = memberDofs(member);
-    for (let a = 0; a < 12; a++) {
-      memberLoadVector[dofs[a]] -= fGlobal[a];
-      for (let b = 0; b < 12; b++) K[dofs[a]][dofs[b]] += kGlobal[a][b];
-    }
+export const scatterMemberForces = (
+  target: number[],
+  member: Pick<AssemblyMember, "startIndex" | "endIndex" | "T">,
+  localForces: number[],
+  sign: 1 | -1,
+): void => {
+  const dofs = memberDofs(member);
+  for (let a = 0; a < 12; a++) {
+    let value = 0;
+    for (let j = 0; j < 12; j++) value += member.T[j][a] * localForces[j];
+    target[dofs[a]] += sign * value;
   }
-  return { K, memberLoadVector };
 };

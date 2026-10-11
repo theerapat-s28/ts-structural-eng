@@ -1,5 +1,6 @@
-export { analyzeFrame } from "./solver/analyze-frame";
-export type { AnalyzeFrameOptions } from "./solver/analyze-frame";
+export { analyzeFrame, createFrameAnalysis } from "./solver/analyze-frame";
+export type { AnalyzeFrameOptions, FrameAnalysis } from "./solver/analyze-frame";
+export { validateFrameModel } from "./validation/validate-model";
 export {
   beam3dLocalStiffness,
   beam3dLocalStiffnessRightHanded,
@@ -19,6 +20,10 @@ export type {
   UniformMemberLoad,
   PointMemberLoad,
   MemberLoad,
+  LoadCaseType,
+  LoadCase,
+  CombinationTerm,
+  LoadCombination,
   FrameModel,
 } from "./types/model.type";
 export type {
@@ -30,5 +35,10 @@ export type {
   StationComponent,
   ExtremeValue,
   MemberDiagram,
+  GoverningValue,
+  GoverningExtremeValue,
+  Bound,
+  FrameCaseResult,
+  FrameEnvelope,
   FrameResult,
 } from "./types/results.type";

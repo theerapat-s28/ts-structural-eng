@@ -75,9 +75,10 @@ src/
 │       ├── index.ts
 │       ├── elements/         # Reference beam stiffness matrix, fixed-end forces, end-release condensation
 │       ├── transformation/   # ETABS-style local axes and the 12×12 transformation
-│       ├── solver/           # Assembly, boundary conditions, analyzeFrame
-│       ├── post/             # Member force diagrams and demand envelopes
-│       └── types/            # Model and result types
+│       ├── solver/           # System build + skyline factorisation, per-case solve, combinations, analyzeFrame
+│       ├── validation/       # validateFrameModel: every input problem, with its location
+│       ├── post/             # Result presentation, member force diagrams, envelopes, design demands
+│       └── types/            # Model (incl. load cases, combinations) and result types
 ├── core/                 # Shared infrastructure
 │   ├── index.ts
 │   ├── constants/        # RC design constants (ACI 318)
@@ -86,7 +87,8 @@ src/
 └── utils/                # Helper utilities
     ├── index.ts
     ├── math.ts           # Quadratic solver, rounding
-    ├── matrix.ts         # Dense matrix helpers, Cholesky and general linear solvers
+    ├── matrix.ts         # Dense matrix helpers, Cholesky (factor once, solve many) and general linear solvers
+    ├── skyline.ts        # Skyline (banded) Cholesky solver and reverse Cuthill–McKee ordering
     └── merge-warning.ts  # Warning array merging
 examples/
 └── basic-usage.ts        # Example usage of the library
@@ -153,9 +155,11 @@ ACI 440.2R-17 11.4.2 (spacing, which defers to the ACI 318 limits) and 11.4.3 (`
 
 Linear-elastic 3D frame analysis by the direct stiffness method, imported from `@theerapat-s28/ts-structural-eng-tools/fea`. Global axes X, Y, Z (Z up) and ETABS-style local axes 1, 2, 3; inputs in mm, MPa, kN and kN·m, results in kN, kN·m, mm and rad.
 
-- **`analyzeFrame(model, options?)`** — Solves one load case (nodal loads, uniform and point member loads in local or global directions, end releases, fixed or spring supports) and returns displacements, reactions, member end forces, force diagrams (`N`, `V2`, `V3`, `T`, `M2`, `M3`) and a global equilibrium check. Invalid models and mechanisms throw `FrameAnalysisError` (codes 301–308).
-- **`memberDemandEnvelope(result, memberId, options?)`** — Reduces a member's diagrams to `MuPositive`, `MuNegative`, `Vu` (optionally at distance `d` from the supports) and `Nu`, for the RC capacity functions.
-- **`rectBeamToSectionProperties(section, options?)`** (from `rc`) — Converts a rectangular RC section into `SectionProperties` (`E`, `G`, `A`, `I22`, `I33`, `J`) with the ACI 318-19 6.6.3.1.1 inertia modifiers (0.35 beams, 0.70 columns).
+- **`analyzeFrame(model, options?)`** — Analyses every load case in `model.loadCases` (dead, superimposed dead, live, wind…, each with an optional `selfWeight` multiplier) and forms every combination in `model.combinations` by superposition. The loads are flat top-level lists, `model.nodalLoads` and `model.memberLoads` (uniform and point loads in local or global directions), each load tagged with its `loadCase`, so large models stay readable. A combination is a list of factored terms `{ case, factor }` or `{ combination, factor }`; factors are entered by the user, and nested combinations are expanded. Supports end releases and fixed or spring supports. The stiffness matrix is factorised once for all cases. Returns `cases` and `combinations` keyed by id — each with displacements, reactions, member end forces, member diagrams along each member (forces `N`, `V2`, `V3`, `T`, `M2`, `M3` and deflections `u1`–`u3` local / `ux`–`uz` global, ready for plotting) and an equilibrium check — and an `envelope` of max/min over the combinations with the governing combination. Combination diagrams are rebuilt exactly, not summed from case extremes. The stiffness is stored in skyline (banded) form with nodes in reverse Cuthill–McKee order, so a building of ~850 nodes runs in about 1.5 s. Model and result are plain JSON, so it runs in a Web Worker. Invalid models, load cases or combinations and mechanisms throw `FrameAnalysisError` (codes 301–314) with `details` locating the problem.
+- **`createFrameAnalysis(model, options?)`** — Same analysis, keeping the solution: returns `{ result, memberDiagram(resultId, memberId) }` so full member diagrams can be computed on demand. Combine with `options.diagrams: "extremes"`, which keeps diagram extremes (and the envelope) but drops the station arrays, for results about 4× smaller on large models.
+- **`validateFrameModel(model)`** — Checks a model without analysing it and returns every problem, each with `details` (`nodeId`, `memberId`, `loadCaseId`, `combinationId`, `field`, `dof`) for highlighting in a UI. `analyzeFrame` runs it first and throws the first problem as a `FrameAnalysisError` whose `issues` lists all of them; non-finite numbers, negative springs and unknown option values are rejected (314).
+- **`memberDemandEnvelope(result, memberId, options?)`** — Reduces a member's diagrams to `MuPositive`, `MuNegative`, `Vu` (optionally at distance `d` from the supports) and `Nu`, enveloped over all combinations (or the `combinations` / `cases` you select), with the `governing` combination of each, for the RC capacity functions.
+- **`rectBeamToSectionProperties(section, options?)`** (from `rc`) — Converts a rectangular RC section into `SectionProperties` (`E`, `G`, `A`, `I22`, `I33`, `J`, `unitWeight`) with the ACI 318-19 6.6.3.1.1 inertia modifiers (0.35 beams, 0.70 columns) and a unit weight for self-weight (default 24 kN/m³, common practice rather than an ACI value).
 - **`beam3dLocalStiffness(E, G, A, I22, I33, J, L)`** — The 12×12 local stiffness matrix exactly as in the reference "Complete Beam Stiffness Matrix". Its bending rotations R2 and R3 follow the opposite sign to the right-hand rule; **`beam3dLocalStiffnessRightHanded`** returns the right-handed form that `analyzeFrame` uses.
 - **`memberAxes(start, end, angle?)`** — The ETABS-style local axes of a member as a direction-cosine matrix.
 
@@ -171,6 +175,8 @@ Linear-elastic 3D frame analysis by the direct stiffness method, imported from `
 pnpm run build
 node dist/index.js
 ```
+
+The build emits a CommonJS build in `dist/` (for `require`, with the `.d.ts` types) and an ES-module build in `dist/esm/` (for `import` and bundlers such as Vite); `package.json` `exports` routes each subpath to the right one, and `"sideEffects": false` lets bundlers drop unused code.
 
 ## Tests
 

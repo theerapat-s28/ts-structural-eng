@@ -363,10 +363,16 @@
       <div class="nav-section-label">Getting Started</div>
       <a href="#overview"><span style="font-size:14px">◈</span> Overview</a>
       <a href="#conventions"><span style="font-size:14px">◇</span> Axes &amp; conventions</a>
+      <a href="#load-cases"><span style="font-size:14px">▤</span> Load cases &amp; combinations</a>
+      <a href="#loads"><span style="font-size:14px">↓</span> Loads</a>
+      <a href="#member-diagrams"><span style="font-size:14px">∿</span> Member diagrams</a>
+      <a href="#frontend"><span style="font-size:14px">▣</span> Using in a frontend</a>
       <a href="#analysis-flow"><span style="font-size:14px">◆</span> Analysis flow</a>
 
       <div class="nav-section-label">Analysis</div>
       <a href="#analyze-frame"><span class="mbadge m-fn">FN</span> analyzeFrame</a>
+      <a href="#create-frame-analysis"><span class="mbadge m-fn">FN</span> createFrameAnalysis</a>
+      <a href="#validate-frame-model"><span class="mbadge m-fn">FN</span> validateFrameModel</a>
       <a href="#member-demand-envelope"><span class="mbadge m-fn">FN</span> memberDemandEnvelope</a>
 
       <div class="nav-section-label">Element</div>
@@ -376,7 +382,14 @@
 
       <div class="nav-section-label">Types</div>
       <a href="#frame-model"><span class="mbadge m-type">TYPE</span> FrameModel</a>
+      <a href="#load-case"><span class="mbadge m-type">TYPE</span> LoadCase</a>
+      <a href="#load-combination"><span class="mbadge m-type">TYPE</span> LoadCombination</a>
+      <a href="#nodal-load"><span class="mbadge m-type">TYPE</span> NodalLoad</a>
+      <a href="#member-load"><span class="mbadge m-type">TYPE</span> MemberLoad</a>
       <a href="#frame-result"><span class="mbadge m-type">TYPE</span> FrameResult</a>
+      <a href="#frame-case-result"><span class="mbadge m-type">TYPE</span> FrameCaseResult</a>
+      <a href="#frame-envelope"><span class="mbadge m-type">TYPE</span> FrameEnvelope</a>
+      <a href="#frame-analysis-type"><span class="mbadge m-type">TYPE</span> FrameAnalysis</a>
       <a href="#section-properties"><span class="mbadge m-type">TYPE</span> SectionProperties</a>
 
       <div class="nav-section-label">Reference</div>
@@ -394,22 +407,25 @@
         <code>@theerapat-s28/ts-structural-eng-tools/fea</code>
       </div>
       <h1>Frame Analysis</h1>
-      <p>Linear-elastic 3D frame analysis by the direct stiffness method, with member loads, end releases, spring supports, force diagrams and design-demand envelopes that feed the RC capacity functions.</p>
+      <p>Linear-elastic 3D frame analysis by the direct stiffness method, run for user-defined load cases and factored load combinations, with member loads, self-weight, end releases, spring supports, force diagrams, envelopes and design demands that feed the RC capacity functions.</p>
     </div>
 
     <!-- ══════════════ Overview ══════════════ -->
     <div class="section" id="overview">
       <div class="section__title">Overview</div>
       <p>
-        <code>analyzeFrame</code> takes nodes, members, supports and one load case, and returns displacements,
-        reactions, member end forces and force diagrams. Section properties come from
+        <code>analyzeFrame</code> takes nodes, members, supports, the <strong>load cases</strong> (dead,
+        superimposed dead, live, wind…) and the <strong>load combinations</strong> built from them. It analyses
+        every load case, forms every combination by superposition, and returns displacements, reactions,
+        member end forces and force diagrams for each, plus an envelope over the combinations. Section
+        properties come from
         <a href="../rc/#rect-beam-to-section-properties" style="color:var(--accent)">rectBeamToSectionProperties</a>
         or are supplied directly, so the module itself does not depend on the RC code.
       </p>
 
       <div class="alert alert--info">
         <span>ℹ️</span>
-        <span>This is a first-principles structural analysis, not a code provision, so its exports carry a <span class="std-badge" title="Basis: linear-elastic matrix stiffness analysis — not an ACI 318-19 provision">Matrix analysis</span> badge. Only the stiffness modifiers in <code>rectBeamToSectionProperties</code> come from ACI 318-19.</span>
+        <span>This is a first-principles structural analysis, not a code provision, so its exports carry a <span class="std-badge" title="Basis: linear-elastic matrix stiffness analysis — not an ACI 318-19 provision">Matrix analysis</span> badge. Only the stiffness modifiers in <code>rectBeamToSectionProperties</code> come from ACI 318-19. Load factors are entered by the user; the module does not generate code combinations.</span>
       </div>
 
       <div class="sub-label">Basis</div>
@@ -419,16 +435,20 @@
           <tr><td>Element stiffness</td><td>Euler–Bernoulli prismatic beam, 12 DOF; no shear deformation</td><td>Adaptation (standard matrix analysis)</td></tr>
           <tr><td>Member loads</td><td>Exact fixed-end forces from the beam shape functions</td><td>Adaptation</td></tr>
           <tr><td>Solution</td><td>Linear, small displacements; no P-Δ, no cracking</td><td>Adaptation</td></tr>
+          <tr><td>Load combinations</td><td>Linear superposition of load-case results, factors entered by the user</td><td>Adaptation; valid because the analysis is linear</td></tr>
           <tr><td>Stiffness modifiers (0.35 Ig beams, 0.70 Ig columns)</td><td>ACI 318-19, 6.6.3.1.1</td><td>Code, applied in <code>rectBeamToSectionProperties</code></td></tr>
+          <tr><td>Concrete unit weight (24 kN/m³ default)</td><td>Common design practice</td><td>Not a code value; override with <code>unitWeight</code></td></tr>
         </tbody>
       </table>
 
       <div class="sub-label" style="margin-top:20px">Model</div>
       <div class="model-grid">
-        <div class="model-card"><div class="model-card__title">FrameModel</div><div class="model-card__desc">Nodes, members, restraints, nodal loads and member loads of one load case.</div></div>
-        <div class="model-card"><div class="model-card__title">SectionProperties</div><div class="model-card__desc">E, G, A, I22, I33, J of a prismatic member.</div></div>
-        <div class="model-card"><div class="model-card__title">FrameResult</div><div class="model-card__desc">Displacements, reactions, end forces, diagrams, units and warnings.</div></div>
-        <div class="model-card"><div class="model-card__title">MemberDemandEnvelope</div><div class="model-card__desc">Mu⁺, Mu⁻, Vu and Nu for design checks.</div></div>
+        <div class="model-card"><div class="model-card__title">FrameModel</div><div class="model-card__desc">Nodes, members, restraints, load cases, the loads tagged with their case, and combinations.</div></div>
+        <div class="model-card"><div class="model-card__title">LoadCase</div><div class="model-card__desc">One independently analysed set of loads: an id, a label and a self-weight multiplier.</div></div>
+        <div class="model-card"><div class="model-card__title">LoadCombination</div><div class="model-card__desc">Factored sum of load cases and other combinations.</div></div>
+        <div class="model-card"><div class="model-card__title">SectionProperties</div><div class="model-card__desc">E, G, A, I22, I33, J and optional unitWeight of a prismatic member.</div></div>
+        <div class="model-card"><div class="model-card__title">FrameResult</div><div class="model-card__desc">Per-case and per-combination results keyed by id, and the envelope.</div></div>
+        <div class="model-card"><div class="model-card__title">MemberDemandEnvelope</div><div class="model-card__desc">Mu⁺, Mu⁻, Vu and Nu for design checks, with the governing combination.</div></div>
       </div>
     </div>
 
@@ -446,8 +466,10 @@
           <tr><td>Member angle</td><td>Rotates local 2 and 3 about local 1 by the right-hand rule, in rad.</td></tr>
           <tr><td>Section axes</td><td>I33 is about local 3 and governs bending in the 1–2 plane (U2–R3, the major axis); I22 is about local 2 and governs the 1–3 plane (U3–R2). A rectangle with depth h along local 2: I33 = b·h³/12.</td></tr>
           <tr><td>Rotations</td><td>All results use the right-hand rule. The reference stiffness matrix measures R2 and R3 the other way; <code>analyzeFrame</code> converts internally.</td></tr>
-          <tr><td>Units</td><td>Coordinates, lengths and positions in mm; E, G in MPa; A in mm²; I, J in mm⁴; loads in kN, kN·m and kN/m; springs in kN/mm and kN·m/rad. Results in kN, kN·m, mm and rad.</td></tr>
+          <tr><td>Units</td><td>Coordinates, lengths and positions in mm; E, G in MPa; A in mm²; I, J in mm⁴; loads in kN, kN·m and kN/m; springs in kN/mm and kN·m/rad; unit weight in kN/m³. Results in kN, kN·m, mm and rad.</td></tr>
+          <tr><td>Self-weight</td><td>Acts along global −Z (gravity, with Z up), as <code>selfWeight · unitWeight · A</code> per unit length of member.</td></tr>
           <tr><td>Internal forces</td><td>Forces and moments acting on the positive (+1) face of a cut, along the positive local axes. N is positive in tension; M3 is positive for sagging when local 2 points up; V2 = −dM3/dx.</td></tr>
+          <tr><td>Member displacements</td><td><code>u1</code>, <code>u2</code>, <code>u3</code> along the local axes and <code>ux</code>, <code>uy</code>, <code>uz</code> along the global axes, in mm, including the member's rigid-body motion. Bending follows <code>u2″ = M3/EI33</code> and <code>u3″ = −M2/EI22</code>.</td></tr>
         </tbody>
       </table>
 
@@ -457,16 +479,234 @@
       </div>
     </div>
 
+
+    <!-- ══════════════ Load cases ══════════════ -->
+    <div class="section" id="load-cases">
+      <div class="section__title">Load cases &amp; combinations</div>
+      <p>
+        Every load sits in a <strong>load case</strong>. A case is analysed on its own, so its results show what
+        that load alone does. A <strong>load combination</strong> is a factored sum of cases (and of other
+        combinations), for example <code>1.2D + 1.6L</code>. Load factors are always entered by the user.
+      </p>
+      <div class="flow-steps">
+        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Define the load cases</strong> with a string <code>id</code> such as <code>"D"</code>, <code>"SD"</code>, <code>"L"</code>. The optional <code>type</code> (<code>"dead"</code>, <code>"superDead"</code>, <code>"live"</code>, <code>"roofLive"</code>, <code>"snow"</code>, <code>"wind"</code>, <code>"seismic"</code>, <code>"other"</code>) is a label only and does not change the analysis.</div></div>
+        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>List the loads</strong> in the model's top-level <code>nodalLoads</code> and <code>memberLoads</code>, each tagged with the <code>loadCase</code> it belongs to. Keeping them out of <code>loadCases</code> keeps the case list short in a large model, and the loads stay flat tables that can come straight from a spreadsheet or database. Their order does not matter.</div></div>
+        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Add self-weight</strong> to a case with <code>selfWeight: 1</code>. Every member then carries <code>selfWeight · unitWeight · A</code> per unit length along global −Z, so each member's section needs a <code>unitWeight</code> (<code>rectBeamToSectionProperties</code> sets 24 kN/m³). Use <code>unitWeight: 0</code> for a weightless member.</div></div>
+        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Define the combinations</strong> as lists of terms, each <code>{ case, factor }</code> or <code>{ combination, factor }</code>. A combination may reference combinations listed after it; loops are rejected (310). Factors may be negative, e.g. <code>0.9D − 1.0W</code> for reversed wind.</div></div>
+        <div class="flow-step"><div class="step-num">5</div><div class="step-body"><strong>Read the results</strong> by id: <code>result.cases.D</code>, <code>result.combinations["1.2D+1.6L"]</code>, and <code>result.envelope</code> for the max/min over all combinations. Case and combination ids share one namespace and must be unique across both lists.</div></div>
+      </div>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>A combination's force diagram is rebuilt from the combined end forces and the factored member loads of all its cases, so its extremes are exact. They are not sums of case extremes, which would overestimate a peak whose position differs between cases.</span>
+      </div>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>Pattern live loading (checkerboard spans) needs no special input: define one live case per span and combine them.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Loads ══════════════ -->
+    <div class="section" id="loads">
+      <div class="section__title">Loads</div>
+      <p>
+        Three kinds of load can be applied. Nodal and member loads are listed in the model's
+        <code>nodalLoads</code> and <code>memberLoads</code>, each tagged with its <code>loadCase</code>;
+        self-weight is switched on per load case. Several loads on the same node or member in the same
+        case simply add up.
+      </p>
+
+      <table class="param-table">
+        <thead><tr><th>Load</th><th>Where</th><th>Unit</th><th>Applied as</th></tr></thead>
+        <tbody>
+          <tr><td>Nodal force / moment</td><td><code>nodalLoads</code></td><td>kN, kN·m</td><td><code>fx</code>, <code>fy</code>, <code>fz</code> along and <code>mx</code>, <code>my</code>, <code>mz</code> about the <strong>global</strong> axes, at any node (supported nodes included). Omitted components are 0</td></tr>
+          <tr><td>Uniform member load</td><td><code>memberLoads</code>, <code>type: "udl"</code></td><td>kN/m</td><td><code>w</code> per unit length of member, over the whole member or from <code>start</code> to <code>end</code> (mm from the member start) for a partial load</td></tr>
+          <tr><td>Point member load</td><td><code>memberLoads</code>, <code>type: "point"</code></td><td>kN</td><td><code>P</code> at distance <code>a</code> (mm) from the member start</td></tr>
+          <tr><td>Self-weight</td><td><code>loadCases[].selfWeight</code></td><td>—</td><td>A uniform load <code>selfWeight · unitWeight · A</code> along global −Z on every member; see <a href="#load-cases" style="color:var(--accent)">Load cases</a></td></tr>
+        </tbody>
+      </table>
+
+      <div class="sub-label">Member load direction and sign</div>
+      <table class="param-table">
+        <thead><tr><th>direction</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>"1"</td><td>Along the member axis (local 1, from start to end node) — an axial load</td></tr>
+          <tr><td>"2", "3"</td><td>Along local 2 or local 3 — a transverse load in that member's own axes. For a beam along +X, local 2 is +Z, so <code>direction: "2", w: -10</code> acts downward</td></tr>
+          <tr><td>"X", "Y", "Z"</td><td>Along a global axis. The load is resolved onto the member's local axes, so on an inclined member a vertical load produces both axial and transverse components</td></tr>
+        </tbody>
+      </table>
+      <p>A positive <code>w</code> or <code>P</code> acts in the positive direction of the chosen axis. With Z up, <strong>gravity loads are negative <code>"Z"</code></strong> (e.g. <code>w: -10</code>).</p>
+
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>A global-direction load is taken <strong>per unit length of member</strong>, not per unit horizontal (projected) length. On a member inclined at θ to the horizontal, a load given per projected length (snow on a rafter, for example) must be entered as <code>w · cos θ</code>.</span>
+      </div>
+
+      <div class="sub-label">Example</div>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript</div>
+        <pre>
+<span class="k">nodalLoads</span>: [
+  <span class="c">// 25 kN horizontal and 3 kN·m about Z at node B, wind case</span>
+  { <span class="k">loadCase</span>: <span class="s">"W"</span>, <span class="k">nodeId</span>: <span class="s">"B"</span>, <span class="k">fx</span>: <span class="n">25</span>, <span class="k">mz</span>: <span class="n">3</span> },  <span class="c">// kN, kN·m</span>
+],
+<span class="k">memberLoads</span>: [
+  <span class="c">// full-length gravity load</span>
+  { <span class="k">loadCase</span>: <span class="s">"SD"</span>, <span class="k">type</span>: <span class="s">"udl"</span>, <span class="k">memberId</span>: <span class="s">"AB"</span>, <span class="k">direction</span>: <span class="s">"Z"</span>, <span class="k">w</span>: <span class="n">-10</span> },  <span class="c">// kN/m</span>
+  <span class="c">// partial load from 1.0 m to 3.0 m along the member</span>
+  { <span class="k">loadCase</span>: <span class="s">"L"</span>, <span class="k">type</span>: <span class="s">"udl"</span>, <span class="k">memberId</span>: <span class="s">"AB"</span>, <span class="k">direction</span>: <span class="s">"Z"</span>, <span class="k">w</span>: <span class="n">-15</span>,
+    <span class="k">start</span>: <span class="n">1000</span>, <span class="k">end</span>: <span class="n">3000</span> },  <span class="c">// mm</span>
+  <span class="c">// 40 kN point load 2.2 m from the start, in the member's local 2 direction</span>
+  { <span class="k">loadCase</span>: <span class="s">"L"</span>, <span class="k">type</span>: <span class="s">"point"</span>, <span class="k">memberId</span>: <span class="s">"BC"</span>, <span class="k">direction</span>: <span class="s">"2"</span>, <span class="k">P</span>: <span class="n">-40</span>, <span class="k">a</span>: <span class="n">2200</span> },  <span class="c">// kN, mm</span>
+],</pre>
+      </div>
+
+      <div class="sub-label">How member loads enter the analysis</div>
+      <p>
+        Each member load is turned into the exact fixed-end forces of a prismatic member (from the beam
+        shape functions), adjusted for any end releases, and applied to the end nodes as equivalent
+        nodal loads. The member's force diagrams are then built from its end forces plus the loads
+        themselves, so a point load shows a shear jump (both sides are reported) and a partial load
+        changes slope exactly where it starts and ends.
+      </p>
+
+      <div class="alert alert--error">
+        <span>⚠️</span>
+        <span>Throws <strong>FrameAnalysisError 308</strong> if a point load lies outside <code>0 ≤ a ≤ L</code>, or a uniform load does not satisfy <code>0 ≤ start &lt; end ≤ L</code>; <strong>302</strong> if a load names a node or member that is not in the model; <strong>309</strong> if its <code>loadCase</code> is not in <code>loadCases</code>.</span>
+      </div>
+
+      <div class="sub-label">Not supported yet</div>
+      <table class="param-table">
+        <thead><tr><th>Load</th><th>Workaround</th></tr></thead>
+        <tbody>
+          <tr><td>Concentrated moment inside a member</td><td>Split the member with a node at that point and apply a nodal moment</td></tr>
+          <tr><td>Triangular / trapezoidal (varying) load</td><td>Approximate with several partial uniform loads (<code>start</code> / <code>end</code>)</td></tr>
+          <tr><td>Load per projected length</td><td>Enter <code>w · cos θ</code> per member length (see above)</td></tr>
+          <tr><td>Temperature load</td><td>—</td></tr>
+          <tr><td>Imposed support settlement</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════ Member diagrams ══════════════ -->
+    <div class="section" id="member-diagrams">
+      <div class="section__title">Member diagrams <code style="font-size:13px">member-diagram.ts</code></div>
+      <p>
+        Every load case and combination result has a <code>memberDiagrams</code> entry per member, with values
+        <strong>along the member</strong>, not only at its ends, ready for plotting axial force, shear, torsion and
+        bending-moment diagrams and the deflected shape.
+      </p>
+
+      <div class="sub-label">Stations</div>
+      <table class="param-table">
+        <thead><tr><th>Station</th><th>Why it is there</th></tr></thead>
+        <tbody>
+          <tr><td>Evenly spaced points</td><td><code>options.stations</code> of them (default 21), ends included. Raise it for smoother curves</td></tr>
+          <tr><td>Load breakpoints</td><td>Every point load and every start and end of a partial uniform load, where a diagram changes slope or steps</td></tr>
+          <tr><td>Zero-shear points</td><td>Where V2 or V3 crosses zero, so the peak bending moment is always a station</td></tr>
+          <tr><td>Both sides of a point load</td><td>Two stations share the same <code>x</code>: the value just before and just after the load, so a shear step plots vertically</td></tr>
+        </tbody>
+      </table>
+
+      <div class="sub-label">Station fields</div>
+      <table class="param-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>x</td><td>number</td><td>mm</td><td>Distance from the member's start node</td></tr>
+          <tr><td>N, V2, V3</td><td>number</td><td>kN</td><td>Axial force (tension positive) and shears along local 2 and 3</td></tr>
+          <tr><td>T, M2, M3</td><td>number</td><td>kN·m</td><td>Torsion and bending moments about local 2 and 3</td></tr>
+          <tr><td>u1, u2, u3</td><td>number</td><td>mm</td><td>Displacement along local 1, 2, 3</td></tr>
+          <tr><td>ux, uy, uz</td><td>number</td><td>mm</td><td>The same displacement in global axes, for drawing the deflected shape on the model</td></tr>
+        </tbody>
+      </table>
+      <p><code>extremes</code> gives the max and min of <code>N</code>, <code>V2</code>, <code>V3</code>, <code>T</code>, <code>M2</code>, <code>M3</code>, <code>u1</code>, <code>u2</code> and <code>u3</code>, each as <code>{ value, x }</code>, for example the largest deflection between the nodes and where it occurs.</p>
+
+      <div class="sub-label">Example</div>
+      <p>A single 6 m simply supported member along X, 10 kN/m downward, E = 200 000 MPa, I33 = 8·10⁷ mm⁴ (no node at midspan):</p>
+      <div class="code-block">
+        <div class="code-block__label">Result (excerpt)</div>
+        <pre>
+<span class="k">memberDiagrams</span>[<span class="n">0</span>].<span class="k">stations</span> <span class="c">// 21 stations, x = 0, 300, … 6000 mm</span>
+  { <span class="k">x</span>: <span class="n">0</span>,    <span class="k">V2</span>: <span class="n">-30</span>, <span class="k">M3</span>: <span class="n">0</span>,  <span class="k">u2</span>: <span class="n">0</span>,         <span class="k">uz</span>: <span class="n">0</span>,         <span class="c">… }</span>
+  { <span class="k">x</span>: <span class="n">3000</span>, <span class="k">V2</span>: <span class="n">0</span>,   <span class="k">M3</span>: <span class="n">45</span>, <span class="k">u2</span>: <span class="n">-10.54687</span>, <span class="k">uz</span>: <span class="n">-10.54687</span>, <span class="c">… }  // kN, kN·m, mm</span>
+
+<span class="k">memberDiagrams</span>[<span class="n">0</span>].<span class="k">extremes</span>.<span class="k">u2</span>  <span class="c">// { max: { value: 0, x: 0 }, min: { value: -10.54687, x: 3000 } }</span></pre>
+      </div>
+      <p>That is wL²/8 = 45 kN·m and 5wL⁴/384EI = 10.5469 mm at midspan, while both nodal displacements are 0.</p>
+
+      <div class="sub-label">Plotting on the model</div>
+      <div class="flow-steps">
+        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Place each station</strong> at <code>start + (x / length) · (end − start)</code> along the member.</div></div>
+        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Offset it perpendicular to the member</strong> by the diagram value times a drawing scale: <code>M3</code> and <code>V2</code> along local 2, <code>M2</code> and <code>V3</code> along local 3. <a href="#member-axes" style="color:var(--accent)">memberAxes</a> returns those directions.</div></div>
+        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Choose the sign convention to draw.</strong> <code>M3</code> is positive for sagging when local 2 points up, so it plots upward on a beam along X; to draw moments on the tension side, flip the sign. <code>V2</code> is the force on the positive face, negative at the left support of a gravity-loaded beam; flip it for the textbook shear sign.</div></div>
+        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Deflected shape:</strong> add <code>(ux, uy, uz)</code> times a magnification factor to each station's position.</div></div>
+      </div>
+
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>Values between stations follow the exact curves: under a uniform load the moment is a parabola and the deflection a quartic. Straight lines through the default 21 stations are close; the peak moment is always a station, and the deflection extremes are taken from a 200-interval grid. At a hinged member end the member's own rotation is used, so the curve kinks there correctly even though the node does not rotate.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Frontend ══════════════ -->
+    <div class="section" id="frontend">
+      <div class="section__title">Using in a frontend</div>
+      <p>The module is plain TypeScript with no runtime dependencies or Node.js APIs, and both the model and the result are plain JSON data, so it runs in a browser, in a Web Worker, or on a server.</p>
+
+      <div class="flow-steps">
+        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Import</strong> from <code>@theerapat-s28/ts-structural-eng-tools/fea</code>. The package ships an ES-module build (<code>import</code>) for bundlers such as Vite, with <code>"sideEffects": false</code> so unused code is dropped, and a CommonJS build (<code>require</code>) for Node.js.</div></div>
+        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Validate while editing</strong> with <a href="#validate-frame-model" style="color:var(--accent)">validateFrameModel</a> and mark each issue's <code>details</code> (node, member, load case, combination, field) in the UI.</div></div>
+        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Analyse in a Web Worker</strong> so the page stays responsive: post the model in, post the result out (structured-clone copies plain data).</div></div>
+        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Keep results small</strong> for large models with <code>diagrams: "extremes"</code>, and keep the <a href="#create-frame-analysis" style="color:var(--accent)">createFrameAnalysis</a> object in the worker to answer "show this member's diagram" requests.</div></div>
+        <div class="flow-step"><div class="step-num">5</div><div class="step-body"><strong>Show errors in place:</strong> a thrown <code>FrameAnalysisError</code> has <code>code</code>, <code>details</code> and <code>issues</code>; a 304 (unstable) names a node and DOF of the mechanism.</div></div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block__label">TypeScript — worker.ts</div>
+        <pre>
+<span class="b">import</span> { <span class="u">createFrameAnalysis</span>, <span class="b">type</span> FrameAnalysis } <span class="b">from</span> <span class="s">"@theerapat-s28/ts-structural-eng-tools/fea"</span>;
+
+<span class="b">let</span> analysis: FrameAnalysis | <span class="nl">undefined</span>;
+self.onmessage = ({ data }) =&gt; {
+  <span class="b">try</span> {
+    <span class="b">if</span> (data.type === <span class="s">"analyse"</span>) {
+      analysis = <span class="u">createFrameAnalysis</span>(data.model, { <span class="k">diagrams</span>: <span class="s">"extremes"</span> });
+      self.postMessage({ <span class="k">type</span>: <span class="s">"result"</span>, <span class="k">result</span>: analysis.result });
+    } <span class="b">else if</span> (data.type === <span class="s">"diagram"</span> &amp;&amp; analysis) {
+      self.postMessage({ <span class="k">type</span>: <span class="s">"diagram"</span>, <span class="k">diagram</span>: analysis.<span class="u">memberDiagram</span>(data.resultId, data.memberId) });
+    }
+  } <span class="b">catch</span> (e) {
+    self.postMessage({ <span class="k">type</span>: <span class="s">"error"</span>, <span class="k">code</span>: e.code, <span class="k">message</span>: e.message, <span class="k">issues</span>: e.issues });
+  }
+};</pre>
+      </div>
+
+      <div class="sub-label">Model size and run time</div>
+      <p>Measured on regular building grids (columns and two-way beams, 3 load cases including self-weight, 3 combinations) with Node.js on a development machine; browsers run the same code at a similar speed. Time includes validation, all cases, combinations, diagrams and the envelope.</p>
+      <table class="param-table">
+        <thead><tr><th>Nodes</th><th>Members</th><th>DOF</th><th>Factorisation</th><th>Full run</th><th>Result ("full")</th><th>Run / result ("extremes")</th></tr></thead>
+        <tbody>
+          <tr><td>60</td><td>111</td><td>360</td><td>8 ms</td><td>0.1 s</td><td>2.9 MB</td><td>0.06 s / 0.8 MB</td></tr>
+          <tr><td>486</td><td>1 176</td><td>2 916</td><td>0.1 s</td><td>0.8 s</td><td>31 MB</td><td>0.6 s / 8 MB</td></tr>
+          <tr><td>847</td><td>2 130</td><td>5 082</td><td>0.26 s</td><td>1.5 s</td><td>56 MB</td><td>1.2 s / 15 MB</td></tr>
+          <tr><td>1 872</td><td>4 935</td><td>11 232</td><td>1.5 s</td><td>4.3 s</td><td>131 MB</td><td>4.0 s / 34 MB</td></tr>
+          <tr><td>3 927</td><td>10 660</td><td>23 562</td><td>8.0 s</td><td>15 s</td><td>285 MB</td><td>14 s / 73 MB</td></tr>
+        </tbody>
+      </table>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>The skyline solver's work grows with the number of DOFs times the square of the band, which reverse Cuthill–McKee keeps near one floor of nodes. Interactive use is comfortable up to a few thousand nodes; beyond that, run analyses on demand rather than on every edit.</span>
+      </div>
+    </div>
+
     <!-- ══════════════ Analysis flow ══════════════ -->
     <div class="section" id="analysis-flow">
       <div class="section__title">Analysis flow</div>
       <div class="flow-steps">
-        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Validate</strong> the model (errors 301, 302, 303, 305, 306).</div></div>
-        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Member matrices:</strong> build the local stiffness, resolve member loads into local axes and fixed-end forces, condense end releases, and transform with <code>T</code>.</div></div>
-        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Assemble</strong> the global stiffness <code>K</code> (6 DOFs per node) and load vector <code>F</code> = nodal loads − fixed-end forces, then add spring stiffnesses.</div></div>
-        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Solve</strong> the free-DOF system by Cholesky factorisation; a singular matrix throws 304.</div></div>
-        <div class="flow-step"><div class="step-num">5</div><div class="step-body"><strong>Recover</strong> reactions <code>R = K·U − F</code>, member end forces and force diagrams.</div></div>
-        <div class="flow-step"><div class="step-num">6</div><div class="step-body"><strong>Check</strong> global force and moment equilibrium and report the residual in <code>calculationDetails</code>.</div></div>
+        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Validate</strong> the model, load cases, loads and combinations with <code>validateFrameModel</code> (errors 301–303 and 305–314); every problem is collected, and the first is thrown with all of them in <code>issues</code>.</div></div>
+        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Build the system once:</strong> member local stiffness, end-release condensation and transformation <code>T</code>; number the free DOFs with the nodes in reverse Cuthill–McKee order (which narrows the band), assemble the stiffness in skyline (variable-band) storage, add spring stiffnesses and factorise by Cholesky once. A singular matrix throws 304, naming a node and DOF of the mechanism.</div></div>
+        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Solve each load case</strong> against that factorisation: group the loads by their <code>loadCase</code>, resolve member loads and self-weight into local fixed-end forces, form <code>F</code> = nodal loads − fixed-end forces, and recover displacements, reactions <code>R = K·U − F</code> and member end forces.</div></div>
+        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Combine</strong>: expand nested combinations into net case factors and superpose the unrounded case results; rebuild each combination's diagrams exactly.</div></div>
+        <div class="flow-step"><div class="step-num">5</div><div class="step-body"><strong>Check and present</strong>: global force and moment equilibrium of each case and combination, rounding of presented values, and the envelope over all combinations.</div></div>
       </div>
     </div>
 
@@ -482,14 +722,15 @@
           <span class="std-badge" title="Basis: linear-elastic matrix stiffness analysis — not an ACI 318-19 provision">Matrix analysis</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">Analyses a 3D frame for one load case and returns displacements, reactions, member end forces and force diagrams.</p>
+          <p class="ex-desc">Analyses a 3D frame for every load case, forms every load combination, and returns the results of each with an envelope over the combinations.</p>
 
           <div class="sub-label">Parameters</div>
           <table class="param-table">
             <thead><tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>model</td><td>FrameModel</td><td>—</td><td><span class="req">Required</span></td><td>Nodes, members, restraints and loads; see <a href="#frame-model" style="color:var(--accent)">FrameModel</a></td></tr>
+              <tr><td>model</td><td>FrameModel</td><td>—</td><td><span class="req">Required</span></td><td>Nodes, members, restraints, at least one load case, and optional combinations; see <a href="#frame-model" style="color:var(--accent)">FrameModel</a></td></tr>
               <tr><td>options.stations</td><td>number</td><td>—</td><td><span class="opt">Optional</span></td><td>Evenly spaced stations per member diagram (default 21); load breakpoints and zero-shear points are added</td></tr>
+              <tr><td>options.diagrams</td><td>"full" | "extremes"</td><td>—</td><td><span class="opt">Optional</span></td><td><code>"full"</code> (default) returns every member diagram with its <code>stations</code>. <code>"extremes"</code> keeps each diagram's <code>extremes</code> — so the envelope and <code>memberDemandEnvelope</code> still work — but leaves <code>stations</code> empty, about 4× smaller for large models. Get full diagrams on demand from <a href="#create-frame-analysis" style="color:var(--accent)">createFrameAnalysis</a></td></tr>
             </tbody>
           </table>
 
@@ -498,6 +739,10 @@
             <div class="code-block__label">TypeScript</div>
             <pre>
 <span class="b">const</span> { sectionProperties } = <span class="u">rectBeamToSectionProperties</span>({ <span class="k">fc_</span>: <span class="n">28</span>, <span class="k">b</span>: <span class="n">300</span>, <span class="k">h</span>: <span class="n">600</span> });
+<span class="c">// unitWeight defaults to 24 kN/m³ → self-weight 24 · 0.18 m² = 4.32 kN/m</span>
+
+<span class="b">const</span> udl = (loadCase, memberId, w) =&gt;
+  ({ loadCase, <span class="k">type</span>: <span class="s">"udl"</span>, memberId, <span class="k">direction</span>: <span class="s">"Z"</span>, w });  <span class="c">// w in kN/m</span>
 
 <span class="b">const</span> result = <span class="u">analyzeFrame</span>({
   <span class="k">nodes</span>: [
@@ -514,9 +759,19 @@
     { <span class="k">nodeId</span>: <span class="s">"B"</span>, <span class="k">uy</span>: <span class="b">true</span>, <span class="k">uz</span>: <span class="b">true</span> },
     { <span class="k">nodeId</span>: <span class="s">"C"</span>, <span class="k">uy</span>: <span class="b">true</span>, <span class="k">uz</span>: <span class="b">true</span> },
   ],
-  <span class="k">memberLoads</span>: [
-    { <span class="k">type</span>: <span class="s">"udl"</span>, <span class="k">memberId</span>: <span class="s">"AB"</span>, <span class="k">direction</span>: <span class="s">"Z"</span>, <span class="k">w</span>: <span class="n">-40</span> },  <span class="c">// kN/m, downward</span>
-    { <span class="k">type</span>: <span class="s">"udl"</span>, <span class="k">memberId</span>: <span class="s">"BC"</span>, <span class="k">direction</span>: <span class="s">"Z"</span>, <span class="k">w</span>: <span class="n">-40</span> },
+  <span class="k">loadCases</span>: [
+    { <span class="k">id</span>: <span class="s">"D"</span>,  <span class="k">type</span>: <span class="s">"dead"</span>, <span class="k">selfWeight</span>: <span class="n">1</span> },
+    { <span class="k">id</span>: <span class="s">"SD"</span>, <span class="k">type</span>: <span class="s">"superDead"</span> },
+    { <span class="k">id</span>: <span class="s">"L"</span>,  <span class="k">type</span>: <span class="s">"live"</span> },
+  ],
+  <span class="k">memberLoads</span>: [  <span class="c">// one flat list for every load case; each load names its case</span>
+    udl(<span class="s">"SD"</span>, <span class="s">"AB"</span>, <span class="n">-10</span>), udl(<span class="s">"SD"</span>, <span class="s">"BC"</span>, <span class="n">-10</span>),
+    udl(<span class="s">"L"</span>, <span class="s">"AB"</span>, <span class="n">-15</span>), udl(<span class="s">"L"</span>, <span class="s">"BC"</span>, <span class="n">-15</span>),
+  ],
+  <span class="k">combinations</span>: [
+    { <span class="k">id</span>: <span class="s">"DEAD"</span>, <span class="k">terms</span>: [{ <span class="k">case</span>: <span class="s">"D"</span>, <span class="k">factor</span>: <span class="n">1</span> }, { <span class="k">case</span>: <span class="s">"SD"</span>, <span class="k">factor</span>: <span class="n">1</span> }] },
+    { <span class="k">id</span>: <span class="s">"1.4D"</span>, <span class="k">terms</span>: [{ <span class="k">combination</span>: <span class="s">"DEAD"</span>, <span class="k">factor</span>: <span class="n">1.4</span> }] },
+    { <span class="k">id</span>: <span class="s">"1.2D+1.6L"</span>, <span class="k">terms</span>: [{ <span class="k">combination</span>: <span class="s">"DEAD"</span>, <span class="k">factor</span>: <span class="n">1.2</span> }, { <span class="k">case</span>: <span class="s">"L"</span>, <span class="k">factor</span>: <span class="n">1.6</span> }] },
   ],
 });</pre>
           </div>
@@ -526,55 +781,157 @@
             <div class="code-block__label">Result (excerpt)</div>
             <pre>
 {
-  <span class="k">reactions</span>: [
-    { <span class="k">nodeId</span>: <span class="s">"A"</span>, <span class="k">fz</span>: <span class="n">75</span>,  <span class="c">/* kN */</span> <span class="c">… },</span>
-    { <span class="k">nodeId</span>: <span class="s">"B"</span>, <span class="k">fz</span>: <span class="n">250</span>, <span class="c">… },</span>
-    { <span class="k">nodeId</span>: <span class="s">"C"</span>, <span class="k">fz</span>: <span class="n">75</span>,  <span class="c">… },</span>
-  ],
-  <span class="k">nodalDisplacements</span>: [
-    { <span class="k">nodeId</span>: <span class="s">"A"</span>, <span class="k">ry</span>: <span class="n">0.0022161</span>, <span class="c">/* rad */</span> <span class="c">… },</span>
-    <span class="c">…</span>
-  ],
-  <span class="k">memberEndForces</span>: [
-    { <span class="k">memberId</span>: <span class="s">"AB"</span>,
-      <span class="k">start</span>: { <span class="k">f2</span>: <span class="n">75</span>,  <span class="k">m3</span>: <span class="n">0</span> },
-      <span class="k">end</span>:   { <span class="k">f2</span>: <span class="n">125</span>, <span class="k">m3</span>: <span class="n">-125</span> } },  <span class="c">// kN, kN·m</span>
-    <span class="c">…</span>
-  ],
-  <span class="k">memberDiagrams</span>: [
-    { <span class="k">memberId</span>: <span class="s">"AB"</span>,
-      <span class="k">extremes</span>: { <span class="k">M3</span>: { <span class="k">max</span>: { <span class="k">value</span>: <span class="n">70.3125</span>, <span class="k">x</span>: <span class="n">1875</span> },
-                            <span class="k">min</span>: { <span class="k">value</span>: <span class="n">-125</span>,    <span class="k">x</span>: <span class="n">5000</span> } }, <span class="c">… },</span>
-      <span class="k">stations</span>: [ { <span class="k">x</span>: <span class="n">0</span>, <span class="k">V2</span>: <span class="n">-75</span>, <span class="k">M3</span>: <span class="n">0</span>, <span class="c">… }, …</span> ] },
-  ],
-  <span class="k">calculationDetails</span>: { <span class="k">nodeCount</span>: <span class="n">3</span>, <span class="k">memberCount</span>: <span class="n">2</span>, <span class="k">dofCount</span>: <span class="n">18</span>, <span class="k">freeDofCount</span>: <span class="n">10</span>,
-                         <span class="k">equilibriumResidual</span>: { <span class="k">force</span>: <span class="n">0</span>, <span class="k">moment</span>: <span class="n">0</span> } },
+  <span class="k">cases</span>: {
+    <span class="k">D</span>:  { <span class="k">reactions</span>: [{ <span class="k">nodeId</span>: <span class="s">"A"</span>, <span class="k">fz</span>: <span class="n">8.1</span> }, { <span class="k">nodeId</span>: <span class="s">"B"</span>, <span class="k">fz</span>: <span class="n">27</span> }, { <span class="k">nodeId</span>: <span class="s">"C"</span>, <span class="k">fz</span>: <span class="n">8.1</span> }], <span class="c">… },  // kN</span>
+    <span class="k">SD</span>: { <span class="c">… },</span>
+    <span class="k">L</span>:  { <span class="c">… },</span>
+  },
+  <span class="k">combinations</span>: {
+    <span class="s">"1.2D+1.6L"</span>: {
+      <span class="k">id</span>: <span class="s">"1.2D+1.6L"</span>, <span class="k">kind</span>: <span class="s">"combination"</span>,
+      <span class="k">reactions</span>: [{ <span class="k">nodeId</span>: <span class="s">"A"</span>, <span class="k">fz</span>: <span class="n">77.22</span> }, { <span class="k">nodeId</span>: <span class="s">"B"</span>, <span class="k">fz</span>: <span class="n">257.4</span> }, { <span class="k">nodeId</span>: <span class="s">"C"</span>, <span class="k">fz</span>: <span class="n">77.22</span> }],
+      <span class="k">nodalDisplacements</span>: [{ <span class="k">nodeId</span>: <span class="s">"A"</span>, <span class="k">ry</span>: <span class="n">0.0022817</span>, <span class="c">/* rad */ … }, …],</span>
+      <span class="k">memberEndForces</span>: [{ <span class="k">memberId</span>: <span class="s">"AB"</span>,
+        <span class="k">start</span>: { <span class="k">f2</span>: <span class="n">77.22</span>, <span class="k">m3</span>: <span class="n">0</span> }, <span class="k">end</span>: { <span class="k">f2</span>: <span class="n">128.7</span>, <span class="k">m3</span>: <span class="n">-128.7</span> } }, <span class="c">…],  // kN, kN·m</span>
+      <span class="k">memberDiagrams</span>: [{ <span class="k">memberId</span>: <span class="s">"AB"</span>,
+        <span class="k">extremes</span>: { <span class="k">M3</span>: { <span class="k">max</span>: { <span class="k">value</span>: <span class="n">72.3938</span>, <span class="k">x</span>: <span class="n">1875</span> }, <span class="k">min</span>: { <span class="k">value</span>: <span class="n">-128.7</span>, <span class="k">x</span>: <span class="n">5000</span> } }, <span class="c">… },</span>
+        <span class="k">stations</span>: [<span class="c">…</span>] }, <span class="c">…],</span>
+      <span class="k">equilibriumResidual</span>: { <span class="k">force</span>: <span class="n">0</span>, <span class="k">moment</span>: <span class="n">0</span> },
+      <span class="k">warnings</span>: []
+    },
+    <span class="s">"DEAD"</span>: { <span class="c">… },</span> <span class="s">"1.4D"</span>: { <span class="c">… }</span>
+  },
+  <span class="k">envelope</span>: {
+    <span class="k">combinationIds</span>: [<span class="s">"DEAD"</span>, <span class="s">"1.4D"</span>, <span class="s">"1.2D+1.6L"</span>],
+    <span class="k">reactions</span>: [<span class="c">…</span>, { <span class="k">nodeId</span>: <span class="s">"B"</span>, <span class="k">fz</span>: { <span class="k">max</span>: { <span class="k">value</span>: <span class="n">257.4</span>, <span class="k">combinationId</span>: <span class="s">"1.2D+1.6L"</span> },
+                                   <span class="k">min</span>: { <span class="k">value</span>: <span class="n">89.5</span>,  <span class="k">combinationId</span>: <span class="s">"DEAD"</span> } }, <span class="c">… }, …],</span>
+    <span class="k">members</span>: [{ <span class="k">memberId</span>: <span class="s">"AB"</span>, <span class="k">extremes</span>: { <span class="k">M3</span>: {
+      <span class="k">max</span>: { <span class="k">value</span>: <span class="n">72.3938</span>, <span class="k">x</span>: <span class="n">1875</span>, <span class="k">combinationId</span>: <span class="s">"1.2D+1.6L"</span> },
+      <span class="k">min</span>: { <span class="k">value</span>: <span class="n">-128.7</span>,  <span class="k">x</span>: <span class="n">5000</span>, <span class="k">combinationId</span>: <span class="s">"1.2D+1.6L"</span> } }, <span class="c">… } }, …],</span>
+    <span class="k">nodalDisplacements</span>: [<span class="c">…</span>]
+  },
+  <span class="k">calculationDetails</span>: { <span class="k">nodeCount</span>: <span class="n">3</span>, <span class="k">memberCount</span>: <span class="n">2</span>, <span class="k">dofCount</span>: <span class="n">18</span>, <span class="k">freeDofCount</span>: <span class="n">10</span>, <span class="k">profileSize</span>: <span class="n">47</span>,
+                         <span class="k">loadCaseCount</span>: <span class="n">3</span>, <span class="k">combinationCount</span>: <span class="n">3</span> },
   <span class="k">units</span>: { <span class="k">force</span>: <span class="s">"kN"</span>, <span class="k">moment</span>: <span class="s">"kN·m"</span>, <span class="k">length</span>: <span class="s">"mm"</span>, <span class="k">rotation</span>: <span class="s">"rad"</span> },
   <span class="k">warnings</span>: []
 }</pre>
           </div>
-          <p>The results are the textbook two-span values: reactions 3wL/8, 10wL/8, 3wL/8, support moment wL²/8 = 125 kN·m and span moment 9wL²/128 = 70.3125 kN·m.</p>
+          <p>The factored load is 1.2·(4.32 + 10) + 1.6·15 = 41.184 kN/m, and the results are the textbook two-span values: reactions 3wL/8, 10wL/8, 3wL/8, support moment wL²/8 = 128.7 kN·m and span moment 9wL²/128 = 72.3938 kN·m.</p>
 
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>nodalDisplacements</td><td>NodalDisplacement[]</td><td>mm, rad</td><td>ux, uy, uz, rx, ry, rz per node (global axes)</td></tr>
-              <tr><td>reactions</td><td>NodalReaction[]</td><td>kN, kN·m</td><td>fx…mz per node; zero at unrestrained DOFs. A spring DOF reports the force the spring exerts on the node</td></tr>
-              <tr><td>memberEndForces</td><td>MemberEndForces[]</td><td>kN, kN·m</td><td>f1, f2, f3, m1, m2, m3 that the node exerts on each member end, local axes, right-hand</td></tr>
-              <tr><td>memberDiagrams</td><td>MemberDiagram[]</td><td>kN, kN·m, mm</td><td>N, V2, V3, T, M2, M3 at stations (both sides of a point load) and the max/min of each with its position</td></tr>
-              <tr><td>calculationDetails</td><td>object</td><td>—</td><td>Node, member and DOF counts, and the global equilibrium residual in kN and kN·m</td></tr>
+              <tr><td>cases</td><td>Record&lt;string, FrameCaseResult&gt;</td><td>—</td><td>Result of each load case, keyed by its id; see <a href="#frame-case-result" style="color:var(--accent)">FrameCaseResult</a></td></tr>
+              <tr><td>combinations</td><td>Record&lt;string, FrameCaseResult&gt;</td><td>—</td><td>Result of each load combination, keyed by its id; empty when none are defined</td></tr>
+              <tr><td>envelope</td><td>FrameEnvelope | undefined</td><td>—</td><td>Max/min over all combinations with the governing combination; absent when there are no combinations. See <a href="#frame-envelope" style="color:var(--accent)">FrameEnvelope</a></td></tr>
+              <tr><td>calculationDetails</td><td>object</td><td>—</td><td>Node, member, DOF, load case and combination counts, and <code>profileSize</code> — the stored entries of the banded stiffness factor, a measure of memory and solve work</td></tr>
               <tr><td>units</td><td>object</td><td>—</td><td>Units of every result field</td></tr>
-              <tr><td>warnings</td><td>Warnings</td><td>—</td><td>Empty when nothing is flagged</td></tr>
+              <tr><td>warnings</td><td>Warnings</td><td>—</td><td>Every case and combination warning, each message prefixed with its load case or combination id</td></tr>
             </tbody>
           </table>
 
           <div class="alert alert--warn">
             <span>⚠️</span>
-            <span>Pushes a warning, with reference <strong>Frame analysis, global equilibrium check</strong>, when the equilibrium residual exceeds 10⁻⁶ of the applied load — a sign of an ill-conditioned stiffness matrix. This is a solver check, not a code clause.</span>
+            <span>Pushes a warning, with reference <strong>Frame analysis, global equilibrium check</strong>, for a load case or combination whose equilibrium residual exceeds 10⁻⁶ of its applied load — a sign of an ill-conditioned stiffness matrix. This is a solver check, not a code clause.</span>
           </div>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws <strong>FrameAnalysisError 301–308</strong> for an invalid model or an unstable structure; see <a href="#errors" style="color:var(--accent)">the error table</a>.</span>
+            <span>Throws <strong>FrameAnalysisError 301–314</strong> for an invalid model, load case or combination, or an unstable structure (304). The model is checked by <a href="#validate-frame-model" style="color:var(--accent)">validateFrameModel</a> first; the error is the first problem found, its <code>details</code> say where it is, and <code>issues</code> lists every problem. See <a href="#errors" style="color:var(--accent)">the error table</a>.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-card" id="create-frame-analysis">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">createFrameAnalysis(model, options?)</span>
+          <span class="scope-badge s-public">Public API</span>
+          <span class="std-badge" title="Basis: linear-elastic matrix stiffness analysis — not an ACI 318-19 provision">Matrix analysis</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Runs the same analysis as <code>analyzeFrame</code> and keeps the solution, so a member's full diagram can be computed later on demand without re-analysing. Analyse with <code>diagrams: "extremes"</code> for a small result, then draw a member's diagram when the user selects it. Keep the returned object inside the Web Worker that ran the analysis and post plain results to the UI.</p>
+
+          <div class="sub-label">Parameters</div>
+          <p>Same as <a href="#analyze-frame" style="color:var(--accent)">analyzeFrame</a>.</p>
+
+          <div class="sub-label">Example</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre>
+<span class="b">const</span> analysis = <span class="u">createFrameAnalysis</span>(model, { <span class="k">diagrams</span>: <span class="s">"extremes"</span> });
+analysis.result.cases.D.memberDiagrams[<span class="n">0</span>].stations;  <span class="c">// [] — extremes only</span>
+
+<span class="c">// the user clicks member "m" while viewing load case "D"</span>
+<span class="b">const</span> diagram = analysis.<span class="u">memberDiagram</span>(<span class="s">"D"</span>, <span class="s">"m"</span>);  <span class="c">// 21 stations, same as "full"</span>
+<span class="b">const</span> fine = analysis.<span class="u">memberDiagram</span>(<span class="s">"D"</span>, <span class="s">"m"</span>, <span class="n">51</span>);  <span class="c">// more stations</span></pre>
+          </div>
+
+          <div class="sub-label">Returns</div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>result</td><td>FrameResult</td><td>—</td><td>What <code>analyzeFrame</code> returns for the same model and options</td></tr>
+              <tr><td>memberDiagram(resultId, memberId, stations?)</td><td>MemberDiagram</td><td>kN, kN·m, mm</td><td>The full diagram (stations and extremes) of one member for one load case or combination, identical to the one a <code>"full"</code> analysis returns</td></tr>
+            </tbody>
+          </table>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws like <code>analyzeFrame</code> (<strong>FrameAnalysisError 301–314</strong>). <code>memberDiagram</code> throws a plain <code>Error</code> for an unknown load case, combination or member id.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-card" id="validate-frame-model">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">validateFrameModel(model)</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Checks a model without analysing it and returns <strong>every</strong> problem, each with the node, member, load case, combination and field it concerns — for marking all invalid inputs in a form at once. An empty array means the model can be analysed; the only problem it cannot see is an unstable structure (304), which the solve detects. <code>analyzeFrame</code> runs it first.</p>
+
+          <div class="sub-label">Parameters</div>
+          <table class="param-table">
+            <thead><tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>model</td><td>FrameModel</td><td>—</td><td><span class="req">Required</span></td><td>The model to check, including untyped input from a UI</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Example</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre>
+<span class="b">const</span> issues = <span class="u">validateFrameModel</span>({
+  <span class="c">…</span>
+  <span class="k">loadCases</span>: [{ <span class="k">id</span>: <span class="s">"D"</span> }],
+  <span class="k">nodalLoads</span>:  [{ <span class="k">loadCase</span>: <span class="s">"D"</span>, <span class="k">nodeId</span>: <span class="n">2</span>, <span class="k">fz</span>: NaN }],                              <span class="c">// empty input box</span>
+  <span class="k">memberLoads</span>: [{ <span class="k">loadCase</span>: <span class="s">"L"</span>, <span class="k">type</span>: <span class="s">"udl"</span>, <span class="k">memberId</span>: <span class="s">"m"</span>, <span class="k">direction</span>: <span class="s">"z"</span>, <span class="k">w</span>: <span class="n">-5</span> }], <span class="c">// no case "L"; lower-case "z"</span>
+});</pre>
+          </div>
+
+          <div class="sub-label">Returns</div>
+          <div class="code-block">
+            <div class="code-block__label">Result</div>
+            <pre>
+[
+  { <span class="k">code</span>: <span class="n">314</span>, <span class="k">details</span>: { <span class="k">loadCaseId</span>: <span class="s">"D"</span>, <span class="k">nodeId</span>: <span class="n">2</span>, <span class="k">field</span>: <span class="s">"fz"</span> },
+    <span class="k">message</span>: <span class="s">"An input value is invalid: … [node \"2\", load case \"D\", field \"fz\"]"</span> },
+  { <span class="k">code</span>: <span class="n">309</span>, <span class="k">details</span>: { <span class="k">loadCaseId</span>: <span class="s">"L"</span>, <span class="k">memberId</span>: <span class="s">"m"</span>, <span class="k">field</span>: <span class="s">"loadCase"</span> }, <span class="k">message</span>: <span class="s">"…"</span> },
+  { <span class="k">code</span>: <span class="n">314</span>, <span class="k">details</span>: { <span class="k">loadCaseId</span>: <span class="s">"L"</span>, <span class="k">memberId</span>: <span class="s">"m"</span>, <span class="k">field</span>: <span class="s">"direction"</span> }, <span class="k">message</span>: <span class="s">"…"</span> }
+]</pre>
+          </div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>code</td><td>number</td><td>—</td><td>The <a href="#errors" style="color:var(--accent)">error code</a></td></tr>
+              <tr><td>message</td><td>string</td><td>—</td><td>The code's message followed by its location in brackets</td></tr>
+              <tr><td>details</td><td>FrameErrorDetails</td><td>—</td><td><code>{ nodeId?, memberId?, loadCaseId?, combinationId?, field?, dof? }</code> — only the fields that apply</td></tr>
+            </tbody>
+          </table>
+          <div class="alert alert--info">
+            <span>ℹ️</span>
+            <span>Numbers must be real, finite numbers: <code>NaN</code>, <code>Infinity</code> and numeric strings such as <code>"10"</code> are rejected (314), so convert form input with <code>Number(...)</code> and check it before analysing.</span>
           </div>
         </div>
       </div>
@@ -587,7 +944,7 @@
           <span class="std-badge" title="Basis: linear-elastic matrix stiffness analysis — not an ACI 318-19 provision">Matrix analysis</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">Reduces a member's force diagrams to the design demands Mu⁺, Mu⁻, Vu and Nu, ready for <code>rectBeamMomentCapacity</code> and the shear functions. Takes plain numbers; it does not import the RC module.</p>
+          <p class="ex-desc">Reduces a member's force diagrams to the design demands Mu⁺, Mu⁻, Vu and Nu, enveloped over load combinations (and optionally load cases), and names the combination that governs each. The demands are ready for <code>rectBeamMomentCapacity</code> and the shear functions; the function takes plain numbers and does not import the RC module.</p>
 
           <div class="sub-label">Parameters</div>
           <table class="param-table">
@@ -595,6 +952,8 @@
             <tbody>
               <tr><td>result</td><td>FrameResult</td><td>—</td><td><span class="req">Required</span></td><td>Output of <code>analyzeFrame</code></td></tr>
               <tr><td>memberId</td><td>string | number</td><td>—</td><td><span class="req">Required</span></td><td>Member to reduce</td></tr>
+              <tr><td>options.combinations</td><td>string[]</td><td>—</td><td><span class="opt">Optional</span></td><td>Combination ids to envelope. Default: every combination, unless <code>cases</code> is given</td></tr>
+              <tr><td>options.cases</td><td>string[]</td><td>—</td><td><span class="opt">Optional</span></td><td>Load case ids to envelope as well (or instead). Default: none</td></tr>
               <tr><td>options.shearCriticalDistance</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Take Vu only between this distance from each end, e.g. the effective depth d (default 0)</td></tr>
             </tbody>
           </table>
@@ -603,7 +962,7 @@
           <div class="code-block">
             <div class="code-block__label">TypeScript</div>
             <pre>
-<span class="b">const</span> envelope = <span class="u">memberDemandEnvelope</span>(result, <span class="s">"AB"</span>, {
+<span class="b">const</span> demand = <span class="u">memberDemandEnvelope</span>(result, <span class="s">"AB"</span>, {
   <span class="k">shearCriticalDistance</span>: <span class="n">540</span>,  <span class="c">// mm, d</span>
 });</pre>
           </div>
@@ -614,20 +973,21 @@
             <pre>
 {
   <span class="k">memberId</span>: <span class="s">"AB"</span>,
-  <span class="k">MuPositive</span>: <span class="n">70.3125</span>,  <span class="c">// kN·m</span>
-  <span class="k">MuNegative</span>: <span class="n">125</span>,      <span class="c">// kN·m, magnitude</span>
-  <span class="k">Vu</span>: <span class="n">103.4</span>,           <span class="c">// kN</span>
-  <span class="k">Nu</span>: <span class="n">0</span>,               <span class="c">// kN, tension positive</span>
+  <span class="k">MuPositive</span>: <span class="n">72.3938</span>,  <span class="c">// kN·m</span>
+  <span class="k">MuNegative</span>: <span class="n">128.7</span>,    <span class="c">// kN·m, magnitude</span>
+  <span class="k">Vu</span>: <span class="n">106.4606</span>,         <span class="c">// kN, at d from the supports</span>
+  <span class="k">Nu</span>: <span class="n">0</span>,                <span class="c">// kN, tension positive</span>
+  <span class="k">governing</span>: { <span class="k">MuPositive</span>: <span class="s">"1.2D+1.6L"</span>, <span class="k">MuNegative</span>: <span class="s">"1.2D+1.6L"</span>, <span class="k">Vu</span>: <span class="s">"1.2D+1.6L"</span>, <span class="k">Nu</span>: <span class="nl">null</span> },
   <span class="k">VuRange</span>: { <span class="k">from</span>: <span class="n">540</span>, <span class="k">to</span>: <span class="n">4460</span> }  <span class="c">// mm</span>
 }</pre>
           </div>
           <div class="alert alert--info">
             <span>ℹ️</span>
-            <span>The sign of M3 depends on the member's local 2 axis. For a beam along X, local 2 is +Z, so sagging is positive and <code>MuPositive</code> is the span moment.</span>
+            <span><code>governing</code> names the combination (or case) producing each demand, and is <code>null</code> when that demand is zero in every selected result. The sign of M3 depends on the member's local 2 axis: for a beam along X, local 2 is +Z, so sagging is positive and <code>MuPositive</code> is the span moment.</span>
           </div>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws a plain <code>Error</code> if <code>memberId</code> is not in the result.</span>
+            <span>Throws a plain <code>Error</code> if <code>memberId</code> or a requested combination or case id is not in the result, if nothing is selected (a result without combinations needs <code>cases</code>), or if <code>shearCriticalDistance</code> is used on a result analysed with <code>diagrams: "extremes"</code> (which has no stations to read Vu between). Without a critical distance it works on such a result, taking Vu from the shear extremes.</span>
           </div>
         </div>
       </div>
@@ -721,6 +1081,7 @@
       </div>
     </div>
 
+
     <!-- ══════════════ Types ══════════════ -->
     <div class="section" id="section-types">
       <div class="section__title">Types</div>
@@ -732,15 +1093,100 @@
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">Input of <code>analyzeFrame</code>. Ids may be strings or numbers and must be unique within nodes, members and restraints.</p>
+          <p class="ex-desc">Input of <code>analyzeFrame</code>. Node and member ids may be strings or numbers and must be unique within nodes, members and restraints.</p>
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
               <tr><td>nodes</td><td>FrameNode[]</td><td>mm</td><td><span class="req">Required</span></td><td><code>{ id, x, y, z }</code></td></tr>
               <tr><td>members</td><td>Member[]</td><td>—</td><td><span class="req">Required</span></td><td><code>{ id, startNodeId, endNodeId, section, angle?, releases? }</code>. <code>angle</code> in rad. <code>releases: { start?, end? }</code> hold flags <code>u1, u2, u3, r1, r2, r3</code> for local end DOFs that carry no force (hinges, rollers)</td></tr>
               <tr><td>restraints</td><td>Restraint[]</td><td>kN/mm, kN·m/rad</td><td><span class="req">Required</span></td><td><code>{ nodeId, ux, uy, uz, rx, ry, rz }</code> in global axes. <code>true</code> fixes the DOF, a positive number is a spring stiffness, omitted is free. At least one DOF must be restrained</td></tr>
-              <tr><td>nodalLoads</td><td>NodalLoad[]</td><td>kN, kN·m</td><td><span class="opt">Optional</span></td><td><code>{ nodeId, fx, fy, fz, mx, my, mz }</code> along and about global axes</td></tr>
-              <tr><td>memberLoads</td><td>MemberLoad[]</td><td>kN/m, kN, mm</td><td><span class="opt">Optional</span></td><td>Uniform: <code>{ type: "udl", memberId, direction, w, start?, end? }</code>. Point: <code>{ type: "point", memberId, direction, P, a }</code>. <code>direction</code> is <code>"1" | "2" | "3"</code> (local) or <code>"X" | "Y" | "Z"</code> (global); positions are measured from the member start in mm</td></tr>
+              <tr><td>loadCases</td><td>LoadCase[]</td><td>—</td><td><span class="req">Required</span></td><td>At least one; see <a href="#load-case" style="color:var(--accent)">LoadCase</a></td></tr>
+              <tr><td>nodalLoads</td><td>NodalLoad[]</td><td>kN, kN·m</td><td><span class="opt">Optional</span></td><td><code>{ loadCase, nodeId, fx, fy, fz, mx, my, mz }</code> along and about global axes; see <a href="#nodal-load" style="color:var(--accent)">NodalLoad</a></td></tr>
+              <tr><td>memberLoads</td><td>MemberLoad[]</td><td>kN/m, kN, mm</td><td><span class="opt">Optional</span></td><td>Uniform: <code>{ loadCase, type: "udl", memberId, direction, w, start?, end? }</code>. Point: <code>{ loadCase, type: "point", memberId, direction, P, a }</code>. <code>direction</code> is <code>"1" | "2" | "3"</code> (local) or <code>"X" | "Y" | "Z"</code> (global); positions are measured from the member start in mm; see <a href="#member-load" style="color:var(--accent)">MemberLoad</a></td></tr>
+              <tr><td>combinations</td><td>LoadCombination[]</td><td>—</td><td><span class="opt">Optional</span></td><td>See <a href="#load-combination" style="color:var(--accent)">LoadCombination</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="load-case">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">LoadCase</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">One independently analysed set of loads. The loads themselves are listed in the model's <code>nodalLoads</code> and <code>memberLoads</code>, each with <code>loadCase</code> set to this case's <code>id</code>.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>id</td><td>string</td><td>—</td><td><span class="req">Required</span></td><td>Unique across load cases and combinations, e.g. <code>"D"</code></td></tr>
+              <tr><td>name</td><td>string</td><td>—</td><td><span class="opt">Optional</span></td><td>Description, copied to the result</td></tr>
+              <tr><td>type</td><td>LoadCaseType</td><td>—</td><td><span class="opt">Optional</span></td><td><code>"dead" | "superDead" | "live" | "roofLive" | "snow" | "wind" | "seismic" | "other"</code>; a label only</td></tr>
+              <tr><td>selfWeight</td><td>number</td><td>—</td><td><span class="opt">Optional</span></td><td>Self-weight multiplier (1 = full self-weight) along global −Z; default 0. Needs <code>unitWeight</code> on every member section</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="load-combination">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">LoadCombination</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">A linear combination: the sum of factored load cases and other combinations.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>id</td><td>string</td><td>—</td><td><span class="req">Required</span></td><td>Unique across load cases and combinations, e.g. <code>"1.2D+1.6L"</code></td></tr>
+              <tr><td>name</td><td>string</td><td>—</td><td><span class="opt">Optional</span></td><td>Description, copied to the result</td></tr>
+              <tr><td>terms</td><td>CombinationTerm[]</td><td>—</td><td><span class="req">Required</span></td><td>At least one. Each term is <code>{ case: id, factor }</code> or <code>{ combination: id, factor }</code>; factors may be negative</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="nodal-load">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">NodalLoad</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">A force and/or moment applied at a node, in global axes. See <a href="#loads" style="color:var(--accent)">Loads</a>.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>loadCase</td><td>string</td><td>—</td><td><span class="req">Required</span></td><td>Id of the load case this load belongs to</td></tr>
+              <tr><td>nodeId</td><td>string | number</td><td>—</td><td><span class="req">Required</span></td><td>Loaded node</td></tr>
+              <tr><td>fx, fy, fz</td><td>number</td><td>kN</td><td><span class="opt">Optional</span></td><td>Force along global X, Y, Z (default 0)</td></tr>
+              <tr><td>mx, my, mz</td><td>number</td><td>kN·m</td><td><span class="opt">Optional</span></td><td>Moment about global X, Y, Z, right-hand rule (default 0)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="member-load">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">MemberLoad = UniformMemberLoad | PointMemberLoad</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">A load on a member, chosen by <code>type</code>. Positions are measured from the member's start node. See <a href="#loads" style="color:var(--accent)">Loads</a>.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>loadCase</td><td>string</td><td>—</td><td><span class="req">Required</span></td><td>Id of the load case this load belongs to</td></tr>
+              <tr><td>type</td><td>"udl" | "point"</td><td>—</td><td><span class="req">Required</span></td><td>Uniform or point load</td></tr>
+              <tr><td>memberId</td><td>string | number</td><td>—</td><td><span class="req">Required</span></td><td>Loaded member</td></tr>
+              <tr><td>direction</td><td>LoadDirection</td><td>—</td><td><span class="req">Required</span></td><td><code>"1" | "2" | "3"</code> (local) or <code>"X" | "Y" | "Z"</code> (global)</td></tr>
+              <tr><td>w</td><td>number</td><td>kN/m</td><td><span class="req">Required</span> (udl)</td><td>Load per unit member length, positive along the direction axis</td></tr>
+              <tr><td>start, end</td><td>number</td><td>mm</td><td><span class="opt">Optional</span> (udl)</td><td>Loaded length for a partial load (default 0 and the member length)</td></tr>
+              <tr><td>P</td><td>number</td><td>kN</td><td><span class="req">Required</span> (point)</td><td>Load, positive along the direction axis</td></tr>
+              <tr><td>a</td><td>number</td><td>mm</td><td><span class="req">Required</span> (point)</td><td>Distance of the load from the member start</td></tr>
             </tbody>
           </table>
         </div>
@@ -753,7 +1199,61 @@
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">Output of <code>analyzeFrame</code>; fields are described under <a href="#analyze-frame" style="color:var(--accent)">analyzeFrame</a>. A <code>MemberDiagram</code> holds <code>{ memberId, length, stations, extremes }</code>; each station is <code>{ x, N, V2, V3, T, M2, M3 }</code> and <code>extremes</code> maps each of those components to <code>{ max, min }</code> with <code>{ value, x }</code>.</p>
+          <p class="ex-desc">Output of <code>analyzeFrame</code>: <code>cases</code>, <code>combinations</code>, <code>envelope</code>, <code>calculationDetails</code>, <code>units</code> and <code>warnings</code>. The fields are described under <a href="#analyze-frame" style="color:var(--accent)">analyzeFrame</a>.</p>
+        </div>
+      </div>
+
+      <div class="export-card" id="frame-case-result">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">FrameCaseResult</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Results of one load case or one load combination; both have the same shape.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>id, kind</td><td>string, "case" | "combination"</td><td>—</td><td>Which load case or combination this is; <code>name</code> and (cases only) <code>type</code> are copied from the input</td></tr>
+              <tr><td>nodalDisplacements</td><td>NodalDisplacement[]</td><td>mm, rad</td><td>ux, uy, uz, rx, ry, rz per node (global axes)</td></tr>
+              <tr><td>reactions</td><td>NodalReaction[]</td><td>kN, kN·m</td><td>fx…mz per node; zero at unrestrained DOFs. A spring DOF reports the force the spring exerts on the node</td></tr>
+              <tr><td>memberEndForces</td><td>MemberEndForces[]</td><td>kN, kN·m</td><td>f1, f2, f3, m1, m2, m3 that the node exerts on each member end, local axes, right-hand</td></tr>
+              <tr><td>memberDiagrams</td><td>MemberDiagram[]</td><td>kN, kN·m, mm</td><td><code>{ memberId, length, stations, extremes }</code>: forces N, V2, V3, T, M2, M3 and displacements u1, u2, u3 (local) and ux, uy, uz (global) at stations along the member, and each component's <code>{ max, min }</code> as <code>{ value, x }</code>; see <a href="#member-diagrams" style="color:var(--accent)">Member diagrams</a></td></tr>
+              <tr><td>equilibriumResidual</td><td>{ force, moment }</td><td>kN, kN·m</td><td>Global equilibrium residual of applied loads plus reactions</td></tr>
+              <tr><td>warnings</td><td>Warnings</td><td>—</td><td>Warnings of this case or combination</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="frame-envelope">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">FrameEnvelope</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Max and min of every presented result over all combinations, each as <code>{ value, combinationId }</code> (member extremes also carry <code>x</code>). When two combinations tie, the one listed first governs.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>combinationIds</td><td>string[]</td><td>—</td><td>The enveloped combinations, in model order</td></tr>
+              <tr><td>nodalDisplacements</td><td>array</td><td>mm, rad</td><td>Per node: <code>ux … rz</code>, each <code>{ max, min }</code></td></tr>
+              <tr><td>reactions</td><td>array</td><td>kN, kN·m</td><td>Per node: <code>fx … mz</code>, each <code>{ max, min }</code></td></tr>
+              <tr><td>members</td><td>array</td><td>kN, kN·m, mm</td><td>Per member: <code>extremes</code> of N, V2, V3, T, M2, M3, u1, u2, u3, each <code>{ max, min }</code> with position <code>x</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="frame-analysis-type">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">FrameAnalysis</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Returned by <a href="#create-frame-analysis" style="color:var(--accent)">createFrameAnalysis</a>: <code>{ result: FrameResult; memberDiagram(resultId, memberId, stations?): MemberDiagram }</code>. Unlike the result it holds a function, so it stays in the thread (or worker) that created it.</p>
         </div>
       </div>
 
@@ -774,6 +1274,7 @@
               <tr><td>I22</td><td>number</td><td>mm⁴</td><td><span class="req">Required</span></td><td>About local 2 (bending in the 1–3 plane)</td></tr>
               <tr><td>I33</td><td>number</td><td>mm⁴</td><td><span class="req">Required</span></td><td>About local 3 (bending in the 1–2 plane, major axis)</td></tr>
               <tr><td>J</td><td>number</td><td>mm⁴</td><td><span class="req">Required</span></td><td>Torsion constant</td></tr>
+              <tr><td>unitWeight</td><td>number</td><td>kN/m³</td><td><span class="opt">Optional</span></td><td>Material unit weight for load-case self-weight; required only when a case sets <code>selfWeight</code>. Must not be negative</td></tr>
             </tbody>
           </table>
         </div>
@@ -788,17 +1289,32 @@
         <code>@theerapat-s28/ts-structural-eng-tools/core</code>, with the coded entries in
         <code>FrameErrors</code>). It mirrors <code>RCDesignError</code> and uses the 3XX range.
       </p>
+      <table class="param-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>code</td><td>number</td><td>—</td><td>The code below</td></tr>
+          <tr><td>message</td><td>string</td><td>—</td><td>Description, followed by the location in brackets when known, e.g. <code>[member "m", load case "L", field "w"]</code></td></tr>
+          <tr><td>details</td><td>FrameErrorDetails</td><td>—</td><td><code>{ nodeId?, memberId?, loadCaseId?, combinationId?, field?, dof? }</code> — where the problem is, for highlighting it</td></tr>
+          <tr><td>issues</td><td>FrameModelIssue[]</td><td>—</td><td>Every problem <code>validateFrameModel</code> found; the error itself is the first</td></tr>
+        </tbody>
+      </table>
       <table class="summary-table">
         <thead><tr><th>Code</th><th>Name</th><th>Meaning</th></tr></thead>
         <tbody>
           <tr><td class="path-cell">301</td><td class="path-cell">ZERO_LENGTH_MEMBER</td><td>A member's start and end nodes coincide.</td></tr>
           <tr><td class="path-cell">302</td><td class="path-cell">UNKNOWN_NODE_REFERENCE</td><td>A member, restraint or load refers to a node or member id that is not in the model.</td></tr>
-          <tr><td class="path-cell">303</td><td class="path-cell">DUPLICATE_ID</td><td>Node ids, member ids or restrained node ids are not unique.</td></tr>
-          <tr><td class="path-cell">304</td><td class="path-cell">STRUCTURE_UNSTABLE</td><td>The restrained structure is a mechanism (singular stiffness matrix): add supports or members.</td></tr>
-          <tr><td class="path-cell">305</td><td class="path-cell">INVALID_SECTION_PROPERTIES</td><td>E, G, A, I22, I33 or J is not a positive finite number.</td></tr>
+          <tr><td class="path-cell">303</td><td class="path-cell">DUPLICATE_ID</td><td>Node ids, member ids or restrained node ids are not unique, or an id is used by more than one load case or combination.</td></tr>
+          <tr><td class="path-cell">304</td><td class="path-cell">STRUCTURE_UNSTABLE</td><td>The restrained structure is a mechanism (singular stiffness matrix): add supports or members. <code>details</code> names a node and DOF involved in the mechanism.</td></tr>
+          <tr><td class="path-cell">305</td><td class="path-cell">INVALID_SECTION_PROPERTIES</td><td>E, G, A, I22, I33 or J is not a positive finite number, or <code>unitWeight</code> is negative.</td></tr>
           <tr><td class="path-cell">306</td><td class="path-cell">NO_RESTRAINTS</td><td>No DOF is fixed or sprung.</td></tr>
           <tr><td class="path-cell">307</td><td class="path-cell">INVALID_RELEASE</td><td>The end releases let the member move as a rigid body, for example axial or torsion released at both ends.</td></tr>
           <tr><td class="path-cell">308</td><td class="path-cell">LOAD_OUTSIDE_MEMBER</td><td>A point load or a uniform load lies outside the member, or a uniform load's start is not before its end.</td></tr>
+          <tr><td class="path-cell">309</td><td class="path-cell">UNKNOWN_LOAD_CASE</td><td>A load's <code>loadCase</code>, or a combination term, refers to a load case or combination that is not in the model, or a term names neither.</td></tr>
+          <tr><td class="path-cell">310</td><td class="path-cell">CIRCULAR_COMBINATION</td><td>Load combinations reference each other in a loop.</td></tr>
+          <tr><td class="path-cell">311</td><td class="path-cell">INVALID_LOAD_FACTOR</td><td>A combination factor or self-weight multiplier is not a finite number, or a combination has no terms.</td></tr>
+          <tr><td class="path-cell">312</td><td class="path-cell">NO_LOAD_CASES</td><td>The model has no load cases.</td></tr>
+          <tr><td class="path-cell">313</td><td class="path-cell">MISSING_UNIT_WEIGHT</td><td>A load case requests self-weight but a member section has no <code>unitWeight</code>.</td></tr>
+          <tr><td class="path-cell">314</td><td class="path-cell">INVALID_INPUT_VALUE</td><td>A number is not finite (<code>NaN</code>, <code>Infinity</code>, or not a number at all, e.g. the string <code>"10"</code>), a spring stiffness is negative, or a value is not one of its allowed options (load <code>direction</code>, member load <code>type</code>, load case <code>type</code>).</td></tr>
         </tbody>
       </table>
     </div>
@@ -811,15 +1327,24 @@
           <tr><th>Kind</th><th>Export</th><th>Returns</th><th>Description</th></tr>
         </thead>
         <tbody>
-          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">analyzeFrame</td><td>FrameResult</td><td>3D frame analysis for one load case</td></tr>
-          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">memberDemandEnvelope</td><td>{ MuPositive, MuNegative, Vu, Nu, … }</td><td>Design demands from a member's diagrams</td></tr>
+          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">analyzeFrame</td><td>FrameResult</td><td>3D frame analysis for every load case and combination</td></tr>
+          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">createFrameAnalysis</td><td>FrameAnalysis</td><td>Same analysis, keeping the solution for on-demand member diagrams</td></tr>
+          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">validateFrameModel</td><td>FrameModelIssue[]</td><td>Every problem in a model, with its location, without analysing</td></tr>
+          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">memberDemandEnvelope</td><td>{ MuPositive, MuNegative, Vu, Nu, governing, … }</td><td>Design demands of a member over combinations, with the governing one</td></tr>
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">beam3dLocalStiffness</td><td>number[][]</td><td>Reference 12×12 local stiffness</td></tr>
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">beam3dLocalStiffnessRightHanded</td><td>number[][]</td><td>Same matrix with right-hand rotations</td></tr>
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">memberAxes</td><td>{ length, lambda }</td><td>ETABS-style local axes of a member</td></tr>
-          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameModel</td><td>—</td><td>Analysis input (nodes, members, restraints, loads)</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameModel</td><td>—</td><td>Analysis input (nodes, members, restraints, load cases, combinations)</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">LoadCase</td><td>—</td><td>One set of loads, with optional self-weight</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">LoadCombination</td><td>—</td><td>Factored sum of load cases and combinations</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">NodalLoad</td><td>—</td><td>Force/moment at a node, global axes</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberLoad</td><td>—</td><td>Uniform (full or partial) or point load on a member</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameResult</td><td>—</td><td>Analysis output</td></tr>
-          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">SectionProperties</td><td>—</td><td>E, G, A, I22, I33, J (core)</td></tr>
-          <tr><td><span class="kind m-error">ERR</span></td><td class="path-cell">FrameAnalysisError, FrameErrors</td><td>—</td><td>Error class and coded entries 301–308 (core)</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameCaseResult</td><td>—</td><td>Results of one load case or combination</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameEnvelope</td><td>—</td><td>Max/min over combinations with the governing combination</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameAnalysis</td><td>—</td><td>Result plus on-demand <code>memberDiagram</code></td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">SectionProperties</td><td>—</td><td>E, G, A, I22, I33, J, unitWeight (core)</td></tr>
+          <tr><td><span class="kind m-error">ERR</span></td><td class="path-cell">FrameAnalysisError, FrameErrors</td><td>—</td><td>Error class (code, message, details, issues) and coded entries 301–314 (core)</td></tr>
         </tbody>
       </table>
     </div>

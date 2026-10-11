@@ -42,6 +42,7 @@ export interface Member {
 }
 
 export interface NodalLoad {
+  loadCase: string; // id of the load case this load belongs to
   nodeId: FrameId;
   fx?: number; // kN, global X
   fy?: number; // kN, global Y
@@ -56,6 +57,7 @@ export type LoadDirection = "1" | "2" | "3" | "X" | "Y" | "Z";
 
 /** Uniform load per unit length of member, along the whole member or from `start` to `end`. */
 export interface UniformMemberLoad {
+  loadCase: string; // id of the load case this load belongs to
   type: "udl";
   memberId: FrameId;
   direction: LoadDirection;
@@ -65,6 +67,7 @@ export interface UniformMemberLoad {
 }
 
 export interface PointMemberLoad {
+  loadCase: string; // id of the load case this load belongs to
   type: "point";
   memberId: FrameId;
   direction: LoadDirection;
@@ -74,10 +77,53 @@ export interface PointMemberLoad {
 
 export type MemberLoad = UniformMemberLoad | PointMemberLoad;
 
+/** Descriptive category of a load case; it labels the case and does not change the analysis. */
+export type LoadCaseType =
+  | "dead"
+  | "superDead"
+  | "live"
+  | "roofLive"
+  | "snow"
+  | "wind"
+  | "seismic"
+  | "other";
+
+/**
+ * One independently analysed set of loads, e.g. dead, superimposed dead or live. The loads
+ * themselves are listed in `FrameModel.nodalLoads` and `FrameModel.memberLoads`, each tagged
+ * with its `loadCase`.
+ */
+export interface LoadCase {
+  id: string;
+  name?: string;
+  type?: LoadCaseType;
+  /**
+   * Self-weight multiplier (1 = full self-weight). Applies `selfWeight · unitWeight · A` per unit
+   * length of every member along global −Z. Default 0.
+   */
+  selfWeight?: number;
+}
+
+/** One term of a load combination: a factor times a load case or another combination. */
+export type CombinationTerm =
+  | { case: string; factor: number }
+  | { combination: string; factor: number };
+
+/** A linear combination (sum of factored terms) of load cases and other combinations. */
+export interface LoadCombination {
+  id: string;
+  name?: string;
+  terms: CombinationTerm[];
+}
+
 export interface FrameModel {
   nodes: FrameNode[];
   members: Member[];
   restraints: Restraint[];
+  loadCases: LoadCase[];
+  /** Nodal loads of every load case, each tagged with its `loadCase`. */
   nodalLoads?: NodalLoad[];
+  /** Member loads of every load case, each tagged with its `loadCase`. */
   memberLoads?: MemberLoad[];
+  combinations?: LoadCombination[];
 }

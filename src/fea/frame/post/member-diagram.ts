@@ -1,18 +1,42 @@
+import type { SectionProperties } from "@app-core/types/section-properties.type";
 import { roundToDecimalPlaces } from "@app-utils/math";
+import type { Matrix } from "@app-utils/matrix";
+
 import type { LocalMemberLoad } from "../elements/fixed-end-forces";
+import type { FrameId } from "../types/model.type";
 import type {
   ExtremeValue,
   MemberDiagram,
   MemberStation,
   StationComponent,
 } from "../types/results.type";
-import type { FrameId } from "../types/model.type";
 
-const COMPONENTS: StationComponent[] = ["N", "V2", "V3", "T", "M2", "M3"];
-const EXTREME_GRID_INTERVALS = 200;
-const OUTPUT_DECIMALS = 4;
+type ForceComponent = "N" | "V2" | "V3" | "T" | "M2" | "M3";
+type DisplacementComponent = "u1" | "u2" | "u3";
+type Forces = Record<ForceComponent, number>;
+type Displacements = Record<DisplacementComponent, number>;
+
+const FORCE_COMPONENTS: ForceComponent[] = ["N", "V2", "V3", "T", "M2", "M3"];
+const DISPLACEMENT_COMPONENTS: DisplacementComponent[] = ["u1", "u2", "u3"];
+const COMPONENTS: StationComponent[] = [...FORCE_COMPONENTS, ...DISPLACEMENT_COMPONENTS];
+/** Evenly spaced grid for the deflection extremes (force extremes need no grid: see below). */
+const DEFLECTION_GRID_INTERVALS = 40;
+/** Golden-section steps refining each deflection extreme between its neighbouring grid points. */
+const REFINE_STEPS = 30;
+const GOLDEN = (Math.sqrt(5) - 1) / 2;
+const FORCE_DECIMALS = 4;
+const DISPLACEMENT_DECIMALS = 5;
 
 type Side = "left" | "right";
+
+/** The member data a diagram needs. */
+export interface DiagramMember {
+  id: FrameId;
+  length: number; // mm
+  section: Pick<SectionProperties, "E" | "A" | "I22" | "I33">;
+  lambda: Matrix; // 3×3 direction cosines, rows = local 1, 2, 3
+  released: boolean[]; // 12 local end DOFs
+}
 
 /**
  * Internal forces at distance `x` from the member start, in N and N·mm. Taken from the
@@ -26,7 +50,7 @@ const internalForces = (
   loads: LocalMemberLoad[],
   x: number,
   side: Side,
-): Record<StationComponent, number> => {
+): Forces => {
   const [f1, f2, f3, m1, m2, m3] = startForce;
   // Q[axis]: resultant of loads in [0, x]; I[axis]: ∫(s − x)·q ds over [0, x]
   const Q = [0, 0, 0, 0];
@@ -56,32 +80,159 @@ const internalForces = (
   };
 };
 
-const toStation = (x: number, f: Record<StationComponent, number>): MemberStation => ({
-  x: roundToDecimalPlaces(x, 3),
-  N: roundToDecimalPlaces(f.N * 1e-3, OUTPUT_DECIMALS),
-  V2: roundToDecimalPlaces(f.V2 * 1e-3, OUTPUT_DECIMALS),
-  V3: roundToDecimalPlaces(f.V3 * 1e-3, OUTPUT_DECIMALS),
-  T: roundToDecimalPlaces(f.T * 1e-6, OUTPUT_DECIMALS),
-  M2: roundToDecimalPlaces(f.M2 * 1e-6, OUTPUT_DECIMALS),
-  M3: roundToDecimalPlaces(f.M3 * 1e-6, OUTPUT_DECIMALS),
-});
+/**
+ * Local displacements u1, u2, u3 (mm) at every grid point, from Euler–Bernoulli kinematics:
+ * `u1' = N/EA`, `u2'' = M3/EI33` (R3 = u2'), `u3'' = −M2/EI22` (R2 = −u3').
+ *
+ * Each field is `a + b·x + x·∫₀ˣκ − ∫₀ˣ s·κ`, with the running integrals accumulated once along
+ * the sorted grid. The grid contains every load breakpoint, so each interval lies inside one
+ * smooth piece where N is at most linear and M at most quadratic, and one Simpson panel per
+ * interval integrates the (at most cubic) integrands exactly.
+ *
+ * The constants come from the member's own end displacements: end translations first, an end
+ * rotation only where a translation is released. A released rotation (hinge) never enters, so
+ * the curve is correct at hinged ends whose rotation differs from the node's.
+ */
+const displacementsOnGrid = (
+  member: DiagramMember,
+  startForce: number[],
+  endDisplacements: number[],
+  loads: LocalMemberLoad[],
+  grid: number[],
+): { onGrid: Displacements[]; at: (x: number) => Displacements } => {
+  const { E, A, I22, I33 } = member.section;
+  const L = member.length;
+  const n = grid.length;
+
+  // integrands: [N/EA, M3/EI33, s·M3/EI33, −M2/EI22, −s·M2/EI22]
+  const integrands = (s: number, side: Side) => {
+    const f = internalForces(startForce, loads, s, side);
+    const k3 = f.M3 / (E * I33);
+    const k2 = -f.M2 / (E * I22);
+    return [f.N / (E * A), k3, s * k3, k2, s * k2];
+  };
+  const cumulative = Array.from({ length: 5 }, () => new Float64Array(n));
+  for (let i = 1; i < n; i++) {
+    const a = grid[i - 1];
+    const b = grid[i];
+    const ga = integrands(a, "right");
+    const gm = integrands((a + b) / 2, "right");
+    const gb = integrands(b, "left");
+    for (let c = 0; c < 5; c++) {
+      cumulative[c][i] = cumulative[c][i - 1] + ((b - a) / 6) * (ga[c] + 4 * gm[c] + gb[c]);
+    }
+  }
+  const [strain, k3, sk3, k2, sk2] = cumulative;
+  const last = n - 1;
+
+  /** a, b of `u = a + b·x + P(x)` from the first independent pair of end conditions. */
+  const planeConstants = (
+    translation: number,
+    rotation: number,
+    rotationSign: number,
+    PL: number, // P(L)
+    dPL: number, // P'(L)
+  ) => {
+    const { released } = member;
+    // rows [ca, cb | rhs] of ca·a + cb·b = rhs
+    const conditions: [number, number, number][] = [];
+    if (!released[translation]) conditions.push([1, 0, endDisplacements[translation]]);
+    if (!released[6 + translation]) {
+      conditions.push([1, L, endDisplacements[6 + translation] - PL]);
+    }
+    if (!released[rotation]) conditions.push([0, 1, rotationSign * endDisplacements[rotation]]);
+    if (!released[6 + rotation]) {
+      conditions.push([0, 1, rotationSign * endDisplacements[6 + rotation] - dPL]);
+    }
+    for (let i = 0; i < conditions.length; i++) {
+      for (let j = i + 1; j < conditions.length; j++) {
+        const [a1, b1, r1] = conditions[i];
+        const [a2, b2, r2] = conditions[j];
+        const det = a1 * b2 - a2 * b1;
+        if (Math.abs(det) > 1e-12 * Math.max(1, L)) {
+          return { a: (r1 * b2 - r2 * b1) / det, b: (a1 * r2 - a2 * r1) / det };
+        }
+      }
+    }
+    return { a: 0, b: 0 }; // unreachable: such releases are rejected as a mechanism (307)
+  };
+
+  const P3 = (i: number) => grid[i] * k3[i] - sk3[i];
+  const P2 = (i: number) => grid[i] * k2[i] - sk2[i];
+  const plane2 = planeConstants(1, 5, 1, P3(last), k3[last]); // u2, with u2' = R3
+  const plane3 = planeConstants(2, 4, -1, P2(last), k2[last]); // u3, with u3' = −R2
+  const axialStart = member.released[0] ? endDisplacements[6] - strain[last] : endDisplacements[0];
+
+  const onGrid = grid.map((x, i) => ({
+    u1: axialStart + strain[i],
+    u2: plane2.a + plane2.b * x + P3(i),
+    u3: plane3.a + plane3.b * x + P2(i),
+  }));
+
+  /** Displacement anywhere: the grid value plus one exact Simpson panel to x. */
+  const at = (x: number): Displacements => {
+    let lo = 0;
+    let hi = last;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (grid[mid] <= x) lo = mid;
+      else hi = mid - 1;
+    }
+    const a = grid[lo];
+    if (x - a <= 0) return onGrid[lo];
+    const ga = integrands(a, "right");
+    const gm = integrands((a + x) / 2, "right");
+    const gx = integrands(x, "left");
+    const c = cumulative.map((col, k) => col[lo] + ((x - a) / 6) * (ga[k] + 4 * gm[k] + gx[k]));
+    return {
+      u1: axialStart + c[0],
+      u2: plane2.a + plane2.b * x + (x * c[1] - c[2]),
+      u3: plane3.a + plane3.b * x + (x * c[3] - c[4]),
+    };
+  };
+
+  return { onGrid, at };
+};
+
+const SCALE: Record<StationComponent, number> = {
+  N: 1e-3,
+  V2: 1e-3,
+  V3: 1e-3,
+  T: 1e-6,
+  M2: 1e-6,
+  M3: 1e-6,
+  u1: 1,
+  u2: 1,
+  u3: 1,
+};
+const present = (c: StationComponent, value: number) =>
+  roundToDecimalPlaces(
+    value * SCALE[c],
+    c === "u1" || c === "u2" || c === "u3" ? DISPLACEMENT_DECIMALS : FORCE_DECIMALS,
+  ) + 0;
 
 /**
- * Builds the force diagrams of one member from its start-end force and its loads.
+ * Builds the force and displacement diagrams of one member from its end forces, its end
+ * displacements and its loads.
  *
+ * @param member - Member geometry, section, axes and end releases
  * @param startForce - Force the start node exerts on the member, right-hand local, N and N·mm
+ * @param endDisplacements - The 12 local right-hand displacements of the member's end nodes, mm and rad
  * @param loads - Member loads in local axes, N and mm
- * @param L - Member length in mm
  * @param stationCount - Number of evenly spaced stations (at least 2); load breakpoints and
  *   zero-shear points are added, with both sides reported at a point load
+ * @param withStations - false returns the extremes only, with an empty `stations` array
  */
 export const memberDiagram = (
-  memberId: FrameId,
+  member: DiagramMember,
   startForce: number[],
+  endDisplacements: number[],
   loads: LocalMemberLoad[],
-  L: number,
   stationCount = 21,
+  withStations = true,
 ): MemberDiagram => {
+  const L = member.length;
+  const tolerance = 1e-9 * L;
   const breakpoints = new Set<number>([0, L]);
   for (const load of loads) {
     if (load.type === "point") breakpoints.add(load.a);
@@ -90,71 +241,149 @@ export const memberDiagram = (
       breakpoints.add(load.end);
     }
   }
+  const sortedBreaks = [...breakpoints].sort((a, b) => a - b);
+  const isBreak = (x: number) => sortedBreaks.some((b) => Math.abs(b - x) < tolerance);
 
-  const pushUnique = (list: number[], x: number) => {
-    if (!list.some((v) => Math.abs(v - x) < 1e-9 * L)) list.push(x);
+  /** Sorted, with points closer than the tolerance merged (the first one kept). */
+  const mergeSorted = (values: number[]) => {
+    const sorted = [...values].sort((a, b) => a - b);
+    const out: number[] = [];
+    for (const v of sorted)
+      if (out.length === 0 || v - out[out.length - 1] >= tolerance) out.push(v);
+    return out;
   };
 
-  // Zero-shear points: V is linear between breakpoints, so the root is exact
+  // Zero-shear points: V is linear inside each piece between breakpoints, so the root is exact
   const roots: number[] = [];
-  const sortedBreaks = [...breakpoints].sort((a, b) => a - b);
-  const dense: number[] = [...sortedBreaks];
-  for (let i = 0; i <= EXTREME_GRID_INTERVALS; i++)
-    pushUnique(dense, (L * i) / EXTREME_GRID_INTERVALS);
-  dense.sort((a, b) => a - b);
-  for (let i = 0; i < dense.length - 1; i++) {
-    const xa = dense[i];
-    const xb = dense[i + 1];
+  for (let i = 0; i < sortedBreaks.length - 1; i++) {
+    const xa = sortedBreaks[i];
+    const xb = sortedBreaks[i + 1];
+    const fa = internalForces(startForce, loads, xa, "right");
+    const fb = internalForces(startForce, loads, xb, "left");
     for (const key of ["V2", "V3"] as const) {
-      const va = internalForces(startForce, loads, xa, "right")[key];
-      const vb = internalForces(startForce, loads, xb, "left")[key];
-      if (va * vb < 0) roots.push(xa + ((xb - xa) * va) / (va - vb));
+      if (fa[key] * fb[key] < 0) roots.push(xa + ((xb - xa) * fa[key]) / (fa[key] - fb[key]));
+    }
+  }
+  const coarse = Array.from(
+    { length: DEFLECTION_GRID_INTERVALS + 1 },
+    (_, i) => (L * i) / DEFLECTION_GRID_INTERVALS,
+  );
+
+  const count = Math.max(2, Math.floor(stationCount));
+  const uniform = withStations
+    ? Array.from({ length: count }, (_, i) => (L * i) / (count - 1))
+    : [];
+  // One grid for everything: breakpoints, zero-shear points, stations and the deflection grid
+  const grid = mergeSorted([...sortedBreaks, ...roots, ...uniform, ...coarse]);
+  const field = displacementsOnGrid(member, startForce, endDisplacements, loads, grid);
+  const displacements = field.onGrid;
+  const gridIndex = (x: number) => {
+    let lo = 0;
+    let hi = grid.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (grid[mid] < x - tolerance) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  };
+
+  // ---- Stations -------------------------------------------------------------------
+  const stations: MemberStation[] = [];
+  if (withStations) {
+    const [l1, l2, l3] = member.lambda;
+    const toStation = (x: number, f: Forces, u: Displacements): MemberStation => {
+      const station = { x: roundToDecimalPlaces(x, 3) } as MemberStation;
+      for (const c of FORCE_COMPONENTS) station[c] = present(c, f[c]);
+      for (const c of DISPLACEMENT_COMPONENTS) station[c] = present(c, u[c]);
+      // global = Σ local component × its axis direction
+      const g = [0, 1, 2].map((k) => u.u1 * l1[k] + u.u2 * l2[k] + u.u3 * l3[k]);
+      station.ux = roundToDecimalPlaces(g[0], DISPLACEMENT_DECIMALS) + 0;
+      station.uy = roundToDecimalPlaces(g[1], DISPLACEMENT_DECIMALS) + 0;
+      station.uz = roundToDecimalPlaces(g[2], DISPLACEMENT_DECIMALS) + 0;
+      return station;
+    };
+    const stationXs = mergeSorted([...uniform, ...sortedBreaks, ...roots]);
+    for (const x of stationXs) {
+      const u = displacements[gridIndex(x)];
+      const right = internalForces(startForce, loads, x, "right");
+      if (isBreak(x) && x > 0 && x < L) {
+        const left = internalForces(startForce, loads, x, "left");
+        if (FORCE_COMPONENTS.some((c) => Math.abs(left[c] - right[c]) > 1e-9)) {
+          stations.push(toStation(x, left, u));
+        }
+      }
+      stations.push(toStation(x, right, u));
     }
   }
 
-  const uniform: number[] = [];
-  const count = Math.max(2, Math.floor(stationCount));
-  for (let i = 0; i < count; i++) pushUnique(uniform, (L * i) / (count - 1));
-  const stationXs: number[] = [...uniform];
-  for (const x of [...sortedBreaks, ...roots]) pushUnique(stationXs, x);
-  stationXs.sort((a, b) => a - b);
+  // ---- Extremes -------------------------------------------------------------------
+  // N, V and T are linear and M quadratic inside each piece, so their extremes lie at a
+  // breakpoint (either side) or a zero-shear point — all on the grid, so these are exact.
+  // Deflections are taken on the grid, then refined by golden-section search.
+  const extremes = {} as MemberDiagram["extremes"];
+  const best = {} as Record<
+    StationComponent,
+    { max: [number, number, number]; min: [number, number, number] }
+  >;
+  const consider = (c: StationComponent, value: number, x: number, i: number) => {
+    const b = best[c];
+    if (!b) best[c] = { max: [value, x, i], min: [value, x, i] };
+    else {
+      if (value > b.max[0]) b.max = [value, x, i];
+      if (value < b.min[0]) b.min = [value, x, i];
+    }
+  };
+  grid.forEach((x, i) => {
+    const sides: Side[] = isBreak(x) && x > 0 && x < L ? ["right", "left"] : ["right"];
+    for (const side of sides) {
+      const f = internalForces(startForce, loads, x, side);
+      for (const c of FORCE_COMPONENTS) consider(c, f[c], x, i);
+    }
+    for (const c of DISPLACEMENT_COMPONENTS) consider(c, displacements[i][c], x, i);
+  });
 
-  const stations: MemberStation[] = [];
-  for (const x of stationXs) {
-    const isBreak = sortedBreaks.some((b) => Math.abs(b - x) < 1e-9 * L);
-    const right = internalForces(startForce, loads, x, "right");
-    if (isBreak && x > 0 && x < L) {
-      const left = internalForces(startForce, loads, x, "left");
-      if (COMPONENTS.some((c) => Math.abs(left[c] - right[c]) > 1e-9)) {
-        stations.push(toStation(x, left));
+  const refine = (c: DisplacementComponent, i: number, sign: 1 | -1): [number, number] => {
+    // maximise sign·u between the neighbouring grid points
+    let a = grid[Math.max(0, i - 1)];
+    let b = grid[Math.min(grid.length - 1, i + 1)];
+    const value = (x: number) => sign * field.at(x)[c];
+    let x1 = b - GOLDEN * (b - a);
+    let x2 = a + GOLDEN * (b - a);
+    let f1 = value(x1);
+    let f2 = value(x2);
+    for (let step = 0; step < REFINE_STEPS; step++) {
+      if (f1 < f2) {
+        a = x1;
+        x1 = x2;
+        f1 = f2;
+        x2 = a + GOLDEN * (b - a);
+        f2 = value(x2);
+      } else {
+        b = x2;
+        x2 = x1;
+        f2 = f1;
+        x1 = b - GOLDEN * (b - a);
+        f1 = value(x1);
       }
     }
-    stations.push(toStation(x, right));
+    return f1 >= f2 ? [sign * f1, x1] : [sign * f2, x2];
+  };
+  for (const c of DISPLACEMENT_COMPONENTS) {
+    const b = best[c];
+    const [maxValue, maxX] = refine(c, b.max[2], 1);
+    if (maxValue > b.max[0]) b.max = [maxValue, maxX, b.max[2]];
+    const [minValue, minX] = refine(c, b.min[2], -1);
+    if (minValue < b.min[0]) b.min = [minValue, minX, b.min[2]];
   }
 
-  // Extremes over every station plus the dense grid, both sides of each breakpoint
-  const extremes = {} as MemberDiagram["extremes"];
-  const samples: Record<StationComponent, number>[] = [];
-  const xsExtreme = [...dense, ...roots];
-  for (const x of xsExtreme) {
-    samples.push(internalForces(startForce, loads, x, "right"));
-    samples.push(internalForces(startForce, loads, x, "left"));
-  }
-  const xOf = (index: number) => xsExtreme[Math.floor(index / 2)];
   for (const c of COMPONENTS) {
-    let maxI = 0;
-    let minI = 0;
-    samples.forEach((s, i) => {
-      if (s[c] > samples[maxI][c]) maxI = i;
-      if (s[c] < samples[minI][c]) minI = i;
+    const make = ([value, x]: [number, number, number]): ExtremeValue => ({
+      value: present(c, value),
+      x: roundToDecimalPlaces(x, 3),
     });
-    const scale = c === "N" || c === "V2" || c === "V3" ? 1e-3 : 1e-6;
-    const make = (i: number): ExtremeValue => ({
-      value: roundToDecimalPlaces(samples[i][c] * scale, OUTPUT_DECIMALS),
-      x: roundToDecimalPlaces(xOf(i), 3),
-    });
-    extremes[c] = { max: make(maxI), min: make(minI) };
+    extremes[c] = { max: make(best[c].max), min: make(best[c].min) };
   }
 
-  return { memberId, length: L, stations, extremes };
+  return { memberId: member.id, length: L, stations, extremes };
 };

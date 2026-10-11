@@ -462,9 +462,9 @@
             <span class="kind m-fn">FN</span>
             <span class="module-card__name">fea</span>
           </div>
-          <div class="module-card__desc">Linear-elastic 3D frame analysis by the direct stiffness method — member loads, end releases, spring supports, force diagrams — plus demand envelopes that feed the RC capacity functions.</div>
+          <div class="module-card__desc">Linear-elastic 3D frame analysis by the direct stiffness method for user-defined load cases and factored load combinations — member loads, self-weight, end releases, spring supports, force diagrams, envelopes — plus design demands that feed the RC capacity functions.</div>
           <div class="module-card__exports">
-            analyzeFrame · memberDemandEnvelope · beam3dLocalStiffness ·
+            analyzeFrame · createFrameAnalysis · validateFrameModel · memberDemandEnvelope · beam3dLocalStiffness ·
             beam3dLocalStiffnessRightHanded · memberAxes
           </div>
         </a>
@@ -569,7 +569,7 @@ console.<span class="nl">log</span>(result.warnings);            <span class="c"
           <tr>
             <td class="path-cell">./fea</td>
             <td><a href="fea/">Frame Analysis</a></td>
-            <td>3D direct-stiffness frame analysis, member loads and releases, force diagrams, design-demand envelopes, reference beam stiffness matrix</td>
+            <td>3D direct-stiffness frame analysis with load cases and combinations, member loads, self-weight and releases, force diagrams, envelopes, design demands, reference beam stiffness matrix</td>
           </tr>
           <tr>
             <td class="path-cell">./core</td>
@@ -579,7 +579,7 @@ console.<span class="nl">log</span>(result.warnings);            <span class="c"
           <tr>
             <td class="path-cell">./utils</td>
             <td>Utils</td>
-            <td><code>solveQuadratic</code>, <code>roundToDecimalPlaces</code>, <code>mergeWarnings</code>, matrix helpers (<code>matMul</code>, <code>transpose</code>, <code>choleskySolve</code>, …)</td>
+            <td><code>solveQuadratic</code>, <code>roundToDecimalPlaces</code>, <code>mergeWarnings</code>, matrix helpers (<code>matMul</code>, <code>transpose</code>, <code>choleskySolve</code>, …), skyline (banded) Cholesky solver and <code>reverseCuthillMcKee</code> ordering</td>
           </tr>
         </tbody>
       </table>

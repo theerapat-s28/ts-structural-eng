@@ -42,6 +42,14 @@ describe("rectBeamToSectionProperties", () => {
     expect(custom.sectionProperties.G).toBeCloseTo(Ec / 2.5, 8);
   });
 
+  it("sets the unit weight for self-weight: 24 kN/m³ by default, or the given value", () => {
+    const byDefault = rectBeamToSectionProperties(section);
+    expect(byDefault.sectionProperties.unitWeight).toBe(24);
+    expect(byDefault.calculationDetails.unitWeight).toBe(24);
+    const light = rectBeamToSectionProperties(section, { unitWeight: 18 });
+    expect(light.sectionProperties.unitWeight).toBe(18);
+  });
+
   it("warns, citing ACI 6.6.3.1.1, when gross inertia is used", () => {
     const { warnings, sectionProperties } = rectBeamToSectionProperties(section, {
       member: "gross",

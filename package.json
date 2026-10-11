@@ -4,29 +4,43 @@
   "description": "TypeScript structural-engineering helper functions and beam design utilities",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "module": "dist/esm/index.js",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./rc": {
       "types": "./dist/rc/index.d.ts",
+      "import": "./dist/esm/rc/index.js",
+      "require": "./dist/rc/index.js",
       "default": "./dist/rc/index.js"
     },
     "./strengthening": {
       "types": "./dist/strengthening/index.d.ts",
+      "import": "./dist/esm/strengthening/index.js",
+      "require": "./dist/strengthening/index.js",
       "default": "./dist/strengthening/index.js"
     },
     "./fea": {
       "types": "./dist/fea/index.d.ts",
+      "import": "./dist/esm/fea/index.js",
+      "require": "./dist/fea/index.js",
       "default": "./dist/fea/index.js"
     },
     "./core": {
       "types": "./dist/core/index.d.ts",
+      "import": "./dist/esm/core/index.js",
+      "require": "./dist/core/index.js",
       "default": "./dist/core/index.js"
     },
     "./utils": {
       "types": "./dist/utils/index.d.ts",
+      "import": "./dist/esm/utils/index.js",
+      "require": "./dist/utils/index.js",
       "default": "./dist/utils/index.js"
     }
   },
@@ -37,7 +51,7 @@
   ],
   "scripts": {
     "dev": "ts-node -r tsconfig-paths/register examples/basic-usage.ts",
-    "build": "rm -rf dist && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && tsc -p tsconfig.esm.json && tsc-alias -p tsconfig.esm.json --resolve-full-paths && node -e \"require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({ type: 'module' }))\"",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"examples/**/*.ts\"",

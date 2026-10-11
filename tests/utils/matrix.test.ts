@@ -1,4 +1,6 @@
 import {
+  choleskyFactor,
+  choleskySolveFactored,
   choleskySolve,
   identity,
   matMul,
@@ -59,6 +61,33 @@ describe("matrix utilities", () => {
     const b = matVec(A, [1, 2, 3]);
     const x = choleskySolve(A, b) as number[];
     x.forEach((v, i) => expect(v).toBeCloseTo(i + 1, 10));
+  });
+
+  it("factors once and solves several right-hand sides", () => {
+    const A = [
+      [4, 12, -16],
+      [12, 37, -43],
+      [-16, -43, 98],
+    ];
+    // textbook factor: L = [[2,0,0],[6,1,0],[-8,5,3]]
+    expect(choleskyFactor(A)).toEqual([
+      [2, 0, 0],
+      [6, 1, 0],
+      [-8, 5, 3],
+    ]);
+    const L = choleskyFactor(A)!;
+    for (const x of [
+      [1, 2, 3],
+      [-1, 0, 4],
+    ]) {
+      choleskySolveFactored(L, matVec(A, x)).forEach((v, i) => expect(v).toBeCloseTo(x[i], 10));
+    }
+    expect(
+      choleskyFactor([
+        [1, 1],
+        [1, 1],
+      ]),
+    ).toBeNull();
   });
 
   it("returns null for a matrix that is not positive definite", () => {

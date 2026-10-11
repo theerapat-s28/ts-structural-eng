@@ -39,6 +39,7 @@ export {
 
 export {
   CONCRETE_POISSON_RATIO,
+  CONCRETE_UNIT_WEIGHT,
   BEAM_INERTIA_MODIFIER,
   COLUMN_INERTIA_MODIFIER,
   VERTICAL_MEMBER_TOLERANCE,
@@ -49,3 +50,4 @@ export {
 // Errors
 export { RCDesignError, Errors } from "./errors/rc-design.error";
 export { FrameAnalysisError, FrameErrors } from "./errors/frame-analysis.error";
+export type { FrameErrorDetails, FrameModelIssue } from "./errors/frame-analysis.error";

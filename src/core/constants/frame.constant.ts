@@ -7,6 +7,9 @@ export const BEAM_INERTIA_MODIFIER = 0.35;
 /** ACI 318-19 Table 6.6.3.1.1(a): effective I of columns for elastic analysis at factored load. */
 export const COLUMN_INERTIA_MODIFIER = 0.7;
 
+/** Unit weight of reinforced concrete in kN/m³ — common design practice, not an ACI 318-19 value. */
+export const CONCRETE_UNIT_WEIGHT = 24;
+
 /** A member is vertical when the horizontal projection of its unit axis is below this value. */
 export const VERTICAL_MEMBER_TOLERANCE = 1e-6;
 
