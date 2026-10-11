@@ -42,3 +42,9 @@ related-standards/
 coverage-final.json
 report.*.json
 
+# Agent folders
+/.gemini/
+/.claude/
+/.vscode/
+/.kilo/
+
