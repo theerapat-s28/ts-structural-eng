@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FEA Future Features — Implementation Plan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #f0f2f6;
+      --border: #e2e5ec;
+      --accent: #3b63d8;
+      --accent-dim: rgba(59, 99, 216, 0.08);
+      --green: #1f9d63;
+      --green-dim: rgba(31, 157, 99, 0.10);
+      --red: #d9463c;
+      --red-dim: rgba(217, 70, 60, 0.08);
+      --yellow: #b97d0a;
+      --yellow-dim: rgba(230, 160, 30, 0.12);
+      --purple: #8a4fd0;
+      --purple-dim: rgba(138, 79, 208, 0.10);
+      --text: #1f2430;
+      --text-muted: #5c6474;
+      --text-dim: #8a90a0;
+      --code-bg: #f8f9fb;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ─────────────────────────────────────── */
+    .sidebar {
+      width: 252px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px 40px;
+    }
+    .sidebar__brand { padding: 0 10px 18px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .brand-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .sidebar__brand h2 { font-size: 13.5px; font-weight: 600; }
+    .nav-section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      padding: 0 10px;
+      margin-bottom: 6px;
+    }
+    .nav-section-label + .nav-section-label,
+    nav a + .nav-section-label { margin-top: 8px; }
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      margin-bottom: 2px;
+    }
+    nav a:hover { background: var(--accent-dim); color: var(--text); }
+
+    /* ── Kind badges ─────────────────────────────────── */
+    .mbadge, .kind {
+      font-family: var(--mono);
+      font-weight: 700;
+      border-radius: 5px;
+      flex-shrink: 0;
+    }
+    .mbadge { font-size: 9.5px; padding: 2px 6px; min-width: 34px; text-align: center; }
+    .kind { font-size: 11.5px; padding: 3px 9px; }
+    .m-fn { color: var(--green); background: var(--green-dim); }
+    .m-type { color: var(--accent); background: var(--accent-dim); }
+    .m-const { color: var(--yellow); background: var(--yellow-dim); }
+    .m-error { color: var(--red); background: var(--red-dim); }
+
+    /* ── Scope badges ────────────────────────────────── */
+    .scope-badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .s-public { color: var(--accent); background: var(--accent-dim); }
+    .s-internal { color: var(--purple); background: var(--purple-dim); }
+
+    .std-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+      color: var(--yellow);
+      background: var(--yellow-dim);
+    }
+
+    /* ── Main ────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 40px 48px 120px;
+      min-width: 0;
+    }
+
+    .page-header { margin-bottom: 36px; }
+    .import-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .import-tag .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+    }
+    .import-tag code { background: none; padding: 0; font-size: 12.5px; }
+    .page-header h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+    .page-header p { color: var(--text-muted); max-width: 640px; }
+
+    .section { margin-bottom: 44px; scroll-margin-top: 24px; }
+    .section__title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section p { color: var(--text-muted); margin-bottom: 12px; }
+
+    /* ── Export cards ────────────────────────────────── */
+    .export-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 20px;
+      overflow: hidden;
+      scroll-margin-top: 24px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .export-card__header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .ex-sig { font-family: var(--mono); font-size: 13.5px; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+    .export-card__body { padding: 18px 20px 20px; }
+    .ex-desc { color: var(--text-muted); margin-bottom: 16px; }
+    .sub-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin: 18px 0 8px;
+    }
+    .sub-label:first-of-type { margin-top: 0; }
+
+    /* ── Code blocks ─────────────────────────────────── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .code-block__label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .code-block pre {
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .k { color: #0e7490; }
+    .s { color: #2f7d32; }
+    .n { color: var(--yellow); }
+    .b { color: var(--purple); }
+    .nl { color: var(--text-dim); }
+    .c { color: var(--text-dim); font-style: italic; }
+    .u { color: var(--accent); }
+
+    /* ── Inline code ─────────────────────────────────── */
+    code {
+      font-family: var(--mono);
+      font-size: 0.86em;
+      background: var(--surface-2);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+    pre code { background: none; padding: 0; color: inherit; }
+
+    /* ── Tables ──────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 13.5px; }
+    th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      font-weight: 600;
+      padding: 8px 12px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      color: var(--text-muted);
+    }
+    tr:last-child td { border-bottom: none; }
+    .param-table, .summary-table {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: block;
+      overflow-x: auto;
+    }
+    .param-table td:first-child {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .param-table td:nth-child(2) { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+    .req { color: var(--red); font-size: 12px; font-weight: 500; }
+    .opt { color: var(--text-dim); font-size: 12px; }
+    .summary-table .path-cell { font-family: var(--mono); font-size: 12.5px; color: var(--text); white-space: nowrap; }
+
+    /* ── Alerts ──────────────────────────────────────── */
+    .alert {
+      display: flex;
+      gap: 10px;
+      padding: 11px 14px;
+      border-radius: var(--radius);
+      font-size: 13.5px;
+      margin-bottom: 10px;
+      border: 1px solid;
+      color: var(--text-muted);
+    }
+    .alert strong { color: var(--text); }
+    .alert--error { background: var(--red-dim); border-color: rgba(217, 70, 60, 0.25); }
+    .alert--warn { background: var(--yellow-dim); border-color: rgba(185, 125, 10, 0.25); }
+    .alert--info { background: var(--accent-dim); border-color: rgba(59, 99, 216, 0.25); }
+
+    /* ── Flow steps ──────────────────────────────────── */
+    .flow-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 12px; }
+    .flow-step {
+      display: flex;
+      gap: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .step-num {
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-body { color: var(--text-muted); font-size: 13.5px; }
+    .step-body strong { color: var(--text); }
+
+    /* ── Model grid ──────────────────────────────────── */
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .model-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .model-card__title { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    .model-card__desc { font-size: 12.5px; color: var(--text-muted); }
+
+    @media (max-width: 800px) {
+      .sidebar { display: none; }
+      .main { padding: 24px 20px 80px; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ══════════════ Sidebar ══════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <div class="brand-label">Implementation Plan</div>
+      <h2>FEA Future Features</h2>
+    </div>
+    <nav>
+      <a href="../html-docs/fea/"><span style="font-size:14px">←</span> FEA API reference</a>
+
+      <div class="nav-section-label">Getting Started</div>
+      <a href="#overview"><span style="font-size:14px">◈</span> Overview</a>
+      <a href="#roadmap"><span style="font-size:14px">◆</span> Roadmap</a>
+      <a href="#conventions"><span style="font-size:14px">◇</span> Rules for every feature</a>
+
+      <div class="nav-section-label">Phase 1 — before UI design freeze</div>
+      <a href="#sections-materials"><span class="mbadge m-fn">FN</span> Sections &amp; materials</a>
+      <a href="#truss-members"><span class="mbadge m-type">TYPE</span> Truss members</a>
+      <a href="#varying-loads"><span class="mbadge m-type">TYPE</span> Varying member loads</a>
+      <a href="#member-moments"><span class="mbadge m-type">TYPE</span> Member point moments</a>
+      <a href="#envelope-sets"><span class="mbadge m-type">TYPE</span> Envelope sets</a>
+      <a href="#drawing-conveniences"><span class="mbadge m-fn">FN</span> Local axes &amp; schemaVersion</a>
+
+      <div class="nav-section-label">Phase 2</div>
+      <a href="#projected-loads"><span class="mbadge m-type">TYPE</span> Projected loads</a>
+      <a href="#support-settlement"><span class="mbadge m-type">TYPE</span> Support settlement</a>
+      <a href="#temperature-loads"><span class="mbadge m-type">TYPE</span> Temperature loads</a>
+      <a href="#end-offsets"><span class="mbadge m-type">TYPE</span> End offsets</a>
+
+      <div class="nav-section-label">Phase 3</div>
+      <a href="#rigid-diaphragms"><span class="mbadge m-type">TYPE</span> Rigid diaphragms</a>
+      <a href="#shear-deformation"><span class="mbadge m-type">TYPE</span> Shear deformation</a>
+
+      <div class="nav-section-label">Reference</div>
+      <a href="#out-of-scope"><span style="font-size:14px">⊘</span> Out of scope</a>
+      <a href="#pending-verification"><span class="mbadge m-error">ERR</span> Pending verification</a>
+      <a href="#error-codes"><span class="mbadge m-error">ERR</span> Proposed error codes</a>
+      <a href="#summary"><span style="font-size:14px">☰</span> Planned exports</a>
+    </nav>
+  </aside>
+
+  <!-- ══════════════ Main ══════════════ -->
+  <main class="main">
+
+    <div class="page-header">
+      <div class="import-tag">
+        <span class="label">Planned for</span>
+        <code>@theerapat-s28/ts-structural-eng-tools/fea</code>
+      </div>
+      <h1>FEA Future Features — Implementation Plan</h1>
+      <p>Features a basic 3D frame analysis program is expected to have that the <code>fea</code> module does not provide yet, each with a proposed API, an implementation approach, its tests and its effort, in the order they should be built.</p>
+    </div>
+
+    <!-- ══════════════ Overview ══════════════ -->
+    <div class="section" id="overview">
+      <div class="section__title">Overview</div>
+      <p>
+        The module already analyses 3D frames for user-defined load cases and combinations, with nodal, uniform,
+        point and self-weight loads, end releases, springs, member diagrams with deflections, envelopes, design
+        demands, input validation with located errors, a banded solver and ESM/CJS builds. This plan covers what
+        is still missing for a frontend frame-analysis program. Nothing on this page is implemented.
+      </p>
+      <div class="model-grid">
+        <div class="model-card"><div class="model-card__title">Phase 1</div><div class="model-card__desc">Needed before the UI design is frozen: they shape input forms and result screens.</div></div>
+        <div class="model-card"><div class="model-card__title">Phase 2</div><div class="model-card__desc">Common load and modelling options that slot into existing screens.</div></div>
+        <div class="model-card"><div class="model-card__title">Phase 3</div><div class="model-card__desc">Larger changes to the solver: building diaphragms and shear deformation.</div></div>
+      </div>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>Effort is relative: <strong>S</strong> ≈ a day, <strong>M</strong> ≈ a few days, <strong>L</strong> ≈ a week or more, each including tests and docs.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Roadmap ══════════════ -->
+    <div class="section" id="roadmap">
+      <div class="section__title">Roadmap</div>
+      <table class="param-table">
+        <thead><tr><th>Phase</th><th>Feature</th><th>Effort</th><th>Why now</th><th>Depends on</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Sections &amp; materials</td><td>M</td><td>The section/material editor is the first form a user fills in</td><td>—</td></tr>
+          <tr><td>1</td><td>Truss members</td><td>S</td><td>A member-type toggle in the member form</td><td>—</td></tr>
+          <tr><td>1</td><td>Varying member loads</td><td>M</td><td>A load type in the load form</td><td>—</td></tr>
+          <tr><td>1</td><td>Member point moments</td><td>S</td><td>A load type in the load form</td><td>—</td></tr>
+          <tr><td>1</td><td>Envelope sets</td><td>S</td><td>Shapes the results browser (strength vs service)</td><td>—</td></tr>
+          <tr><td>1</td><td>Local axes &amp; schemaVersion</td><td>S</td><td>Drawing diagrams; saving project files</td><td>—</td></tr>
+          <tr><td>2</td><td>Projected loads</td><td>S</td><td>Snow and roof loads on sloped members</td><td>—</td></tr>
+          <tr><td>2</td><td>Support settlement</td><td>M</td><td>A support option in the restraint form</td><td>—</td></tr>
+          <tr><td>2</td><td>Temperature loads</td><td>M</td><td>A load type; needs a material coefficient</td><td>Sections &amp; materials</td></tr>
+          <tr><td>2</td><td>End offsets</td><td>M</td><td>Realistic building models (beam–column joints)</td><td>Local axes</td></tr>
+          <tr><td>3</td><td>Rigid diaphragms</td><td>L</td><td>Lateral analysis of buildings; story drift</td><td>—</td></tr>
+          <tr><td>3</td><td>Shear deformation</td><td>M</td><td>Deep beams, short columns</td><td>Sections &amp; materials (shear areas)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════ Conventions ══════════════ -->
+    <div class="section" id="conventions">
+      <div class="section__title">Rules for every feature</div>
+      <p>These follow from the current architecture and AGENTS.md; each feature below assumes them.</p>
+      <div class="flow-steps">
+        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Linear in the loads.</strong> Any new result must be linear in the loads, or load combinations (superposition of raw states) break. Nothing here is nonlinear.</div></div>
+        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Validated with a location.</strong> Every new input field is checked in <code>validation/validate-model.ts</code> (finite numbers, allowed options, references) and reported with <code>details</code> naming the node, member, load case or field.</div></div>
+        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>No dense global matrix.</strong> New stiffness terms are added to the skyline profile; anything that couples many DOFs (diaphragms) must keep the band narrow.</div></div>
+        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Units</strong> as today: mm, MPa, kN, kN·m, kN/m, rad; new quantities state theirs (°C, 1/°C, kN/m³).</div></div>
+        <div class="flow-step"><div class="step-num">5</div><div class="step-body"><strong>Verified</strong> against hand-calculated or textbook values, and where possible against an independent model (e.g. a subdivided member) — the pattern used for deflections and combinations today.</div></div>
+        <div class="flow-step"><div class="step-num">6</div><div class="step-body"><strong>Documented in the same change:</strong> <code>html-docs/fea/index.html</code> with values from real runs, the landing page, and the README.</div></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ Phase 1: sections & materials ══════════════ -->
+    <div class="section" id="sections-materials">
+      <div class="section__title">Sections &amp; materials <code style="font-size:13px">fea/sections/</code></div>
+      <p>Today only rectangular RC sections have a helper (<code>rectBeamToSectionProperties</code> in <code>rc</code>); any other section needs hand-computed E, G, A, I22, I33, J. A section editor needs builders for the common shapes and material presets.</p>
+
+      <div class="export-card" id="section-builders">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">frameSection(shape, material)</span>
+          <span class="scope-badge s-internal">Planned</span>
+          <span class="std-badge" title="Basis: elastic section geometry — not an ACI 318-19 provision">Section geometry</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Builds <code>SectionProperties</code> from a shape and a material. Local 2 is the depth direction, as in the rest of the module, so <code>I33</code> is the major axis.</p>
+
+          <div class="sub-label">Parameters</div>
+          <table class="param-table">
+            <thead><tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>shape</td><td>SectionShape</td><td>mm</td><td><span class="req">Required</span></td><td>One of <code>{ kind: "rectangle", b, h }</code>, <code>{ kind: "circle", d }</code>, <code>{ kind: "pipe", d, t }</code>, <code>{ kind: "box", b, h, tf, tw }</code>, <code>{ kind: "i", d, bf, tf, tw }</code> (doubly symmetric I/H), <code>{ kind: "tee", d, bf, tf, tw }</code></td></tr>
+              <tr><td>material</td><td>FrameMaterial</td><td>MPa, kN/m³</td><td><span class="req">Required</span></td><td><code>{ E, nu, unitWeight, alpha? }</code>; from a preset below or user-defined</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Example</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript (proposed)</div>
+            <pre>
+<span class="b">const</span> beam = <span class="u">frameSection</span>(
+  { <span class="k">kind</span>: <span class="s">"i"</span>, <span class="k">d</span>: <span class="n">400</span>, <span class="k">bf</span>: <span class="n">200</span>, <span class="k">tf</span>: <span class="n">13</span>, <span class="k">tw</span>: <span class="n">8</span> },  <span class="c">// mm</span>
+  <span class="u">steelMaterial</span>(),                               <span class="c">// E 200 000 MPa, ν 0.3, γ 78.5 kN/m³</span>
+);
+<span class="b">const</span> column = <span class="u">frameSection</span>({ <span class="k">kind</span>: <span class="s">"rectangle"</span>, <span class="k">b</span>: <span class="n">400</span>, <span class="k">h</span>: <span class="n">400</span> }, <span class="u">concreteMaterial</span>(<span class="n">32</span>));  <span class="c">// f′c, MPa</span></pre>
+          </div>
+
+          <div class="sub-label">Returns</div>
+          <p><code>{ sectionProperties, calculationDetails: { shape, Asy?, Asz?, ... }, unit, warnings }</code> — the repo's return shape; the shear areas <code>Asy</code>, <code>Asz</code> are computed now so shear deformation (Phase 3) needs no new input.</p>
+
+          <div class="sub-label">Implementation</div>
+          <table class="param-table">
+            <thead><tr><th>Quantity</th><th>Basis</th></tr></thead>
+            <tbody>
+              <tr><td>A, I22, I33</td><td>Exact formulas for each shape (parallel-axis theorem for the tee's centroid)</td></tr>
+              <tr><td>J, solid</td><td>Rectangle: existing formula; circle πd⁴/32</td></tr>
+              <tr><td>J, thin-walled closed</td><td>Bredt: 4A<sub>m</sub>²/∮(ds/t) for box and pipe</td></tr>
+              <tr><td>J, thin-walled open</td><td>Σ b·t³/3 for I and tee (warping torsion ignored — document it)</td></tr>
+              <tr><td>G</td><td>E / (2(1 + ν))</td></tr>
+            </tbody>
+          </table>
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Pushes a warning when a thin-walled formula is used outside its range (e.g. t &gt; d/10) — <strong>Section geometry, thin-walled assumption</strong>.</span>
+          </div>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws <strong>FrameAnalysisError 314</strong> with <code>details.field</code> for non-finite or non-positive dimensions, and <strong>315</strong> for inconsistent shapes (e.g. 2·tf ≥ d).</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-card" id="material-presets">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">concreteMaterial(fc_, options?) · steelMaterial(options?)</span>
+          <span class="scope-badge s-internal">Planned</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Material presets: concrete <code>E = 4700√f′c</code> (existing <code>concreteElasticModulus</code>), ν = 0.2, γ = 24 kN/m³, α = 1.0·10⁻⁵ /°C; structural steel E = 200 000 MPa, ν = 0.3, γ = 78.5 kN/m³, α = 1.2·10⁻⁵ /°C. Every value can be overridden.</p>
+          <div class="alert alert--info">
+            <span>ℹ️</span>
+            <span>Keep <code>rectBeamToSectionProperties</code> as the RC entry point (it applies the ACI cracked-section modifiers); it can call the rectangle builder internally.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-label">Tests</div>
+      <p>Each shape against published section tables (e.g. a hot-rolled I-shape's A, I and J from a steel manual, citing the source), the tee centroid by hand, thin-wall J against the exact solid value for a thick and a thin case, and the presets' values.</p>
+    </div>
+
+    <!-- ══════════════ Phase 1: truss ══════════════ -->
+    <div class="section" id="truss-members">
+      <div class="section__title">Truss members</div>
+      <p>Axial-only members are possible today by releasing moments at both ends and torsion at one, but a UI needs a simple toggle, and a node connected only by truss members then has free rotations — a mechanism (304) the user did not cause.</p>
+      <div class="export-card" id="member-type">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">Member.type?: "frame" | "truss"</span>
+          <span class="scope-badge s-internal">Planned</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">A <code>"truss"</code> member gets only the axial terms of the stiffness (<code>EA/L</code>) and carries only N.</p>
+          <div class="sub-label">Implementation</div>
+          <div class="flow-steps">
+            <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Element:</strong> a 12×12 matrix with only the axial terms; member loads still allowed, with their transverse part sent straight to the end nodes as simply supported reactions.</div></div>
+            <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Rotation stabilising:</strong> rotational DOFs of nodes connected only by truss members (and with no rotational restraint or nodal moment) are fixed automatically, and listed in <code>calculationDetails.autoRestrainedDofs</code> so the UI can show it.</div></div>
+            <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Diagrams:</strong> N only (V, M, T zero); deflection between nodes is the straight line plus the transverse load's simply supported sag.</div></div>
+          </div>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws <strong>314</strong> (<code>field: "type"</code>) for another value, and <strong>307</strong> if a truss member also has releases.</span>
+          </div>
+          <div class="sub-label">Tests</div>
+          <p>A pin-jointed plane truss against the method of joints; the same truss built from frame members with releases (oracle); a 3D space truss against a textbook example.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ Phase 1: varying loads ══════════════ -->
+    <div class="section" id="varying-loads">
+      <div class="section__title">Varying member loads</div>
+      <p>Triangular and trapezoidal loads — soil and water pressure, slab tributary loads on beams — can only be approximated today with several partial uniform loads.</p>
+      <div class="export-card" id="trapezoidal-member-load">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">{ type: "trapezoid", w1, w2, start?, end? }</span>
+          <span class="scope-badge s-internal">Planned</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">A load varying linearly from <code>w1</code> at <code>start</code> to <code>w2</code> at <code>end</code> (kN/m), in any <code>direction</code>; a triangle is <code>w1 = 0</code>.</p>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript (proposed)</div>
+            <pre>
+{ <span class="k">loadCase</span>: <span class="s">"SD"</span>, <span class="k">type</span>: <span class="s">"trapezoid"</span>, <span class="k">memberId</span>: <span class="s">"B12"</span>, <span class="k">direction</span>: <span class="s">"Z"</span>,
+  <span class="k">w1</span>: <span class="n">0</span>, <span class="k">w2</span>: <span class="n">-12</span>, <span class="k">start</span>: <span class="n">0</span>, <span class="k">end</span>: <span class="n">2500</span> }  <span class="c">// kN/m, mm</span></pre>
+          </div>
+          <div class="sub-label">Implementation</div>
+          <div class="flow-steps">
+            <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Fixed-end forces:</strong> the existing shape-function integral with a linear load; the 4-point Gauss rule is exact up to degree 7, so it stays exact.</div></div>
+            <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Diagrams:</strong> closed-form resultant and first moment of a linear load in <code>internalForces</code>; M becomes cubic and the deflection integrand quartic, so one Simpson panel per interval is no longer exact — use 3-point Gauss per interval.</div></div>
+          </div>
+          <div class="sub-label">Tests</div>
+          <p>Fixed–fixed triangular load: end moments wL²/30 and wL²/20; simply supported triangle: Mmax = wL²/(9√3) at L/√3; deflection against the subdivided-member oracle; a trapezoid equal to a uniform plus a triangle.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ Phase 1: member moments ══════════════ -->
+    <div class="section" id="member-moments">
+      <div class="section__title">Member point moments</div>
+      <div class="export-card" id="moment-member-load">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">{ type: "moment", direction, M, a }</span>
+          <span class="scope-badge s-internal">Planned</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">A concentrated moment <code>M</code> (kN·m) about the given axis at distance <code>a</code>. Today it requires splitting the member and applying a nodal moment.</p>
+          <div class="sub-label">Implementation</div>
+          <p>Fixed-end forces from the derivatives of the beam shape functions at <code>a</code>; in the diagrams, a jump of M at <code>a</code> (both sides reported, as for shear at a point load). Axis <code>"1"</code> is a torque.</p>
+          <div class="sub-label">Tests</div>
+          <p>Fixed–fixed beam with a moment at midspan (end moments M/4) and at a general position; the subdivided-member oracle with a nodal moment.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ Phase 1: envelope sets ══════════════ -->
+    <div class="section" id="envelope-sets">
+      <div class="section__title">Envelope sets</div>
+      <p>The envelope covers every combination today; users expect named groups such as "Strength" and "Service".</p>
+      <div class="export-card" id="frame-envelope-set">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">FrameModel.envelopes?: { id, combinations }[]</span>
+          <span class="scope-badge s-internal">Planned</span>
+        </div>
+        <div class="export-card__body">
+          <div class="code-block">
+            <div class="code-block__label">TypeScript (proposed)</div>
+            <pre>
+<span class="k">envelopes</span>: [
+  { <span class="k">id</span>: <span class="s">"STRENGTH"</span>, <span class="k">combinations</span>: [<span class="s">"1.4D"</span>, <span class="s">"1.2D+1.6L"</span>, <span class="s">"0.9D+1.0W"</span>] },
+  { <span class="k">id</span>: <span class="s">"SERVICE"</span>,  <span class="k">combinations</span>: [<span class="s">"D+L"</span>] },
+]
+<span class="c">// result.envelopes.STRENGTH, result.envelopes.SERVICE; result.envelope stays "all combinations"</span>
+<span class="u">memberDemandEnvelope</span>(result, <span class="s">"B12"</span>, { <span class="k">envelope</span>: <span class="s">"STRENGTH"</span> });</pre>
+          </div>
+          <div class="sub-label">Implementation</div>
+          <p>Reuse <code>buildEnvelope</code> per set. Validate ids (unique across cases, combinations and envelopes; 303) and references (309).</p>
+          <div class="sub-label">Tests</div>
+          <p>Each set's governing ids; a set of one combination equals that combination; unknown references.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ Phase 1: drawing conveniences ══════════════ -->
+    <div class="section" id="drawing-conveniences">
+      <div class="section__title">Local axes &amp; schemaVersion</div>
+      <div class="export-card" id="result-local-axes">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">FrameResult.members: { memberId, length, axes }[]</span>
+          <span class="scope-badge s-internal">Planned</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Each member's length and local axes (the rows of λ) in the result, so the UI can offset diagrams perpendicular to members without recomputing <code>memberAxes</code>.</p>
+        </div>
+      </div>
+      <div class="export-card" id="schema-version">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">FrameModel.schemaVersion · migrateFrameModel(model)</span>
+          <span class="scope-badge s-internal">Planned</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">A version number on the model, so saved project files keep working as the model format grows. <code>migrateFrameModel</code> upgrades an older model step by step; <code>validateFrameModel</code> reports a version newer than the library (314, <code>field: "schemaVersion"</code>).</p>
+          <div class="sub-label">Tests</div>
+          <p>A model without a version is treated as version 1; each migration step on a fixture file; round trip through JSON.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ Phase 2: projected loads ══════════════ -->
+    <div class="section" id="projected-loads">
+      <div class="section__title">Projected loads</div>
+      <div class="export-card" id="projected-member-load">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">udl / trapezoid: projected?: boolean</span>
+          <span class="scope-badge s-internal">Planned</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">For a global-direction load, <code>projected: true</code> means "per unit length of the member's projection perpendicular to the load direction" (snow on a rafter is per horizontal length). The load per member length is <code>w · (projected length / L)</code>.</p>
+          <div class="sub-label">Tests</div>
+          <p>A rafter at 30°: total load w·L·cos 30°; a vertical member gets no load from a projected vertical load; rejected (314) on a local direction.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ Phase 2: settlement ══════════════ -->
+    <div class="section" id="support-settlement">
+      <div class="section__title">Support settlement</div>
+      <div class="export-card" id="support-displacement">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">FrameModel.supportDisplacements?: { loadCase, nodeId, ux…rz }[]</span>
+          <span class="scope-badge s-internal">Planned</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">An imposed displacement (mm) or rotation (rad) at a <strong>fixed</strong> DOF, belonging to a load case like any load.</p>
+          <div class="sub-label">Implementation</div>
+          <p>For prescribed values u<sub>r</sub> at fixed DOFs: <code>F_free −= K_fr · u_r</code>, assembled member by member (no dense K); after the solve, the full U includes u<sub>r</sub>, so end forces and reactions follow unchanged. Linear, so it combines like any case.</p>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span><strong>316</strong> if the DOF is not fixed (a spring or free DOF cannot take an imposed displacement).</span>
+          </div>
+          <div class="sub-label">Tests</div>
+          <p>Fixed–fixed beam with end settlement Δ: end moments 6EIΔ/L², shear 12EIΔ/L³; propped cantilever settlement 3EIΔ/L²; two-span beam middle-support settlement against a textbook table.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ Phase 2: temperature ══════════════ -->
+    <div class="section" id="temperature-loads">
+      <div class="section__title">Temperature loads</div>
+      <div class="export-card" id="temperature-member-load">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">{ type: "temperature", deltaT?, gradient2?, gradient3? }</span>
+          <span class="scope-badge s-internal">Planned</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">A uniform temperature change <code>deltaT</code> (°C) and linear gradients across the depth in local 2 and 3 (°C/mm). Needs a thermal coefficient <code>alpha</code> (1/°C) on the section (from the material presets).</p>
+          <div class="sub-label">Implementation</div>
+          <p>Fixed-end forces: axial <code>E·A·α·ΔT</code>, moments <code>E·I·α·gradient</code>; diagrams subtract the free thermal strain/curvature so deflections are correct for a free member.</p>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span><strong>313</strong>-style error (new code <strong>317</strong>) if a temperature load is applied to a member without <code>alpha</code>.</span>
+          </div>
+          <div class="sub-label">Tests</div>
+          <p>A fixed–fixed bar: N = −EAαΔT and no displacement; a free cantilever: elongation αΔTL and tip deflection from a gradient αgL²/2 with no forces.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ Phase 2: end offsets ══════════════ -->
+    <div class="section" id="end-offsets">
+      <div class="section__title">End offsets (rigid zones)</div>
+      <div class="export-card" id="member-end-offsets">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">Member.endOffsets?: { start?, end?, rigidZoneFactor? }</span>
+          <span class="scope-badge s-internal">Planned</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Lengths (mm) at each end, along the member, treated as rigid — e.g. the half-depth of the column a beam frames into — so the flexible length and the reported face moments are realistic. <code>rigidZoneFactor</code> (0–1, default 1) makes only part of the offset rigid, as in ETABS.</p>
+          <div class="sub-label">Implementation</div>
+          <p>A rigid-link transformation between the node and the flexible end, applied to the stiffness and to the fixed-end forces; loads on the rigid zones go straight to the node. Diagrams cover the flexible length and report the face forces; <code>memberDemandEnvelope</code> uses the faces.</p>
+          <div class="sub-label">Tests</div>
+          <p>A beam with offsets equals a shorter beam between rigid links built from very stiff members (oracle); face moments of a portal frame with joint zones.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ Phase 3: diaphragms ══════════════ -->
+    <div class="section" id="rigid-diaphragms">
+      <div class="section__title">Rigid floor diaphragms</div>
+      <p>Building floors are stiff in their plane. Without a diaphragm constraint, lateral analysis of a building either ignores the slab or needs fake bracing.</p>
+      <div class="export-card" id="diaphragm-constraint">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">FrameModel.diaphragms?: { id, nodeIds }[]</span>
+          <span class="scope-badge s-internal">Planned</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Nodes of one floor that move together in the horizontal plane: each keeps its own UZ, RX, RY, while UX, UY, RZ follow a master point at the floor's centroid.</p>
+          <div class="sub-label">Implementation</div>
+          <div class="flow-steps">
+            <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Constraint:</strong> for a slave node at (x, y) and master at (x<sub>m</sub>, y<sub>m</sub>): <code>ux = Ux − (y − y<sub>m</sub>)·Rz</code>, <code>uy = Uy + (x − x<sub>m</sub>)·Rz</code>, <code>rz = Rz</code>. Eliminate the slave DOFs by transforming each member's stiffness and load vector.</div></div>
+            <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Band:</strong> the three master DOFs couple every node of the floor. Number them right after their floor's nodes in the RCM order so the skyline band stays about one floor wide.</div></div>
+            <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Results:</strong> diaphragm displacements and rotations, story drift between floors, and in-plane forces in members are no longer meaningful within the diaphragm (document it).</div></div>
+          </div>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span><strong>318</strong> for a node in two diaphragms, or a diaphragm node with a fixed in-plane DOF.</span>
+          </div>
+          <div class="sub-label">Tests</div>
+          <p>A one-storey frame with a diaphragm equals the same frame with very stiff horizontal bracing (oracle); torsion of an eccentric floor; band size stays close to the no-diaphragm model.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ Phase 3: shear deformation ══════════════ -->
+    <div class="section" id="shear-deformation">
+      <div class="section__title">Shear deformation (Timoshenko)</div>
+      <div class="export-card" id="timoshenko-option">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">SectionProperties.Asy?, Asz? · AnalyzeFrameOptions.shearDeformation?</span>
+          <span class="scope-badge s-internal">Planned</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Shear areas from the section builders and an option to include shear flexibility, which matters for deep beams and short columns. Today the element is Euler–Bernoulli.</p>
+          <div class="sub-label">Implementation</div>
+          <p>The standard Timoshenko 12×12 matrix with Φ = 12EI/(G·As·L²), consistent fixed-end forces and diagram deflections with the shear term. The reference matrix stays the default (Φ = 0) so existing results do not change.</p>
+          <div class="sub-label">Tests</div>
+          <p>Cantilever tip deflection PL³/3EI + PL/(G·As); with large As it equals the Euler–Bernoulli result.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ Out of scope ══════════════ -->
+    <div class="section" id="out-of-scope">
+      <div class="section__title">Out of scope</div>
+      <p>So the UI team does not design screens for them. Each would be a separate module or a major release.</p>
+      <table class="param-table">
+        <thead><tr><th>Feature</th><th>Why it is out</th></tr></thead>
+        <tbody>
+          <tr><td>Modal analysis, response spectrum, time history</td><td>Needs masses and an eigen-solver; a separate dynamic-analysis module</td></tr>
+          <tr><td>P-Δ and buckling</td><td>Geometric nonlinearity; breaks superposition of load cases</td></tr>
+          <tr><td>Nonlinear materials, tension-only members, gaps</td><td>Nonlinear; breaks superposition</td></tr>
+          <tr><td>Plates, shells, walls, slabs as elements</td><td>A different element family</td></tr>
+          <tr><td>Automatic code load combinations</td><td>Factors stay user-defined (decided earlier)</td></tr>
+          <tr><td>Design checks beyond the RC beam functions</td><td>Belong in <code>rc</code> / future design modules, fed by <code>memberDemandEnvelope</code></td></tr>
+          <tr><td>Area loads distributed to beams</td><td>A UI/pre-processor task (tributary areas) producing member loads; could become a helper later</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════ Pending verification ══════════════ -->
+    <div class="section" id="pending-verification">
+      <div class="section__title">Pending verification</div>
+      <p>Not features, but open items from the original implementation to close before a release is announced to users.</p>
+      <div class="alert alert--warn">
+        <span>⚠️</span>
+        <span><strong>ETABS local-axis rules</strong> (non-vertical: local 3 = 1 × Z; vertical: local 2 = +X; angle about local 1) were written from memory of the ETABS manual — check against the CSI documentation.</span>
+      </div>
+      <div class="alert alert--warn">
+        <span>⚠️</span>
+        <span><strong>ACI318-19, 6.6.3.1.1</strong> — the clause cited for the 0.35 / 0.70 inertia modifiers in <code>rectBeamToSectionProperties</code> — check against the code text.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Proposed error codes ══════════════ -->
+    <div class="section" id="error-codes">
+      <div class="section__title">Proposed error codes</div>
+      <p>Continuing the 3XX range of <code>FrameAnalysisError</code>; each carries <code>details</code> like the existing codes.</p>
+      <table class="summary-table">
+        <thead><tr><th>Code</th><th>Name</th><th>Feature</th><th>Raised when</th></tr></thead>
+        <tbody>
+          <tr><td class="path-cell">315</td><td class="path-cell">INVALID_SECTION_SHAPE</td><td>Sections</td><td>Inconsistent dimensions (e.g. flanges thicker than half the depth)</td></tr>
+          <tr><td class="path-cell">316</td><td class="path-cell">SETTLEMENT_ON_FREE_DOF</td><td>Support settlement</td><td>An imposed displacement on a DOF that is not fixed</td></tr>
+          <tr><td class="path-cell">317</td><td class="path-cell">MISSING_THERMAL_COEFFICIENT</td><td>Temperature loads</td><td>A temperature load on a member without <code>alpha</code></td></tr>
+          <tr><td class="path-cell">318</td><td class="path-cell">INVALID_DIAPHRAGM</td><td>Rigid diaphragms</td><td>A node in two diaphragms, or a diaphragm node with a fixed in-plane DOF</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════ Summary ══════════════ -->
+    <div class="section" id="summary">
+      <div class="section__title">Planned exports</div>
+      <table class="summary-table">
+        <thead><tr><th>Kind</th><th>Export</th><th>Returns</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">frameSection</td><td>{ sectionProperties, … }</td><td>SectionProperties from a shape and a material</td></tr>
+          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">concreteMaterial, steelMaterial</td><td>FrameMaterial</td><td>Material presets</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">Member.type</td><td>—</td><td>"frame" | "truss"</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">TrapezoidMemberLoad</td><td>—</td><td>Linearly varying member load</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MomentMemberLoad</td><td>—</td><td>Concentrated moment on a member</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameModel.envelopes</td><td>—</td><td>Named envelope sets</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameResult.members</td><td>—</td><td>Member lengths and local axes</td></tr>
+          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">migrateFrameModel</td><td>FrameModel</td><td>Upgrades a saved model to the current schemaVersion</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">projected</td><td>—</td><td>Projected-length option on global member loads</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameModel.supportDisplacements</td><td>—</td><td>Imposed support displacements per load case</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">TemperatureMemberLoad</td><td>—</td><td>Uniform and gradient temperature change</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">Member.endOffsets</td><td>—</td><td>Rigid end zones</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameModel.diaphragms</td><td>—</td><td>Rigid floor diaphragms</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">shearDeformation</td><td>—</td><td>Timoshenko option with shear areas</td></tr>
+          <tr><td><span class="kind m-error">ERR</span></td><td class="path-cell">FrameErrors 315–318</td><td>—</td><td>New error codes for these features</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+</body>
+</html>
