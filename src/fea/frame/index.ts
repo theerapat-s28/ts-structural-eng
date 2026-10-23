@@ -1,6 +1,7 @@
 export { analyzeFrame, createFrameAnalysis } from "./solver/analyze-frame";
 export type { AnalyzeFrameOptions, FrameAnalysis } from "./solver/analyze-frame";
 export { validateFrameModel } from "./validation/validate-model";
+export { distributeAreaLoads } from "./area/distribute-area-loads";
 export {
   beam3dLocalStiffness,
   beam3dLocalStiffnessRightHanded,
@@ -20,7 +21,12 @@ export type {
   UniformMemberLoad,
   PointMemberLoad,
   TrapezoidalMemberLoad,
+  TorqueMemberLoad,
   MemberLoad,
+  AreaDistribution,
+  NullArea,
+  AreaLoadDirection,
+  AreaLoad,
   LoadCaseType,
   LoadCase,
   CombinationTerm,

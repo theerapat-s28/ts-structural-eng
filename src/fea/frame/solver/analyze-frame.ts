@@ -1,5 +1,6 @@
 import type { Warnings } from "@app-core/types/output-message.type";
 
+import { areaMemberLoads } from "../area/distribute-area-loads";
 import { buildEnvelope } from "../post/envelope";
 import { presentMemberDiagram, presentState } from "../post/present-state";
 import type { FrameId, FrameModel, MemberLoad, NodalLoad } from "../types/model.type";
@@ -54,10 +55,10 @@ const groupByCase = <T extends { loadCase: string }>(loads: T[] = []): Map<strin
  * draw a member's diagram when the user selects it. Run it in a Web Worker for large models.
  *
  * @param model - Nodes, members, restraints, load cases, loads tagged with their load case,
- *   and combinations
+ *   null areas, and combinations
  * @param options - Diagram station count and detail
  * @returns `{ result, memberDiagram }`
- * @throws {FrameAnalysisError} 301–314 for an invalid model (with `details` and every problem in
+ * @throws {FrameAnalysisError} 301–317 for an invalid model (with `details` and every problem in
  *   `issues`), 304 for an unstable structure
  */
 export const createFrameAnalysis = (
@@ -71,11 +72,15 @@ export const createFrameAnalysis = (
   const combinations = model.combinations ?? [];
   const resolved = resolveCombinations(combinations, new Set(model.loadCases.map((c) => c.id)));
   const withStations = (options.diagrams ?? "full") === "full";
+  const fromAreas = areaMemberLoads(model);
 
   const states = new Map<string, RawState>();
   const cases: Record<string, FrameCaseResult> = {};
   const nodalByCase = groupByCase<NodalLoad>(model.nodalLoads);
-  const memberByCase = groupByCase<MemberLoad>(model.memberLoads);
+  const memberByCase = groupByCase<MemberLoad>([
+    ...(model.memberLoads ?? []),
+    ...fromAreas.memberLoads,
+  ]);
   for (const loadCase of model.loadCases) {
     const state = solveLoadCase(system, loadCase, {
       nodalLoads: nodalByCase.get(loadCase.id) ?? [],
@@ -108,14 +113,14 @@ export const createFrameAnalysis = (
   }
 
   const warnings: Warnings = [
-    ...Object.values(cases),
-    ...Object.values(combinationResults),
-  ].flatMap((r) =>
-    r.warnings.map((w) => ({
-      ...w,
-      message: `${r.kind === "case" ? "Load case" : "Load combination"} "${r.id}": ${w.message}`,
-    })),
-  );
+    ...fromAreas.warnings,
+    ...[...Object.values(cases), ...Object.values(combinationResults)].flatMap((r) =>
+      r.warnings.map((w) => ({
+        ...w,
+        message: `${r.kind === "case" ? "Load case" : "Load combination"} "${r.id}": ${w.message}`,
+      })),
+    ),
+  ];
 
   const combinationList = combinations.map((c) => combinationResults[c.id]);
   const result: FrameResult = {
@@ -162,14 +167,17 @@ export const createFrameAnalysis = (
  * and rad. Global axes X, Y, Z are right-handed with Z up; members use ETABS-style local axes
  * 1, 2, 3 (see `memberAxes`). Member end forces and diagrams use right-hand rotations.
  *
+ * Area loads on null areas (`areas`, `areaLoads`) are first turned into member loads on the
+ * members along each area's edges (see `distributeAreaLoads`); the areas add no stiffness.
+ *
  * Model and result are plain data (JSON-serialisable), so the analysis can run in a Web Worker.
  *
  * @param model - Nodes, members, restraints, load cases, loads tagged with their load case,
- *   and combinations
+ *   null areas, and combinations
  * @param options - Diagram station count and detail
  * @returns `cases` and `combinations` keyed by id, `envelope` over the combinations,
  *   `calculationDetails`, `units` and `warnings`
- * @throws {FrameAnalysisError} 301–314 for an invalid model (with `details` and every problem in
+ * @throws {FrameAnalysisError} 301–317 for an invalid model (with `details` and every problem in
  *   `issues`), 304 for an unstable structure
  */
 export const analyzeFrame = (model: FrameModel, options: AnalyzeFrameOptions = {}): FrameResult =>

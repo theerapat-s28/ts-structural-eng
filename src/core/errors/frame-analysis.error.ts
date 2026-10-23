@@ -4,6 +4,9 @@
 export interface FrameErrorDetails {
   nodeId?: string | number;
   memberId?: string | number;
+  areaId?: string | number;
+  /** For an area: the edge index, edge i running from `nodeIds[i]` to `nodeIds[i + 1]`. */
+  edge?: number;
   loadCaseId?: string;
   combinationId?: string;
   /** The offending input field, e.g. "x", "fz", "w", "direction", "uz". */
@@ -53,12 +56,13 @@ export const FrameErrors: Record<string, FrameAnalysisErrorType> = {
   },
   UNKNOWN_NODE_REFERENCE: {
     code: 302,
-    message: "A member, restraint or load refers to a node or member id that is not in the model.",
+    message:
+      "A member, restraint, area or load refers to a node, member or area id that is not in the model.",
   },
   DUPLICATE_ID: {
     code: 303,
     message:
-      "Node ids, member ids and restrained node ids must each be unique, and load case and combination ids must be unique across both lists.",
+      "Node ids, member ids, area ids and restrained node ids must each be unique, and load case and combination ids must be unique across both lists.",
   },
   STRUCTURE_UNSTABLE: {
     code: 304,
@@ -110,5 +114,20 @@ export const FrameErrors: Record<string, FrameAnalysisErrorType> = {
     code: 314,
     message:
       "An input value is invalid: a number that is not finite (NaN, Infinity or not a number), a negative spring stiffness, or a value outside its allowed options.",
+  },
+  INVALID_AREA_GEOMETRY: {
+    code: 315,
+    message:
+      "An area must have 3 or 4 distinct nodes forming a planar, convex polygon with no three corners in line; a cantilever area must be a rectangle.",
+  },
+  AREA_EDGE_UNSUPPORTED: {
+    code: 316,
+    message:
+      "An area edge that carries load is not fully covered by members: every segment between the nodes along the edge needs a member.",
+  },
+  INVALID_AREA_DISTRIBUTION: {
+    code: 317,
+    message:
+      "An area's supportEdges do not fit its distribution: two-way takes none; one-way needs at least one edge left unsupported, with every unsupported edge parallel to the others (the span direction); cantilever needs exactly one, and its loads may not act along that edge.",
   },
 };

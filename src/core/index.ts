@@ -45,6 +45,7 @@ export {
   VERTICAL_MEMBER_TOLERANCE,
   SINGULARITY_TOLERANCE,
   EQUILIBRIUM_TOLERANCE,
+  AREA_GEOMETRY_TOLERANCE,
 } from "./constants/frame.constant";
 
 // Errors

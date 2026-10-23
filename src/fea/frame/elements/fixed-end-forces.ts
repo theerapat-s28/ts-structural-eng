@@ -2,11 +2,13 @@ import { FrameAnalysisError, FrameErrors } from "@app-core/errors/frame-analysis
 
 /**
  * A member load resolved into local axes, in N and mm. A distributed load varies linearly
- * from `w1` at `start` to `w2` at `end` (uniform when they are equal).
+ * from `w1` at `start` to `w2` at `end` (uniform when they are equal); a torque is uniform
+ * about local 1.
  */
 export type LocalMemberLoad =
   | { type: "distributed"; axis: 1 | 2 | 3; w1: number; w2: number; start: number; end: number } // N/mm
-  | { type: "point"; axis: 1 | 2 | 3; P: number; a: number }; // N
+  | { type: "point"; axis: 1 | 2 | 3; P: number; a: number } // N
+  | { type: "torque"; t: number; start: number; end: number }; // N·mm/mm
 
 /** Intensity of a distributed load at `x` (inside its extent), in N/mm. */
 export const loadIntensity = (
@@ -70,7 +72,16 @@ export const fixedEndForces = (loads: LocalMemberLoad[], L: number): number[] =>
   };
 
   for (const load of loads) {
-    if (load.type === "point") {
+    if (load.type === "torque") {
+      if (!(load.start >= 0 && load.end <= L && load.start < load.end)) {
+        throw new FrameAnalysisError(FrameErrors.LOAD_OUTSIDE_MEMBER);
+      }
+      // linear torsion shape functions 1 − ξ and ξ, integrated over [start, end]
+      const resultant = load.t * (load.end - load.start);
+      const centroid = (load.start + load.end) / 2;
+      equivalent[3] += resultant * (1 - centroid / L);
+      equivalent[9] += (resultant * centroid) / L;
+    } else if (load.type === "point") {
       if (!(load.a >= 0 && load.a <= L))
         throw new FrameAnalysisError(FrameErrors.LOAD_OUTSIDE_MEMBER);
       add(unitEquivalentLoad(load.axis, load.a, L), load.P);

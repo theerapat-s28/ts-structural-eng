@@ -37,7 +37,9 @@ describe("FrameAnalysisError", () => {
 
   it("uses the 3XX group", () => {
     const codes = Object.values(FrameErrors).map((e) => e.code);
-    expect(codes).toEqual([301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314]);
+    expect(codes).toEqual([
+      301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317,
+    ]);
   });
 });
 
@@ -134,5 +136,8 @@ describe("analyzeFrame validation", () => {
       { type: "trapezoidal", memberId: "m", direction: "Z", w1: 1, w2: 2, start: 0, end: 3500 },
     ];
     expect(codeOf(d)).toBe(308);
+    const e = base();
+    e.memberLoads = [{ type: "torque", memberId: "m", t: 1, start: 2500, end: 2500 }];
+    expect(codeOf(e)).toBe(308);
   });
 });

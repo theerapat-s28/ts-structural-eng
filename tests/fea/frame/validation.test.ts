@@ -85,6 +85,13 @@ describe("input values a form can produce", () => {
       { loadCaseId: "D", memberId: "m", field: "w2" },
     ],
     [
+      "NaN torque",
+      model({
+        memberLoads: [{ loadCase: "D", type: "torque", memberId: "m", t: Number.NaN }],
+      }),
+      { loadCaseId: "D", memberId: "m", field: "t" },
+    ],
+    [
       "infinite point-load position",
       model({
         memberLoads: [

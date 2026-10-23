@@ -55,11 +55,15 @@ const internalForces = (
   side: Side,
 ): Forces => {
   const [f1, f2, f3, m1, m2, m3] = startForce;
-  // Q[axis]: resultant of loads in [0, x]; I[axis]: ∫(s − x)·q ds over [0, x]
+  // Q[axis]: resultant of loads in [0, x]; I[axis]: ∫(s − x)·q ds over [0, x]; Qt: torque in [0, x]
   const Q = [0, 0, 0, 0];
   const I = [0, 0, 0, 0];
+  let Qt = 0;
   for (const load of loads) {
-    if (load.type === "point") {
+    if (load.type === "torque") {
+      const m = Math.min(x, load.end);
+      if (m > load.start) Qt += load.t * (m - load.start);
+    } else if (load.type === "point") {
       const included = side === "left" ? load.a < x : load.a <= x;
       if (included) {
         Q[load.axis] += load.P;
@@ -81,7 +85,7 @@ const internalForces = (
     N: -f1 - Q[1],
     V2: -f2 - Q[2],
     V3: -f3 - Q[3],
-    T: -m1,
+    T: -m1 - Qt,
     M2: -m2 - x * f3 + I[3],
     M3: -m3 + x * f2 - I[2],
   };
@@ -349,7 +353,7 @@ export const memberDiagram = (
   }
 
   // ---- Extremes -------------------------------------------------------------------
-  // N and V are at most quadratic, T constant and M at most cubic inside each piece, so their
+  // N and V are at most quadratic, T linear and M at most cubic inside each piece, so their
   // extremes lie at a breakpoint (either side), a zero-load or a zero-shear point — all on the
   // grid, so these are exact.
   // Deflections are taken on the grid, then refined by golden-section search.

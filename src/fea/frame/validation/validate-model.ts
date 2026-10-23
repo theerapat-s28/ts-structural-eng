@@ -5,16 +5,42 @@ import {
   type FrameModelIssue,
 } from "@app-core/errors/frame-analysis.error";
 
+import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/frame.constant";
+
+import {
+  areaPlane,
+  edgeDirection,
+  isRectangle,
+  resolveAreaSupports,
+  type AreaPlane,
+  type AreaSupports,
+  type Vec3,
+} from "../area/area-geometry";
+import { edgeMemberChain, memberAdjacency } from "../area/edge-members";
 import { beam3dLocalStiffnessRightHanded } from "../elements/beam-3d-stiffness";
 import { condenseMember } from "../elements/static-condensation";
 import { resolveCombinations } from "../solver/combinations";
-import type { FrameId, FrameModel, LoadCaseType, MemberEndRelease } from "../types/model.type";
+import type {
+  AreaDistribution,
+  FrameId,
+  FrameModel,
+  LoadCaseType,
+  MemberEndRelease,
+  NullArea,
+} from "../types/model.type";
 
 const DOF_KEYS = ["ux", "uy", "uz", "rx", "ry", "rz"] as const;
 const NODAL_LOAD_KEYS = ["fx", "fy", "fz", "mx", "my", "mz"] as const;
 const SECTION_KEYS = ["E", "G", "A", "I22", "I33", "J"] as const;
 const RELEASE_KEYS = ["u1", "u2", "u3", "r1", "r2", "r3"] as const;
 const DIRECTIONS = new Set(["1", "2", "3", "X", "Y", "Z"]);
+const AREA_DIRECTIONS: Record<string, Vec3 | "normal"> = {
+  "3": "normal",
+  X: [1, 0, 0],
+  Y: [0, 1, 0],
+  Z: [0, 0, 1],
+};
+const AREA_DISTRIBUTIONS = new Set<AreaDistribution>(["twoWay", "oneWay", "cantilever"]);
 const LOAD_CASE_TYPES = new Set<LoadCaseType>([
   "dead",
   "superDead",
@@ -32,6 +58,8 @@ const describe = (d: FrameErrorDetails): string => {
   const parts: string[] = [];
   if (d.nodeId !== undefined) parts.push(`node "${String(d.nodeId)}"`);
   if (d.memberId !== undefined) parts.push(`member "${String(d.memberId)}"`);
+  if (d.areaId !== undefined) parts.push(`area "${String(d.areaId)}"`);
+  if (d.edge !== undefined) parts.push(`edge ${d.edge}`);
   if (d.loadCaseId !== undefined) parts.push(`load case "${d.loadCaseId}"`);
   if (d.combinationId !== undefined) parts.push(`combination "${d.combinationId}"`);
   if (d.field !== undefined) parts.push(`field "${d.field}"`);
@@ -60,7 +88,7 @@ const releasedIndices = (release: MemberEndRelease | undefined, offset: number):
  * model can be analysed, apart from an unstable structure (304), which only the solve detects.
  *
  * @param model - The model to check
- * @returns Every problem found (codes 301–303 and 305–314), in model order
+ * @returns Every problem found (codes 301–303 and 305–317), in model order
  */
 export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
   const issues: FrameModelIssue[] = [];
@@ -74,6 +102,8 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
   const combinations = Array.isArray(model.combinations) ? model.combinations : [];
   const nodalLoads = Array.isArray(model.nodalLoads) ? model.nodalLoads : [];
   const memberLoads = Array.isArray(model.memberLoads) ? model.memberLoads : [];
+  const areas = Array.isArray(model.areas) ? model.areas : [];
+  const areaLoads = Array.isArray(model.areaLoads) ? model.areaLoads : [];
 
   // ---- Ids -------------------------------------------------------------------------
   const duplicates = <T>(ids: T[]) => ids.filter((id, i) => ids.indexOf(id) !== i);
@@ -82,6 +112,9 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
   }
   for (const memberId of new Set(duplicates(members.map((m) => m.id)))) {
     add(FrameErrors.DUPLICATE_ID, { memberId, field: "id" });
+  }
+  for (const areaId of new Set(duplicates(areas.map((a) => a.id)))) {
+    add(FrameErrors.DUPLICATE_ID, { areaId, field: "id" });
   }
   for (const nodeId of new Set(duplicates(restraints.map((r) => r.nodeId)))) {
     add(FrameErrors.DUPLICATE_ID, { nodeId, field: "restraints" });
@@ -231,12 +264,17 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
       add(FrameErrors.UNKNOWN_LOAD_CASE, { ...at, field: "loadCase" });
     const memberKnown = members.some((m) => m.id === load.memberId);
     if (!memberKnown) add(FrameErrors.UNKNOWN_NODE_REFERENCE, { ...at, field: "memberId" });
-    if (!DIRECTIONS.has(load.direction))
+    if (load.type !== "torque" && !DIRECTIONS.has(load.direction))
       add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "direction" });
 
     const L = memberLength.get(load.memberId);
-    if (load.type === "udl" || load.type === "trapezoidal") {
-      const intensities = load.type === "udl" ? { w: load.w } : { w1: load.w1, w2: load.w2 };
+    if (load.type === "udl" || load.type === "trapezoidal" || load.type === "torque") {
+      const intensities =
+        load.type === "udl"
+          ? { w: load.w }
+          : load.type === "trapezoidal"
+            ? { w1: load.w1, w2: load.w2 }
+            : { t: load.t };
       const extent = { start: load.start, end: load.end };
       let ok = true;
       for (const [field, v] of [...Object.entries(intensities), ...Object.entries(extent)]) {
@@ -263,6 +301,78 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
       }
     } else {
       add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "type" });
+    }
+  }
+
+  // ---- Areas -----------------------------------------------------------------------
+  const adjacency = memberAdjacency(members.filter((m) => memberLength.has(m.id)));
+  const position = (id: FrameId): Vec3 => {
+    const node = nodeById.get(id)!;
+    return [node.x, node.y, node.z];
+  };
+  // only for areas whose geometry and supports are valid
+  const areaInfo = new Map<FrameId, { area: NullArea; plane: AreaPlane; supports: AreaSupports }>();
+  for (const area of areas) {
+    const at = { areaId: area.id };
+    const distributionOk = AREA_DISTRIBUTIONS.has(area.distribution);
+    if (!distributionOk) add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "distribution" });
+
+    const ids = Array.isArray(area.nodeIds) ? area.nodeIds : [];
+    if (ids.length !== 3 && ids.length !== 4) {
+      add(FrameErrors.INVALID_AREA_GEOMETRY, { ...at, field: "nodeIds" });
+      continue;
+    }
+    if (ids.some((id) => !nodeById.has(id))) {
+      add(FrameErrors.UNKNOWN_NODE_REFERENCE, { ...at, field: "nodeIds" });
+      continue;
+    }
+    if (!ids.every((id) => validNode.has(id))) continue; // reported on the node
+    const plane = areaPlane(ids.map(position));
+    if ("problem" in plane) {
+      add(FrameErrors.INVALID_AREA_GEOMETRY, { ...at, field: "nodeIds" });
+      continue;
+    }
+    if (!distributionOk) continue;
+    if (area.distribution === "cantilever" && !isRectangle(plane)) {
+      add(FrameErrors.INVALID_AREA_GEOMETRY, { ...at, field: "nodeIds" });
+      continue;
+    }
+
+    const supports = resolveAreaSupports(plane, area.distribution, area.supportEdges);
+    if (!supports) {
+      add(FrameErrors.INVALID_AREA_DISTRIBUTION, { ...at, field: "supportEdges" });
+      continue;
+    }
+    for (const edge of supports.loadedEdges) {
+      const chain = edgeMemberChain(ids[edge], ids[(edge + 1) % ids.length], position, adjacency);
+      if (!chain) add(FrameErrors.AREA_EDGE_UNSUPPORTED, { ...at, edge });
+    }
+    areaInfo.set(area.id, { area, plane, supports });
+  }
+
+  const areaIds = new Set(areas.map((a) => a.id));
+  for (const load of areaLoads) {
+    const at = { loadCaseId: load.loadCase, areaId: load.areaId };
+    if (!caseIds.has(load.loadCase))
+      add(FrameErrors.UNKNOWN_LOAD_CASE, { ...at, field: "loadCase" });
+    if (!areaIds.has(load.areaId)) {
+      add(FrameErrors.UNKNOWN_NODE_REFERENCE, { ...at, field: "areaId" });
+    }
+    const direction = Object.prototype.hasOwnProperty.call(AREA_DIRECTIONS, load.direction)
+      ? AREA_DIRECTIONS[load.direction]
+      : undefined;
+    if (!direction) add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "direction" });
+    if (!isFiniteNumber(load.q)) add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "q" });
+
+    // A cantilever carries its load as a line load plus a torque about the support edge; a
+    // component along that edge would also need a distributed moment about the normal.
+    const info = areaInfo.get(load.areaId);
+    if (direction && direction !== "normal" && info?.area.distribution === "cantilever") {
+      const t = edgeDirection(info.plane, info.supports.loadedEdges[0]);
+      const along = direction[0] * t[0] + direction[1] * t[1] + direction[2] * t[2];
+      if (Math.abs(along) > AREA_GEOMETRY_TOLERANCE) {
+        add(FrameErrors.INVALID_AREA_DISTRIBUTION, { ...at, field: "direction" });
+      }
     }
   }
 

@@ -90,7 +90,56 @@ export interface TrapezoidalMemberLoad {
   end?: number; // mm from the member start (default member length)
 }
 
-export type MemberLoad = UniformMemberLoad | PointMemberLoad | TrapezoidalMemberLoad;
+/**
+ * Uniform torque per unit length of member, about local axis 1 (right-hand rule), along the
+ * whole member or from `start` to `end`.
+ */
+export interface TorqueMemberLoad {
+  loadCase: string; // id of the load case this load belongs to
+  type: "torque";
+  memberId: FrameId;
+  t: number; // kN·m/m, positive about +local 1
+  start?: number; // mm from the member start (default 0)
+  end?: number; // mm from the member start (default member length)
+}
+
+export type MemberLoad =
+  | UniformMemberLoad
+  | PointMemberLoad
+  | TrapezoidalMemberLoad
+  | TorqueMemberLoad;
+
+/**
+ * How a null area sends its load to the members along its edges:
+ * - `"twoWay"`: each point to the nearest edge (corner bisectors); every edge needs members.
+ * - `"oneWay"`: strips spanning between `supportEdges`, parallel to the unsupported edges.
+ * - `"cantilever"`: everything to the one edge in `supportEdges`, as a line load plus a torque.
+ */
+export type AreaDistribution = "twoWay" | "oneWay" | "cantilever";
+
+/**
+ * A load-distribution-only area: it adds no stiffness and only turns area loads into member
+ * loads on the members along its edges. Edge i runs from `nodeIds[i]` to `nodeIds[i + 1]`
+ * (the last back to the first); local axis 3 is the normal by the right-hand rule around the
+ * nodes, so nodes listed counter-clockwise seen from above give local 3 = +Z.
+ */
+export interface NullArea {
+  id: FrameId;
+  nodeIds: FrameId[]; // 3 or 4 corner nodes, in order around the area
+  distribution: AreaDistribution;
+  /** Edge indices that carry the load: one-way supports, or the one cantilever support. */
+  supportEdges?: number[];
+}
+
+/** Area load direction: the area's local normal "3" or a global axis. */
+export type AreaLoadDirection = "3" | "X" | "Y" | "Z";
+
+export interface AreaLoad {
+  loadCase: string; // id of the load case this load belongs to
+  areaId: FrameId;
+  direction: AreaLoadDirection;
+  q: number; // kN/m² of true (not projected) area, positive along the positive direction axis
+}
 
 /** Descriptive category of a load case; it labels the case and does not change the analysis. */
 export type LoadCaseType =
@@ -140,5 +189,9 @@ export interface FrameModel {
   nodalLoads?: NodalLoad[];
   /** Member loads of every load case, each tagged with its `loadCase`. */
   memberLoads?: MemberLoad[];
+  /** Null areas that distribute `areaLoads` to the members along their edges. */
+  areas?: NullArea[];
+  /** Area loads of every load case, each tagged with its `loadCase`. */
+  areaLoads?: AreaLoad[];
   combinations?: LoadCombination[];
 }

@@ -41,6 +41,10 @@ const toLocalLoads = (load: MemberLoad, lambda: Matrix, L: number): LocalMemberL
       .filter((c) => Math.abs(c.factor) > 1e-12);
   };
 
+  if (load.type === "torque") {
+    // kN·m/m = 10³ N·mm/mm
+    return [{ type: "torque", t: load.t * 1e3, start: load.start ?? 0, end: load.end ?? L }];
+  }
   return components(load.direction).map(({ axis, factor }): LocalMemberLoad => {
     if (load.type === "point") return { type: "point", axis, P: load.P * factor * 1e3, a: load.a };
     const [w1, w2] = load.type === "udl" ? [load.w, load.w] : [load.w1, load.w2];
@@ -137,10 +141,11 @@ export const solveLoadCase = (
   return { U, R, F, memberForces, memberLoads };
 };
 
-const scaleLoad = (load: LocalMemberLoad, factor: number): LocalMemberLoad =>
-  load.type === "distributed"
-    ? { ...load, w1: load.w1 * factor, w2: load.w2 * factor }
-    : { ...load, P: load.P * factor };
+const scaleLoad = (load: LocalMemberLoad, factor: number): LocalMemberLoad => {
+  if (load.type === "distributed") return { ...load, w1: load.w1 * factor, w2: load.w2 * factor };
+  if (load.type === "torque") return { ...load, t: load.t * factor };
+  return { ...load, P: load.P * factor };
+};
 
 /** Superposes factored states: `Σ factor × state`. Member loads are concatenated, scaled. */
 export const combineStates = (terms: { state: RawState; factor: number }[]): RawState => {
