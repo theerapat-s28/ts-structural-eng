@@ -1,6 +1,6 @@
 ---
 name: npm-publish
-description: Publish a new version of @theerapat-s28/ts-structural-eng-tools to the npm registry. Use whenever the user wants to release, publish, deploy, or push the package to npm, bump the package version, or asks how to release a new version — even if they just say "release this" or "put this on npm".
+description: Publish a new version of @theerapat-s28/ts-structural-eng-tools to the npm registry. Use whenever the user wants to release, publish, deploy, or push the package to npm, or asks how to release a new version — even if they just say "release this" or "put this on npm". For only changing the version without publishing, use the update-version skill instead.
 ---
 
 # Publish to npm
@@ -31,17 +31,20 @@ pnpm run test
 pnpm run build
 ```
 
-All three must pass. The build output in `dist/` is what actually ships (`files` field limits the tarball to `dist/`, README.md, LICENSE), so a stale or failed build means publishing broken code even if `src/` is fine.
+All three must pass. The build output in `dist/` is what actually ships (`files` field limits the tarball to `dist/`, README.md, CHANGELOG.md, LICENSE), so a stale or failed build means publishing broken code even if `src/` is fine.
 
-## 3. Bump the version
+## 3. Update the version, then commit and tag
 
-Ask the user which bump applies if it isn't obvious from the changes (semver: patch = fixes, minor = new backwards-compatible features, major = breaking API changes):
+If package.json is not yet ahead of the published version, follow the `update-version` skill (`.agents/skills/update-version/SKILL.md`) first. It picks the bump, rolls `CHANGELOG.md` into the new version, sets package.json, and checks the root barrel and docs. If package.json is already ahead and CHANGELOG.md has its section, that work is done.
+
+A publish request is an explicit request to release, so commit and tag here (publishing needs a clean tree):
 
 ```bash
-pnpm version patch   # or minor / major
+git add -A && git commit -m "chore(release): X.Y.Z"
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
 ```
 
-This updates package.json, commits, and creates a git tag `vX.Y.Z`.
+Review `git status` before `git add -A` so nothing unrelated gets into the release commit.
 
 ## 4. Dry run
 
@@ -51,7 +54,7 @@ Always dry-run and show the user the file list — it catches missing `dist/` fi
 pnpm publish --dry-run
 ```
 
-Check that the tarball contains `dist/`, README.md, LICENSE, package.json, and that the name/version are right.
+Check that the tarball contains `dist/`, README.md, CHANGELOG.md, LICENSE, package.json, and that the name/version are right.
 
 ## 5. Hand off to the user — do not publish yourself
 

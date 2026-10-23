@@ -46,7 +46,7 @@ Layered modules, each with a barrel `index.ts`, dependencies flowing downward on
 
 The publish build uses `tsconfig.build.json` (extends the main tsconfig but roots at `src/` and excludes tests) followed by `tsc-alias`, which rewrites the `@app-*` path aliases into relative paths in the emitted JS — without it the published package cannot resolve its own imports. The main `tsconfig.json` stays as-is for editor/test tooling. A second pass builds the ES-module output into `dist/esm/` from `tsconfig.esm.json` (`tsc-alias --resolve-full-paths` adds the `.js` extensions ESM needs, and the build writes `dist/esm/package.json` with `"type": "module"`); every `exports` entry has `import` → `dist/esm/…` and `require` → `dist/…`, so a new subpath needs both.
 
-To release a new version, use the `npm-publish` skill (`.claude/skills/npm-publish/SKILL.md`): preflight auth/git checks, lint + test + build, `pnpm version`, dry-run, publish, push tags.
+To change the version without publishing, use the `update-version` skill (`.agents/skills/update-version/SKILL.md`): choose the semver bump, roll `CHANGELOG.md`, set package.json, check the root barrel and docs, verify; no commit or tag. To release, use the `npm-publish` skill (`.claude/skills/npm-publish/SKILL.md`): preflight auth/git checks, lint + test + build, `update-version`, release commit + tag, dry-run, publish, push tags.
 
 ## Calculation-function conventions
 
@@ -72,4 +72,5 @@ User-facing HTML reference pages live at `html-docs/<module-name>/index.html` (o
 - **A new top-level module under `src/` must ship with its own `html-docs/<module-name>/index.html`**, following the DESIGN.md checklist (copy the full `<style>` block from an existing page), and must be added to the module grid and Export Summary table in `html-docs/index.html`.
 - Numeric values shown in doc examples must be real: run the example inputs through the actual library (e.g. a temporary Vitest file under `tests/`, deleted afterward) and paste the produced outputs — never hand-estimate them.
 - Verify every sidebar `href` matches a real element `id` on the page.
+- **Every user-facing change gets an entry under `## [Unreleased]` in `CHANGELOG.md` in the same change** (Added / Changed / Deprecated / Removed / Fixed, or "Breaking changes" for anything that needs a major release). Write it for package users, not as a commit subject; skip internal-only changes (refactors, tests, tooling). The `update-version` skill turns Unreleased into the new version.
 - **`README.md` must be kept up to date alongside `html-docs/`**: when a module is added, its `src/` tree entry goes into the "Project layout" listing; when a module's exports or scripts change, update the corresponding README section in the same change.

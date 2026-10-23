@@ -59,6 +59,58 @@ Or install this repository's dependencies to work on the library itself:
 pnpm install
 ```
 
+## Quick start
+
+Analyse a simply supported RC beam under self-weight and live load, envelope the design demands, and check them against the section's flexural capacity:
+
+```ts
+import { analyzeFrame, memberDemandEnvelope } from "@theerapat-s28/ts-structural-eng-tools/fea";
+import type { FrameModel } from "@theerapat-s28/ts-structural-eng-tools/fea";
+import {
+  rectBeamMomentCapacity,
+  rectBeamToSectionProperties,
+} from "@theerapat-s28/ts-structural-eng-tools/rc";
+
+// 300×600 beam, f'c 28 MPa, fy 420 MPa, As 1800 mm²
+const beam = { Es: 200_000, fc_: 28, fy: 420, As: 1800, b: 300, h: 600, d: 540 };
+const { sectionProperties } = rectBeamToSectionProperties(beam, { member: "beam" });
+
+const model: FrameModel = {
+  nodes: [
+    { id: "A", x: 0, y: 0, z: 0 },
+    { id: "B", x: 6000, y: 0, z: 0 }, // mm
+  ],
+  members: [{ id: "AB", startNodeId: "A", endNodeId: "B", section: sectionProperties }],
+  restraints: [
+    { nodeId: "A", ux: true, uy: true, uz: true, rx: true },
+    { nodeId: "B", uy: true, uz: true },
+  ],
+  loadCases: [
+    { id: "D", type: "dead", selfWeight: 1 },
+    { id: "L", type: "live" },
+  ],
+  memberLoads: [{ loadCase: "L", type: "udl", memberId: "AB", direction: "Z", w: -15 }], // kN/m
+  combinations: [
+    {
+      id: "1.2D+1.6L",
+      terms: [
+        { case: "D", factor: 1.2 },
+        { case: "L", factor: 1.6 },
+      ],
+    },
+  ],
+};
+
+const result = analyzeFrame(model);
+const demand = memberDemandEnvelope(result, "AB");
+// demand.MuPositive → 131.328 (kN·m), demand.Vu → 87.552 (kN), governed by "1.2D+1.6L"
+
+const { phiMn, warnings } = rectBeamMomentCapacity(beam);
+// phiMn → 331.39 (kN·m), warnings → []
+```
+
+Each module is also its own subpath export (`/fea`, `/rc`, `/strengthening`, `/core`, `/utils`), so a front end can import only what it uses. The package root re-exports the most-used functions and types from every module.
+
 ## Scripts
 
 | Command                | Description                                     |
@@ -80,6 +132,7 @@ src/
 ├── rc/                   # Reinforced concrete design
 │   ├── index.ts          # Module exports
 │   ├── general.ts        # Concrete properties (beta1, Ec, unit conversion)
+│   ├── rc-bar-layout.ts  # Bar groups → layers satisfying ACI spacing, giving d and d'
 │   ├── rc-beam-design.ts # Beam moment capacity (singly/doubly reinforced) and shear capacity (Vc, Vs, stirrup requirement)
 │   └── rc-section-properties.ts # Section properties (E, G, A, I22, I33, J) for frame analysis
 ├── strengthening/        # Strengthening methods
@@ -101,8 +154,8 @@ src/
 ├── core/                 # Shared infrastructure
 │   ├── index.ts
 │   ├── constants/        # RC design constants (ACI 318) and frame-analysis tolerances
-│   ├── errors/           # Custom error classes
-│   └── types/            # Shared type definitions
+│   ├── errors/           # RCDesignError and FrameAnalysisError with their coded entries
+│   └── types/            # Shared types: RC sections, plate jacketing, section properties, warnings, units
 └── utils/                # Helper utilities
     ├── index.ts
     ├── math.ts           # Quadratic solver, rounding
@@ -122,6 +175,10 @@ html-docs/                # HTML API reference, deployed to GitHub Pages
 ├── rc/index.html
 ├── strengthening/index.html
 └── fea/index.html
+html-implementation-plans/ # Planning notes for upcoming features (not published)
+└── fea-future-features.html
+.agents/skills/update-version/ # AI agent skill: bump the version and roll the changelog
+.claude/skills/npm-publish/ # AI agent skill: release checklist for publishing to npm
 ```
 
 ## TypeScript path aliases
@@ -183,23 +240,46 @@ Linear-elastic 3D frame analysis by the direct stiffness method, imported from `
 - **`beam3dLocalStiffness(E, G, A, I22, I33, J, L)`** — The 12×12 local stiffness matrix exactly as in the reference "Complete Beam Stiffness Matrix". Its bending rotations R2 and R3 follow the opposite sign to the right-hand rule; **`beam3dLocalStiffnessRightHanded`** returns the right-handed form that `analyzeFrame` uses.
 - **`memberAxes(start, end, angle?)`** — The ETABS-style local axes of a member as a direction-cosine matrix.
 
-### General Utilities
+### Concrete properties (from `rc`)
 
 - **`concreteBeta(fc_)`** — ACI 318 β₁ factor
 - **`concreteElasticModulus(fc_)`** — Ec = 4700√f'c (MPa)
 - **`psiToMpa(psi)`** — Unit conversion
 
+### Errors and warnings (from `core`)
+
+A design that is valid but breaks a code provision returns normally with an entry in `warnings`, citing the clause (e.g. `"ACI318-19, 9.6.1.2"`). A calculation whose assumptions break down throws instead, never returning a silently wrong result:
+
+- **`RCDesignError`** — `code` and `message` from `Errors`: 1XX for RC beam design (e.g. 102, tensile steel not yielding; 105, `Vs` above the 22.5.1.2 limit), 2XX for strengthening and plate connections (201–206).
+- **`FrameAnalysisError`** — `code` from `FrameErrors` (301–317), `details` locating the problem, and `issues` listing every problem `validateFrameModel` found.
+
+`core` also exports the shared input types, the type guards `isSinglyReinforced`, `hasTopPlate`, `hasBottomPlate` and `hasSidePlate`, and the engineering constants (φ factors, ultimate concrete strain, inertia modifiers, frame-analysis tolerances).
+
+### Utilities (from `utils`)
+
+Low-level helpers the engine is built on, exported for reuse: `solveQuadratic`, `roundToDecimalPlaces`, `mergeWarnings`, dense matrix helpers (`zeros`, `identity`, `transpose`, `matMul`, `matVec`), Cholesky and general linear solvers (`choleskyFactor`, `choleskySolveFactored`, `choleskySolve`, `solveLinearSystem`), and the skyline solver (`createSkyline`, `skylineAdd`, `skylineGet`, `skylineSize`, `skylineFactor`, `skylineSolve`, `reverseCuthillMcKee`).
+
 ## Build
 
 ```bash
 pnpm run build
-node dist/index.js
 ```
 
-The build emits a CommonJS build in `dist/` (for `require`, with the `.d.ts` types) and an ES-module build in `dist/esm/` (for `import` and bundlers such as Vite); `package.json` `exports` routes each subpath to the right one, and `"sideEffects": false` lets bundlers drop unused code.
+The build emits a CommonJS build in `dist/` (for `require`, with the `.d.ts` types) and an ES-module build in `dist/esm/` (for `import` and bundlers such as Vite); `package.json` `exports` routes each subpath to the right one, and `"sideEffects": false` lets bundlers drop unused code. `pnpm run dev` runs [`examples/basic-usage.ts`](examples/basic-usage.ts) against the sources without building.
 
 ## Tests
 
 ```bash
-pnpm run test
+pnpm run test                                   # all tests
+pnpm vitest run tests/rc/rc-beam-design.test.ts # one file
 ```
+
+Tests live in `tests/`, mirroring `src/`, and check results against hand-calculated or textbook values.
+
+## Releasing
+
+Releases follow semantic versioning and are published to npm with tags `vX.Y.Z`. What changed in each version is in [CHANGELOG.md](CHANGELOG.md). Preparing a version (changelog, version number, checks) is described in [`.agents/skills/update-version/SKILL.md`](.agents/skills/update-version/SKILL.md), and publishing (release commit and tag, dry run, publish, push tags) in [`.claude/skills/npm-publish/SKILL.md`](.claude/skills/npm-publish/SKILL.md).
+
+## License
+
+[ISC](LICENSE)
