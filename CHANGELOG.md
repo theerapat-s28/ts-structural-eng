@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [2.1.1] — 2026-10-23
+
 ### Fixed
 
 - The package root now re-exports `distributeAreaLoads`, the `TrapezoidalMemberLoad`, `TorqueMemberLoad`, `NullArea`, `AreaLoad`, `AreaDistribution` and `AreaLoadDirection` types, and the `AREA_GEOMETRY_TOLERANCE` constant. Since 2.1.0 they were reachable only through the `/fea` and `/core` subpaths.
@@ -116,7 +118,8 @@ Maintenance release with no changes to the library code.
 
 First version, under the unscoped name `ts-structural-eng-tools`: `rectBeamMomentCapacity` (singly and doubly reinforced rectangular beams per ACI 318-19), steel plate jacketing, and concrete property helpers.
 
-[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.1.1...HEAD
+[2.1.1]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v1.5.0...v2.0.0
