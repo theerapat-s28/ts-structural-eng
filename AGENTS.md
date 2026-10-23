@@ -22,6 +22,10 @@ pnpm run format             # Prettier on src/, tests/, examples/
 pnpm run dev                # run examples/basic-usage.ts with ts-node
 ```
 
+## Git
+
+**Never run `git commit` automatically** — not after finishing a change, not as part of another task. Leave changes uncommitted in the working tree; the maintainer commits when ready using the `git-commit` skill. Only commit when explicitly asked to.
+
 ## Architecture
 
 Layered modules, each with a barrel `index.ts`, dependencies flowing downward only:
