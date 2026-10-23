@@ -26,7 +26,11 @@ const scaleNodal = (l: UntaggedNodalLoad, f: number): UntaggedNodalLoad => ({
   mz: (l.mz ?? 0) * f,
 });
 const scaleMember = (l: UntaggedMemberLoad, f: number): UntaggedMemberLoad =>
-  l.type === "udl" ? { ...l, w: l.w * f } : { ...l, P: l.P * f };
+  l.type === "udl"
+    ? { ...l, w: l.w * f }
+    : l.type === "trapezoidal"
+      ? { ...l, w1: l.w1 * f, w2: l.w2 * f }
+      : { ...l, P: l.P * f };
 
 /** One load case holding the factored sum of the given cases (the superposition oracle). */
 const prescaled = (cases: CaseWithLoads[], factors: Record<string, number>): CaseWithLoads => {
@@ -109,7 +113,10 @@ const D: CaseWithLoads = {
 const L: CaseWithLoads = {
   id: "L",
   type: "live",
-  memberLoads: [{ type: "point", memberId: "BC", direction: "Z", P: -40, a: 2200 }],
+  memberLoads: [
+    { type: "point", memberId: "BC", direction: "Z", P: -40, a: 2200 },
+    { type: "trapezoidal", memberId: "CD", direction: "Z", w1: -4, w2: -10, start: 200, end: 2500 },
+  ],
   nodalLoads: [{ nodeId: "C", fy: 6 }],
 };
 const W: CaseWithLoads = {

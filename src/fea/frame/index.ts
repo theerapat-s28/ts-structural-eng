@@ -19,6 +19,7 @@ export type {
   LoadDirection,
   UniformMemberLoad,
   PointMemberLoad,
+  TrapezoidalMemberLoad,
   MemberLoad,
   LoadCaseType,
   LoadCase,

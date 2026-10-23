@@ -520,6 +520,7 @@
         <tbody>
           <tr><td>Nodal force / moment</td><td><code>nodalLoads</code></td><td>kN, kN·m</td><td><code>fx</code>, <code>fy</code>, <code>fz</code> along and <code>mx</code>, <code>my</code>, <code>mz</code> about the <strong>global</strong> axes, at any node (supported nodes included). Omitted components are 0</td></tr>
           <tr><td>Uniform member load</td><td><code>memberLoads</code>, <code>type: "udl"</code></td><td>kN/m</td><td><code>w</code> per unit length of member, over the whole member or from <code>start</code> to <code>end</code> (mm from the member start) for a partial load</td></tr>
+          <tr><td>Trapezoidal member load</td><td><code>memberLoads</code>, <code>type: "trapezoidal"</code></td><td>kN/m</td><td>Varies linearly from <code>w1</code> at <code>start</code> to <code>w2</code> at <code>end</code> (mm from the member start, default the whole member). Triangular when one end is 0; the two ends may have opposite signs</td></tr>
           <tr><td>Point member load</td><td><code>memberLoads</code>, <code>type: "point"</code></td><td>kN</td><td><code>P</code> at distance <code>a</code> (mm) from the member start</td></tr>
           <tr><td>Self-weight</td><td><code>loadCases[].selfWeight</code></td><td>—</td><td>A uniform load <code>selfWeight · unitWeight · A</code> along global −Z on every member; see <a href="#load-cases" style="color:var(--accent)">Load cases</a></td></tr>
         </tbody>
@@ -534,7 +535,7 @@
           <tr><td>"X", "Y", "Z"</td><td>Along a global axis. The load is resolved onto the member's local axes, so on an inclined member a vertical load produces both axial and transverse components</td></tr>
         </tbody>
       </table>
-      <p>A positive <code>w</code> or <code>P</code> acts in the positive direction of the chosen axis. With Z up, <strong>gravity loads are negative <code>"Z"</code></strong> (e.g. <code>w: -10</code>).</p>
+      <p>A positive <code>w</code>, <code>w1</code>, <code>w2</code> or <code>P</code> acts in the positive direction of the chosen axis. With Z up, <strong>gravity loads are negative <code>"Z"</code></strong> (e.g. <code>w: -10</code>).</p>
 
       <div class="alert alert--info">
         <span>ℹ️</span>
@@ -555,6 +556,8 @@
   <span class="c">// partial load from 1.0 m to 3.0 m along the member</span>
   { <span class="k">loadCase</span>: <span class="s">"L"</span>, <span class="k">type</span>: <span class="s">"udl"</span>, <span class="k">memberId</span>: <span class="s">"AB"</span>, <span class="k">direction</span>: <span class="s">"Z"</span>, <span class="k">w</span>: <span class="n">-15</span>,
     <span class="k">start</span>: <span class="n">1000</span>, <span class="k">end</span>: <span class="n">3000</span> },  <span class="c">// mm</span>
+  <span class="c">// triangular load rising from 0 at the start to 12 kN/m at the end</span>
+  { <span class="k">loadCase</span>: <span class="s">"SD"</span>, <span class="k">type</span>: <span class="s">"trapezoidal"</span>, <span class="k">memberId</span>: <span class="s">"BC"</span>, <span class="k">direction</span>: <span class="s">"Z"</span>, <span class="k">w1</span>: <span class="n">0</span>, <span class="k">w2</span>: <span class="n">-12</span> },  <span class="c">// kN/m</span>
   <span class="c">// 40 kN point load 2.2 m from the start, in the member's local 2 direction</span>
   { <span class="k">loadCase</span>: <span class="s">"L"</span>, <span class="k">type</span>: <span class="s">"point"</span>, <span class="k">memberId</span>: <span class="s">"BC"</span>, <span class="k">direction</span>: <span class="s">"2"</span>, <span class="k">P</span>: <span class="n">-40</span>, <span class="k">a</span>: <span class="n">2200</span> },  <span class="c">// kN, mm</span>
 ],</pre>
@@ -566,12 +569,14 @@
         shape functions), adjusted for any end releases, and applied to the end nodes as equivalent
         nodal loads. The member's force diagrams are then built from its end forces plus the loads
         themselves, so a point load shows a shear jump (both sides are reported) and a partial load
-        changes slope exactly where it starts and ends.
+        changes slope exactly where it starts and ends. Under a trapezoidal load the shear is a
+        parabola and the moment a cubic; their extremes (including a shear peak where a load changes
+        sign) are located exactly.
       </p>
 
       <div class="alert alert--error">
         <span>⚠️</span>
-        <span>Throws <strong>FrameAnalysisError 308</strong> if a point load lies outside <code>0 ≤ a ≤ L</code>, or a uniform load does not satisfy <code>0 ≤ start &lt; end ≤ L</code>; <strong>302</strong> if a load names a node or member that is not in the model; <strong>309</strong> if its <code>loadCase</code> is not in <code>loadCases</code>.</span>
+        <span>Throws <strong>FrameAnalysisError 308</strong> if a point load lies outside <code>0 ≤ a ≤ L</code>, or a uniform or trapezoidal load does not satisfy <code>0 ≤ start &lt; end ≤ L</code>; <strong>302</strong> if a load names a node or member that is not in the model; <strong>309</strong> if its <code>loadCase</code> is not in <code>loadCases</code>.</span>
       </div>
 
       <div class="sub-label">Not supported yet</div>
@@ -579,7 +584,6 @@
         <thead><tr><th>Load</th><th>Workaround</th></tr></thead>
         <tbody>
           <tr><td>Concentrated moment inside a member</td><td>Split the member with a node at that point and apply a nodal moment</td></tr>
-          <tr><td>Triangular / trapezoidal (varying) load</td><td>Approximate with several partial uniform loads (<code>start</code> / <code>end</code>)</td></tr>
           <tr><td>Load per projected length</td><td>Enter <code>w · cos θ</code> per member length (see above)</td></tr>
           <tr><td>Temperature load</td><td>—</td></tr>
           <tr><td>Imposed support settlement</td><td>—</td></tr>
@@ -643,7 +647,7 @@
 
       <div class="alert alert--info">
         <span>ℹ️</span>
-        <span>Values between stations follow the exact curves: under a uniform load the moment is a parabola and the deflection a quartic. Straight lines through the default 21 stations are close; the peak moment is always a station, and the deflection extremes are taken from a 200-interval grid. At a hinged member end the member's own rotation is used, so the curve kinks there correctly even though the node does not rotate.</span>
+        <span>Values between stations follow the exact curves: under a uniform load the moment is a parabola and the deflection a quartic (a cubic moment and a quintic deflection under a trapezoidal load). Straight lines through the default 21 stations are close; the peak moment is always a station, and the deflection extremes are found on a 40-interval grid and then refined. At a hinged member end the member's own rotation is used, so the curve kinks there correctly even though the node does not rotate.</span>
       </div>
     </div>
 
@@ -1102,7 +1106,7 @@ analysis.result.cases.D.memberDiagrams[<span class="n">0</span>].stations;  <spa
               <tr><td>restraints</td><td>Restraint[]</td><td>kN/mm, kN·m/rad</td><td><span class="req">Required</span></td><td><code>{ nodeId, ux, uy, uz, rx, ry, rz }</code> in global axes. <code>true</code> fixes the DOF, a positive number is a spring stiffness, omitted is free. At least one DOF must be restrained</td></tr>
               <tr><td>loadCases</td><td>LoadCase[]</td><td>—</td><td><span class="req">Required</span></td><td>At least one; see <a href="#load-case" style="color:var(--accent)">LoadCase</a></td></tr>
               <tr><td>nodalLoads</td><td>NodalLoad[]</td><td>kN, kN·m</td><td><span class="opt">Optional</span></td><td><code>{ loadCase, nodeId, fx, fy, fz, mx, my, mz }</code> along and about global axes; see <a href="#nodal-load" style="color:var(--accent)">NodalLoad</a></td></tr>
-              <tr><td>memberLoads</td><td>MemberLoad[]</td><td>kN/m, kN, mm</td><td><span class="opt">Optional</span></td><td>Uniform: <code>{ loadCase, type: "udl", memberId, direction, w, start?, end? }</code>. Point: <code>{ loadCase, type: "point", memberId, direction, P, a }</code>. <code>direction</code> is <code>"1" | "2" | "3"</code> (local) or <code>"X" | "Y" | "Z"</code> (global); positions are measured from the member start in mm; see <a href="#member-load" style="color:var(--accent)">MemberLoad</a></td></tr>
+              <tr><td>memberLoads</td><td>MemberLoad[]</td><td>kN/m, kN, mm</td><td><span class="opt">Optional</span></td><td>Uniform: <code>{ loadCase, type: "udl", memberId, direction, w, start?, end? }</code>. Trapezoidal: <code>{ loadCase, type: "trapezoidal", memberId, direction, w1, w2, start?, end? }</code>. Point: <code>{ loadCase, type: "point", memberId, direction, P, a }</code>. <code>direction</code> is <code>"1" | "2" | "3"</code> (local) or <code>"X" | "Y" | "Z"</code> (global); positions are measured from the member start in mm; see <a href="#member-load" style="color:var(--accent)">MemberLoad</a></td></tr>
               <tr><td>combinations</td><td>LoadCombination[]</td><td>—</td><td><span class="opt">Optional</span></td><td>See <a href="#load-combination" style="color:var(--accent)">LoadCombination</a></td></tr>
             </tbody>
           </table>
@@ -1171,7 +1175,7 @@ analysis.result.cases.D.memberDiagrams[<span class="n">0</span>].stations;  <spa
       <div class="export-card" id="member-load">
         <div class="export-card__header">
           <span class="kind m-type">TYPE</span>
-          <span class="ex-sig">MemberLoad = UniformMemberLoad | PointMemberLoad</span>
+          <span class="ex-sig">MemberLoad = UniformMemberLoad | PointMemberLoad | TrapezoidalMemberLoad</span>
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
@@ -1180,11 +1184,12 @@ analysis.result.cases.D.memberDiagrams[<span class="n">0</span>].stations;  <spa
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
               <tr><td>loadCase</td><td>string</td><td>—</td><td><span class="req">Required</span></td><td>Id of the load case this load belongs to</td></tr>
-              <tr><td>type</td><td>"udl" | "point"</td><td>—</td><td><span class="req">Required</span></td><td>Uniform or point load</td></tr>
+              <tr><td>type</td><td>"udl" | "point" | "trapezoidal"</td><td>—</td><td><span class="req">Required</span></td><td>Uniform, point or linearly varying load</td></tr>
               <tr><td>memberId</td><td>string | number</td><td>—</td><td><span class="req">Required</span></td><td>Loaded member</td></tr>
               <tr><td>direction</td><td>LoadDirection</td><td>—</td><td><span class="req">Required</span></td><td><code>"1" | "2" | "3"</code> (local) or <code>"X" | "Y" | "Z"</code> (global)</td></tr>
               <tr><td>w</td><td>number</td><td>kN/m</td><td><span class="req">Required</span> (udl)</td><td>Load per unit member length, positive along the direction axis</td></tr>
-              <tr><td>start, end</td><td>number</td><td>mm</td><td><span class="opt">Optional</span> (udl)</td><td>Loaded length for a partial load (default 0 and the member length)</td></tr>
+              <tr><td>w1, w2</td><td>number</td><td>kN/m</td><td><span class="req">Required</span> (trapezoidal)</td><td>Load per unit member length at <code>start</code> and at <code>end</code>, varying linearly between them</td></tr>
+              <tr><td>start, end</td><td>number</td><td>mm</td><td><span class="opt">Optional</span> (udl, trapezoidal)</td><td>Loaded length for a partial load (default 0 and the member length)</td></tr>
               <tr><td>P</td><td>number</td><td>kN</td><td><span class="req">Required</span> (point)</td><td>Load, positive along the direction axis</td></tr>
               <tr><td>a</td><td>number</td><td>mm</td><td><span class="req">Required</span> (point)</td><td>Distance of the load from the member start</td></tr>
             </tbody>
@@ -1338,7 +1343,7 @@ analysis.result.cases.D.memberDiagrams[<span class="n">0</span>].stations;  <spa
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">LoadCase</td><td>—</td><td>One set of loads, with optional self-weight</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">LoadCombination</td><td>—</td><td>Factored sum of load cases and combinations</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">NodalLoad</td><td>—</td><td>Force/moment at a node, global axes</td></tr>
-          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberLoad</td><td>—</td><td>Uniform (full or partial) or point load on a member</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberLoad</td><td>—</td><td>Uniform or trapezoidal (full or partial) or point load on a member</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameResult</td><td>—</td><td>Analysis output</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameCaseResult</td><td>—</td><td>Results of one load case or combination</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameEnvelope</td><td>—</td><td>Max/min over combinations with the governing combination</td></tr>

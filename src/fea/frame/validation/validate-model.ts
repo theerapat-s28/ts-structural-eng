@@ -235,11 +235,12 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
       add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "direction" });
 
     const L = memberLength.get(load.memberId);
-    if (load.type === "udl") {
+    if (load.type === "udl" || load.type === "trapezoidal") {
+      const intensities = load.type === "udl" ? { w: load.w } : { w1: load.w1, w2: load.w2 };
+      const extent = { start: load.start, end: load.end };
       let ok = true;
-      for (const field of ["w", "start", "end"] as const) {
-        const v = load[field];
-        if ((field === "w" || v !== undefined) && !isFiniteNumber(v)) {
+      for (const [field, v] of [...Object.entries(intensities), ...Object.entries(extent)]) {
+        if ((field in intensities || v !== undefined) && !isFiniteNumber(v)) {
           add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field });
           ok = false;
         }

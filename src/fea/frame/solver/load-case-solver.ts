@@ -41,17 +41,18 @@ const toLocalLoads = (load: MemberLoad, lambda: Matrix, L: number): LocalMemberL
       .filter((c) => Math.abs(c.factor) > 1e-12);
   };
 
-  return components(load.direction).map(({ axis, factor }) =>
-    load.type === "udl"
-      ? {
-          type: "udl",
-          axis,
-          w: load.w * factor, // kN/m = N/mm
-          start: load.start ?? 0,
-          end: load.end ?? L,
-        }
-      : { type: "point", axis, P: load.P * factor * 1e3, a: load.a },
-  );
+  return components(load.direction).map(({ axis, factor }): LocalMemberLoad => {
+    if (load.type === "point") return { type: "point", axis, P: load.P * factor * 1e3, a: load.a };
+    const [w1, w2] = load.type === "udl" ? [load.w, load.w] : [load.w1, load.w2];
+    return {
+      type: "distributed",
+      axis,
+      w1: w1 * factor, // kN/m = N/mm
+      w2: w2 * factor,
+      start: load.start ?? 0,
+      end: load.end ?? L,
+    };
+  });
 };
 
 /**
@@ -137,7 +138,9 @@ export const solveLoadCase = (
 };
 
 const scaleLoad = (load: LocalMemberLoad, factor: number): LocalMemberLoad =>
-  load.type === "udl" ? { ...load, w: load.w * factor } : { ...load, P: load.P * factor };
+  load.type === "distributed"
+    ? { ...load, w1: load.w1 * factor, w2: load.w2 * factor }
+    : { ...load, P: load.P * factor };
 
 /** Superposes factored states: `Σ factor × state`. Member loads are concatenated, scaled. */
 export const combineStates = (terms: { state: RawState; factor: number }[]): RawState => {

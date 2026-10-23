@@ -69,6 +69,22 @@ describe("input values a form can produce", () => {
       { loadCaseId: "D", memberId: "m", field: "w" },
     ],
     [
+      "NaN trapezoidal end intensity",
+      model({
+        memberLoads: [
+          {
+            loadCase: "D",
+            type: "trapezoidal",
+            memberId: "m",
+            direction: "Z",
+            w1: -5,
+            w2: Number.NaN,
+          },
+        ],
+      }),
+      { loadCaseId: "D", memberId: "m", field: "w2" },
+    ],
+    [
       "infinite point-load position",
       model({
         memberLoads: [

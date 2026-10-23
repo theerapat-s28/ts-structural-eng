@@ -129,5 +129,10 @@ describe("analyzeFrame validation", () => {
     const c = base();
     c.memberLoads = [{ type: "udl", memberId: "m", direction: "Z", w: 1, start: -10, end: 1000 }];
     expect(codeOf(c)).toBe(308);
+    const d = base();
+    d.memberLoads = [
+      { type: "trapezoidal", memberId: "m", direction: "Z", w1: 1, w2: 2, start: 0, end: 3500 },
+    ];
+    expect(codeOf(d)).toBe(308);
   });
 });

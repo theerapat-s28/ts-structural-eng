@@ -1,11 +1,20 @@
 import { FrameAnalysisError, FrameErrors } from "@app-core/errors/frame-analysis.error";
 
-/** A member load resolved into local axes, in N and mm. */
+/**
+ * A member load resolved into local axes, in N and mm. A distributed load varies linearly
+ * from `w1` at `start` to `w2` at `end` (uniform when they are equal).
+ */
 export type LocalMemberLoad =
-  | { type: "udl"; axis: 1 | 2 | 3; w: number; start: number; end: number } // N/mm
+  | { type: "distributed"; axis: 1 | 2 | 3; w1: number; w2: number; start: number; end: number } // N/mm
   | { type: "point"; axis: 1 | 2 | 3; P: number; a: number }; // N
 
-// 4-point Gauss–Legendre rule, exact for the cubic integrands used here
+/** Intensity of a distributed load at `x` (inside its extent), in N/mm. */
+export const loadIntensity = (
+  load: Extract<LocalMemberLoad, { type: "distributed" }>,
+  x: number,
+): number => load.w1 + ((load.w2 - load.w1) * (x - load.start)) / (load.end - load.start);
+
+// 4-point Gauss–Legendre rule, exact up to degree 7: cubic shape functions × linear loads
 const GAUSS_POINTS = [
   -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526,
 ];
@@ -72,7 +81,11 @@ export const fixedEndForces = (loads: LocalMemberLoad[], L: number): number[] =>
       const half = (load.end - load.start) / 2;
       const mid = (load.end + load.start) / 2;
       GAUSS_POINTS.forEach((p, index) => {
-        add(unitEquivalentLoad(load.axis, mid + half * p, L), load.w * half * GAUSS_WEIGHTS[index]);
+        const x = mid + half * p;
+        add(
+          unitEquivalentLoad(load.axis, x, L),
+          loadIntensity(load, x) * half * GAUSS_WEIGHTS[index],
+        );
       });
     }
   }

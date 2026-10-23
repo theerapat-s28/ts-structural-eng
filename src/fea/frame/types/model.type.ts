@@ -75,7 +75,22 @@ export interface PointMemberLoad {
   a: number; // mm from the member start
 }
 
-export type MemberLoad = UniformMemberLoad | PointMemberLoad;
+/**
+ * Linearly varying load per unit length of member, from `w1` at `start` to `w2` at `end`
+ * (triangular when one of them is 0).
+ */
+export interface TrapezoidalMemberLoad {
+  loadCase: string; // id of the load case this load belongs to
+  type: "trapezoidal";
+  memberId: FrameId;
+  direction: LoadDirection;
+  w1: number; // kN/m at `start`, positive along the positive direction axis
+  w2: number; // kN/m at `end`
+  start?: number; // mm from the member start (default 0)
+  end?: number; // mm from the member start (default member length)
+}
+
+export type MemberLoad = UniformMemberLoad | PointMemberLoad | TrapezoidalMemberLoad;
 
 /** Descriptive category of a load case; it labels the case and does not change the analysis. */
 export type LoadCaseType =

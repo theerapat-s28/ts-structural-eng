@@ -24,6 +24,9 @@ const DEFLECTION_GRID_INTERVALS = 40;
 /** Golden-section steps refining each deflection extreme between its neighbouring grid points. */
 const REFINE_STEPS = 30;
 const GOLDEN = (Math.sqrt(5) - 1) / 2;
+// 3-point Gauss–Legendre rule on [−1, 1], exact up to degree 5
+const GAUSS3_POINTS = [-Math.sqrt(3 / 5), 0, Math.sqrt(3 / 5)];
+const GAUSS3_WEIGHTS = [5 / 9, 8 / 9, 5 / 9];
 const FORCE_DECIMALS = 4;
 const DISPLACEMENT_DECIMALS = 5;
 
@@ -65,8 +68,12 @@ const internalForces = (
     } else {
       const m = Math.min(x, load.end);
       if (m > load.start) {
-        Q[load.axis] += load.w * (m - load.start);
-        I[load.axis] += (load.w * ((m - x) ** 2 - (load.start - x) ** 2)) / 2;
+        // q(s) = w1 + k·(s − start); in u = s − x over [a, b]: q = w1 + k·(u − a)
+        const k = (load.w2 - load.w1) / (load.end - load.start);
+        const a = load.start - x;
+        const b = m - x;
+        Q[load.axis] += load.w1 * (b - a) + (k * (b - a) ** 2) / 2;
+        I[load.axis] += ((load.w1 - k * a) * (b ** 2 - a ** 2)) / 2 + (k * (b ** 3 - a ** 3)) / 3;
       }
     }
   }
@@ -86,8 +93,8 @@ const internalForces = (
  *
  * Each field is `a + b·x + x·∫₀ˣκ − ∫₀ˣ s·κ`, with the running integrals accumulated once along
  * the sorted grid. The grid contains every load breakpoint, so each interval lies inside one
- * smooth piece where N is at most linear and M at most quadratic, and one Simpson panel per
- * interval integrates the (at most cubic) integrands exactly.
+ * smooth piece where N is at most quadratic and M at most cubic, and one 3-point Gauss panel per
+ * interval integrates the (at most quartic) integrands exactly.
  *
  * The constants come from the member's own end displacements: end translations first, an end
  * rotation only where a translation is released. A released rotation (hinge) never enters, so
@@ -105,22 +112,27 @@ const displacementsOnGrid = (
   const n = grid.length;
 
   // integrands: [N/EA, M3/EI33, s·M3/EI33, −M2/EI22, −s·M2/EI22]
-  const integrands = (s: number, side: Side) => {
-    const f = internalForces(startForce, loads, s, side);
+  const integrands = (s: number) => {
+    const f = internalForces(startForce, loads, s, "right");
     const k3 = f.M3 / (E * I33);
     const k2 = -f.M2 / (E * I22);
     return [f.N / (E * A), k3, s * k3, k2, s * k2];
   };
+  /** ∫ₐᵇ of every integrand: one 3-point Gauss panel, interior points only (no load side). */
+  const panel = (a: number, b: number): number[] => {
+    const half = (b - a) / 2;
+    const mid = (a + b) / 2;
+    const out = [0, 0, 0, 0, 0];
+    GAUSS3_POINTS.forEach((p, k) => {
+      const g = integrands(mid + half * p);
+      for (let c = 0; c < 5; c++) out[c] += half * GAUSS3_WEIGHTS[k] * g[c];
+    });
+    return out;
+  };
   const cumulative = Array.from({ length: 5 }, () => new Float64Array(n));
   for (let i = 1; i < n; i++) {
-    const a = grid[i - 1];
-    const b = grid[i];
-    const ga = integrands(a, "right");
-    const gm = integrands((a + b) / 2, "right");
-    const gb = integrands(b, "left");
-    for (let c = 0; c < 5; c++) {
-      cumulative[c][i] = cumulative[c][i - 1] + ((b - a) / 6) * (ga[c] + 4 * gm[c] + gb[c]);
-    }
+    const g = panel(grid[i - 1], grid[i]);
+    for (let c = 0; c < 5; c++) cumulative[c][i] = cumulative[c][i - 1] + g[c];
   }
   const [strain, k3, sk3, k2, sk2] = cumulative;
   const last = n - 1;
@@ -169,7 +181,7 @@ const displacementsOnGrid = (
     u3: plane3.a + plane3.b * x + P2(i),
   }));
 
-  /** Displacement anywhere: the grid value plus one exact Simpson panel to x. */
+  /** Displacement anywhere: the grid value plus one exact Gauss panel to x. */
   const at = (x: number): Displacements => {
     let lo = 0;
     let hi = last;
@@ -180,10 +192,8 @@ const displacementsOnGrid = (
     }
     const a = grid[lo];
     if (x - a <= 0) return onGrid[lo];
-    const ga = integrands(a, "right");
-    const gm = integrands((a + x) / 2, "right");
-    const gx = integrands(x, "left");
-    const c = cumulative.map((col, k) => col[lo] + ((x - a) / 6) * (ga[k] + 4 * gm[k] + gx[k]));
+    const g = panel(a, x);
+    const c = cumulative.map((col, k) => col[lo] + g[k]);
     return {
       u1: axialStart + c[0],
       u2: plane2.a + plane2.b * x + (x * c[1] - c[2]),
@@ -253,15 +263,36 @@ export const memberDiagram = (
     return out;
   };
 
-  // Zero-shear points: V is linear inside each piece between breakpoints, so the root is exact
+  // Inside each piece between breakpoints N and V are at most quadratic (linear loads), so the
+  // quadratic through both ends and the midpoint is exact. Its roots (zero shear: the moment
+  // extremes) and its vertex (zero load: the N and V extremes) are added to the grid.
   const roots: number[] = [];
   for (let i = 0; i < sortedBreaks.length - 1; i++) {
     const xa = sortedBreaks[i];
     const xb = sortedBreaks[i + 1];
     const fa = internalForces(startForce, loads, xa, "right");
+    const fm = internalForces(startForce, loads, (xa + xb) / 2, "right");
     const fb = internalForces(startForce, loads, xb, "left");
-    for (const key of ["V2", "V3"] as const) {
-      if (fa[key] * fb[key] < 0) roots.push(xa + ((xb - xa) * fa[key]) / (fa[key] - fb[key]));
+    const inside = (t: number) => t > 0 && t < 1 && roots.push(xa + (xb - xa) * t);
+    for (const key of ["N", "V2", "V3"] as const) {
+      // f(t) = A·t² + B·t + C on t ∈ [0, 1]
+      const C = fa[key];
+      const A = 2 * fa[key] - 4 * fm[key] + 2 * fb[key];
+      const B = 4 * fm[key] - 3 * fa[key] - fb[key];
+      const scale = Math.max(Math.abs(fa[key]), Math.abs(fm[key]), Math.abs(fb[key]));
+      const curved = Math.abs(A) > 1e-12 * scale;
+      if (curved) inside(-B / (2 * A));
+      if (key === "N") continue;
+      if (!curved) {
+        if (Math.abs(B) > 1e-12 * scale) inside(-C / B);
+      } else {
+        const disc = B * B - 4 * A * C;
+        if (disc >= 0) {
+          const sq = Math.sqrt(disc);
+          inside((-B - sq) / (2 * A));
+          inside((-B + sq) / (2 * A));
+        }
+      }
     }
   }
   const coarse = Array.from(
@@ -318,8 +349,9 @@ export const memberDiagram = (
   }
 
   // ---- Extremes -------------------------------------------------------------------
-  // N, V and T are linear and M quadratic inside each piece, so their extremes lie at a
-  // breakpoint (either side) or a zero-shear point — all on the grid, so these are exact.
+  // N and V are at most quadratic, T constant and M at most cubic inside each piece, so their
+  // extremes lie at a breakpoint (either side), a zero-load or a zero-shear point — all on the
+  // grid, so these are exact.
   // Deflections are taken on the grid, then refined by golden-section search.
   const extremes = {} as MemberDiagram["extremes"];
   const best = {} as Record<
