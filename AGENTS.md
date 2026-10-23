@@ -4,7 +4,9 @@ This file provides guidance to AI coding agents when working with code in this r
 
 ## Project
 
-`ts-structural-eng-tools` — a TypeScript library of structural-engineering calculations (RC beam design per ACI 318-19, strengthening methods), published to npm as an open-source package. Uses pnpm.
+`ts-structural-eng-tools` — a headless structural analysis and design engine for TypeScript (3D frame analysis, RC beam design per ACI 318-19, strengthening methods), published to npm as an open-source package. Uses pnpm.
+
+Front-end applications install this package as their calculation core and do all graphics themselves. Keep it engine-only: no UI, rendering or presentation data (colours, display labels, view state) in inputs or results, no DOM or Node-only APIs, no runtime dependencies, and models/results that stay plain JSON.
 
 ## Commands
 

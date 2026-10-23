@@ -410,7 +410,7 @@
         <code>@theerapat-s28/ts-structural-eng-tools</code>
       </div>
       <h1>ts-structural-eng-tools</h1>
-      <p>A TypeScript library of structural-engineering calculations — reinforced-concrete beam design per ACI 318-19, strengthening methods and 3D frame analysis — with typed inputs, code-clause warnings, and SI units throughout.</p>
+      <p>A headless structural analysis and design engine for TypeScript — 3D frame analysis, reinforced-concrete beam design per ACI 318-19 and strengthening methods — with typed inputs, code-clause warnings, and SI units throughout. Front-end applications install it as their calculation core.</p>
     </div>
 
     <!-- ── Overview ── -->
@@ -421,6 +421,10 @@
         Every calculation returns a result object carrying the design value, the intermediate
         <code>calculationDetails</code>, the <code>unit</code>, and a <code>warnings</code> array.
       </p>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span><strong>Engine only.</strong> The package has no UI, rendering or presentation data and no runtime dependencies. Models and results are plain JSON, so it runs in the browser, a Web Worker or Node; drawing the model, the diagrams and member colours is left to the front-end application.</span>
+      </div>
       <div class="alert alert--info">
         <span>ℹ️</span>
         <span>All inputs and outputs use <strong>SI units implicitly</strong>: MPa for stresses, mm / mm² for geometry, kN·m for moments and kN for forces. Each result object states its unit in the <code>unit</code> field.</span>

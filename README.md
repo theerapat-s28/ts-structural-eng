@@ -2,7 +2,25 @@
 
 **📖 [API Reference — theerapat-s28.github.io/ts-structural-eng](https://theerapat-s28.github.io/ts-structural-eng/)**
 
-A TypeScript library of structural-engineering helper functions and beam design utilities. Designed to be copied and reused across TypeScript frameworks.
+A headless structural analysis and design engine for TypeScript: 3D frame analysis by the direct stiffness method, reinforced-concrete beam design per ACI 318-19, and strengthening methods. It is built to be installed by front-end applications as their calculation core.
+
+## Scope: an engine, not an application
+
+The library does the structural engineering and nothing else. A front-end application installs it, builds a model from its own UI, calls the engine, and draws the results.
+
+| The engine (this package)                                                   | The front-end application                                     |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Model validation with located errors (`details` name the node, member, field…) | Input forms, drawing tools, highlighting the reported problems |
+| Analysis: load cases, combinations, envelopes, member diagrams              | Rendering the model, deformed shapes and diagrams             |
+| Design checks with code-clause warnings and `RCDesignError` / `FrameAnalysisError` | Display of results, member colours, view and display options |
+| Typed inputs and results in SI units                                         | Unit display, project files, undo history, other UI state     |
+
+What this means in practice:
+
+- **No UI, no rendering, no presentation data.** Inputs and results carry structural quantities only; no colours, labels or view state.
+- **Plain JSON in, plain JSON out.** Models and results are serialisable, so the engine runs in a Web Worker, in the browser or in Node.
+- **No runtime dependencies** and no DOM or Node-only APIs.
+- **ESM and CommonJS builds** with `.d.ts` types, tree-shakeable (`"sideEffects": false`), split into subpath exports (`/fea`, `/rc`, `/strengthening`, `/core`, `/utils`).
 
 ## Documentation
 
@@ -19,7 +37,7 @@ The pages are served from [`html-docs/`](https://github.com/theerapat-s28/ts-str
 
 - Package: `@theerapat-s28/ts-structural-eng-tools`
 - Entry: `src/index.ts`
-- Build output: `dist/` (JS + `.d.ts` files)
+- Build output: `dist/` (CommonJS + `.d.ts` files) and `dist/esm/` (ES modules)
 
 ## Prerequisites
 

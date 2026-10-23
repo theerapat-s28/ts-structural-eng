@@ -1,7 +1,7 @@
 {
   "name": "@theerapat-s28/ts-structural-eng-tools",
   "version": "2.0.1",
-  "description": "TypeScript structural-engineering helper functions and beam design utilities",
+  "description": "Headless structural analysis and design engine for TypeScript: 3D frame analysis (direct stiffness method), RC beam design per ACI 318-19 and strengthening methods",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/esm/index.js",
@@ -61,6 +61,12 @@
   },
   "keywords": [
     "structural-engineering",
+    "structural-analysis",
+    "analysis-engine",
+    "frame-analysis",
+    "finite-element",
+    "fea",
+    "direct-stiffness-method",
     "beam-design",
     "reinforced-concrete",
     "ACI-318",
@@ -68,7 +74,7 @@
     "steel-jacketing",
     "typescript"
   ],
-  "author": "",
+  "author": "theerapat-s28",
   "license": "ISC",
   "homepage": "https://theerapat-s28.github.io/ts-structural-eng/",
   "repository": {
