@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [2.3.0] — 2026-10-24
+
+### Added
+
+- **Projected loads**: `udl` and `trapezoidal` member loads and area loads accept `projected: true` with a global direction (`"X"`, `"Y"`, `"Z"`). The load is then given per unit projected length or area — snow or roof live load per plan length on a sloped rafter, live load per plan area on a ramp — and is applied as `w · Lproj / L` per member length, or `q · |n · direction|` on the true area. A vertical column under projected `"Z"` gets no load. `projected: true` with a local direction or the area normal `"3"`, or on a point or torque load, throws 314 with `field: "projected"`. The member loads returned by `distributeAreaLoads` are already converted to true length.
+
 ## [2.2.0] — 2026-10-24
 
 ### Added
@@ -131,7 +137,8 @@ Maintenance release with no changes to the library code.
 
 First version, under the unscoped name `ts-structural-eng-tools`: `rectBeamMomentCapacity` (singly and doubly reinforced rectangular beams per ACI 318-19), steel plate jacketing, and concrete property helpers.
 
-[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.0.1...v2.1.0
