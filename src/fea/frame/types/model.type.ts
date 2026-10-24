@@ -62,7 +62,12 @@ export interface NodalLoad {
 /** Load direction: local member axes "1", "2", "3" or global axes "X", "Y", "Z". */
 export type LoadDirection = "1" | "2" | "3" | "X" | "Y" | "Z";
 
-/** Uniform load per unit length of member, along the whole member or from `start` to `end`. */
+/**
+ * Uniform load per unit length of member, along the whole member or from `start` to `end`.
+ * With `projected: true` (global directions only) `w` is per unit length projected onto the
+ * plane normal to `direction`, e.g. snow on a rafter per unit plan length; it is applied as
+ * `w · Lproj / L` per member length.
+ */
 export interface UniformMemberLoad {
   loadCase: string; // id of the load case this load belongs to
   type: "udl";
@@ -71,6 +76,7 @@ export interface UniformMemberLoad {
   w: number; // kN/m, positive along the positive direction axis
   start?: number; // mm from the member start (default 0)
   end?: number; // mm from the member start (default member length)
+  projected?: boolean; // w per unit projected length (global directions only); default false
 }
 
 export interface PointMemberLoad {
@@ -84,7 +90,8 @@ export interface PointMemberLoad {
 
 /**
  * Linearly varying load per unit length of member, from `w1` at `start` to `w2` at `end`
- * (triangular when one of them is 0).
+ * (triangular when one of them is 0). `projected` works as for a uniform load; `start` and
+ * `end` stay measured along the member.
  */
 export interface TrapezoidalMemberLoad {
   loadCase: string; // id of the load case this load belongs to
@@ -95,6 +102,7 @@ export interface TrapezoidalMemberLoad {
   w2: number; // kN/m at `end`
   start?: number; // mm from the member start (default 0)
   end?: number; // mm from the member start (default member length)
+  projected?: boolean; // w1, w2 per unit projected length (global directions only); default false
 }
 
 /**
@@ -141,11 +149,17 @@ export interface NullArea {
 /** Area load direction: the area's local normal "3" or a global axis. */
 export type AreaLoadDirection = "3" | "X" | "Y" | "Z";
 
+/**
+ * Uniform load on a null area. `q` is per unit true area, or with `projected: true` (global
+ * directions only) per unit area projected onto the plane normal to `direction`, e.g. per
+ * plan area on a ramp; it is then applied as `q · |n · direction|` on the true area.
+ */
 export interface AreaLoad {
   loadCase: string; // id of the load case this load belongs to
   areaId: FrameId;
   direction: AreaLoadDirection;
-  q: number; // kN/m² of true (not projected) area, positive along the positive direction axis
+  q: number; // kN/m², positive along the positive direction axis
+  projected?: boolean; // q per unit projected area (global directions only); default false
 }
 
 /** Descriptive category of a load case; it labels the case and does not change the analysis. */

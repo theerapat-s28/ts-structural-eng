@@ -262,6 +262,9 @@ export const areaMemberLoads = (
     // Lever arm (inward, in plane) × load: only the normal part of the load twists the edge,
     // about +edge direction; validation rejects a load along a cantilever's support edge.
     const normalPart = e[0] * plane.normal[0] + e[1] * plane.normal[1] + e[2] * plane.normal[2];
+    // per projected area → per true area: Aproj / A = |n · e|
+    const q = load.projected ? load.q * Math.abs(normalPart) : load.q;
+    if (q === 0) continue;
     const tolerance = AREA_GEOMETRY_TOLERANCE * plane.size;
 
     for (const { chain, profile, torque } of edges) {
@@ -275,8 +278,8 @@ export const areaMemberLoads = (
               type: "trapezoidal",
               memberId: member.id,
               direction: axis as LoadDirection,
-              w1: load.q * e[k] * piece.w1 * 1e-3, // kN/m² · mm → kN/m
-              w2: load.q * e[k] * piece.w2 * 1e-3,
+              w1: q * e[k] * piece.w1 * 1e-3, // kN/m² · mm → kN/m
+              w2: q * e[k] * piece.w2 * 1e-3,
               start: piece.start,
               end: piece.end,
             });
@@ -289,7 +292,7 @@ export const areaMemberLoads = (
             loadCase: load.loadCase,
             type: "torque",
             memberId: member.id,
-            t: load.q * normalPart * torque * sign * 1e-6, // kN/m² · mm² → kN·m/m
+            t: q * normalPart * torque * sign * 1e-6, // kN/m² · mm² → kN·m/m
           });
         }
       }
@@ -306,8 +309,9 @@ export const areaMemberLoads = (
  * Two-way areas send each point to the nearest edge (corner-bisector split); one-way areas
  * split strips parallel to their unsupported edges half to each end; cantilever areas send
  * `q · c` and a torque `q · c² / 2` per unit length to their support edge (c = depth). Edges
- * split by intermediate nodes are cut at those nodes. Loads are per unit true area and come
- * out as trapezoidal loads in global X, Y and Z (and torques), each tagged with its load case.
+ * split by intermediate nodes are cut at those nodes. Loads are per unit true area (a
+ * `projected` load is first converted, `q · |n · direction|`) and come out as trapezoidal loads
+ * per member length in global X, Y and Z (and torques), each tagged with its load case.
  *
  * @param model - The frame model, validated first
  * @returns `memberLoads` and `warnings` (a one-way support edge parallel to the span)

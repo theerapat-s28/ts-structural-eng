@@ -33,6 +33,7 @@ const DOF_KEYS = ["ux", "uy", "uz", "rx", "ry", "rz"] as const;
 const NODAL_LOAD_KEYS = ["fx", "fy", "fz", "mx", "my", "mz"] as const;
 const SECTION_KEYS = ["E", "G", "A", "I22", "I33", "J"] as const;
 const DIRECTIONS = new Set(["1", "2", "3", "X", "Y", "Z"]);
+const GLOBAL_DIRECTIONS = new Set(["X", "Y", "Z"]);
 const AREA_DIRECTIONS: Record<string, Vec3 | "normal"> = {
   "3": "normal",
   X: [1, 0, 0],
@@ -272,6 +273,16 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
     if (!memberKnown) add(FrameErrors.UNKNOWN_NODE_REFERENCE, { ...at, field: "memberId" });
     if (load.type !== "torque" && !DIRECTIONS.has(load.direction))
       add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "direction" });
+    // a projected length needs a distributed load in a global direction
+    const projected = (load as { projected?: unknown }).projected;
+    if (
+      (projected !== undefined && typeof projected !== "boolean") ||
+      (projected === true &&
+        ((load.type !== "udl" && load.type !== "trapezoidal") ||
+          !GLOBAL_DIRECTIONS.has(load.direction)))
+    ) {
+      add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "projected" });
+    }
 
     const L = memberLength.get(load.memberId);
     if (load.type === "udl" || load.type === "trapezoidal" || load.type === "torque") {
@@ -369,6 +380,12 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
       : undefined;
     if (!direction) add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "direction" });
     if (!isFiniteNumber(load.q)) add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "q" });
+    if (
+      (load.projected !== undefined && typeof load.projected !== "boolean") ||
+      (load.projected === true && !GLOBAL_DIRECTIONS.has(load.direction))
+    ) {
+      add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "projected" });
+    }
 
     // A cantilever carries its load as a line load plus a torque about the support edge; a
     // component along that edge would also need a distributed moment about the normal.

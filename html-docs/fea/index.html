@@ -523,7 +523,7 @@
 
       <div class="alert alert--info">
         <span>ℹ️</span>
-        <span>Member loads in a global direction (<code>"X"</code>, <code>"Y"</code>, <code>"Z"</code>) are per unit length of member, not per unit projected length.</span>
+        <span>Member loads in a global direction (<code>"X"</code>, <code>"Y"</code>, <code>"Z"</code>) are per unit length of member, unless they set <code>projected: true</code> (per unit projected length); see <a href="#projected-loads" style="color:var(--accent)">Projected loads</a>.</span>
       </div>
     </div>
 
@@ -567,11 +567,11 @@
         <thead><tr><th>Load</th><th>Where</th><th>Unit</th><th>Applied as</th></tr></thead>
         <tbody>
           <tr><td>Nodal force / moment</td><td><code>nodalLoads</code></td><td>kN, kN·m</td><td><code>fx</code>, <code>fy</code>, <code>fz</code> along and <code>mx</code>, <code>my</code>, <code>mz</code> about the <strong>global</strong> axes, at any node (supported nodes included). Omitted components are 0</td></tr>
-          <tr><td>Uniform member load</td><td><code>memberLoads</code>, <code>type: "udl"</code></td><td>kN/m</td><td><code>w</code> per unit length of member, over the whole member or from <code>start</code> to <code>end</code> (mm from the member start) for a partial load</td></tr>
-          <tr><td>Trapezoidal member load</td><td><code>memberLoads</code>, <code>type: "trapezoidal"</code></td><td>kN/m</td><td>Varies linearly from <code>w1</code> at <code>start</code> to <code>w2</code> at <code>end</code> (mm from the member start, default the whole member). Triangular when one end is 0; the two ends may have opposite signs</td></tr>
+          <tr><td>Uniform member load</td><td><code>memberLoads</code>, <code>type: "udl"</code></td><td>kN/m</td><td><code>w</code> per unit length of member (or per unit projected length with <code>projected: true</code>), over the whole member or from <code>start</code> to <code>end</code> (mm from the member start) for a partial load</td></tr>
+          <tr><td>Trapezoidal member load</td><td><code>memberLoads</code>, <code>type: "trapezoidal"</code></td><td>kN/m</td><td>Varies linearly from <code>w1</code> at <code>start</code> to <code>w2</code> at <code>end</code> (mm from the member start, default the whole member). Triangular when one end is 0; the two ends may have opposite signs. Takes <code>projected</code> like a uniform load</td></tr>
           <tr><td>Torque member load</td><td><code>memberLoads</code>, <code>type: "torque"</code></td><td>kN·m/m</td><td>Uniform torque <code>t</code> per unit length about the member's local 1 axis (right-hand rule), over the whole member or from <code>start</code> to <code>end</code>. Has no <code>direction</code>. Use it for an eccentric line load, e.g. a cantilever slab or cladding hung off a beam's face</td></tr>
           <tr><td>Point member load</td><td><code>memberLoads</code>, <code>type: "point"</code></td><td>kN</td><td><code>P</code> at distance <code>a</code> (mm) from the member start</td></tr>
-          <tr><td>Area load</td><td><code>areaLoads</code>, on a null area</td><td>kN/m²</td><td><code>q</code> per unit true area, normal to the area (<code>"3"</code>) or along a global axis, sent to the members along the area's edges; see <a href="#null-areas" style="color:var(--accent)">Null areas</a></td></tr>
+          <tr><td>Area load</td><td><code>areaLoads</code>, on a null area</td><td>kN/m²</td><td><code>q</code> per unit true area (or per unit projected area with <code>projected: true</code>), normal to the area (<code>"3"</code>) or along a global axis, sent to the members along the area's edges; see <a href="#null-areas" style="color:var(--accent)">Null areas</a></td></tr>
           <tr><td>Self-weight</td><td><code>loadCases[].selfWeight</code></td><td>—</td><td>A uniform load <code>selfWeight · unitWeight · A</code> along global −Z on every member; see <a href="#load-cases" style="color:var(--accent)">Load cases</a></td></tr>
         </tbody>
       </table>
@@ -587,9 +587,27 @@
       </table>
       <p>A positive <code>w</code>, <code>w1</code>, <code>w2</code> or <code>P</code> acts in the positive direction of the chosen axis. With Z up, <strong>gravity loads are negative <code>"Z"</code></strong> (e.g. <code>w: -10</code>).</p>
 
-      <div class="alert alert--info">
-        <span>ℹ️</span>
-        <span>A global-direction load is taken <strong>per unit length of member</strong>, not per unit horizontal (projected) length. On a member inclined at θ to the horizontal, a load given per projected length (snow on a rafter, for example) must be entered as <code>w · cos θ</code>.</span>
+      <div class="sub-label" id="projected-loads">Projected loads</div>
+      <p>
+        A global-direction load is taken <strong>per unit length of member</strong> by default. Loads that
+        codes give per unit plan length — snow or roof live load on a sloped rafter — set
+        <code>projected: true</code> on a <code>udl</code> or <code>trapezoidal</code> load. <code>w</code> is then per
+        unit length projected onto the plane normal to <code>direction</code>, and the member carries
+        <code>w · L<sub>proj</sub> / L = w · √(1 − c²)</code> per member length, where <code>c</code> is the cosine
+        between the member axis and <code>direction</code>. For a rafter at θ under projected <code>"Z"</code> that is
+        <code>w · cos θ</code>; a vertical column gets nothing, and a horizontal beam the full <code>w</code>.
+        <code>start</code> and <code>end</code> are still measured along the member. <code>projected</code> defaults to
+        <code>false</code>; with a local direction (<code>"1"</code>, <code>"2"</code>, <code>"3"</code>) or on a point or
+        torque load, <code>projected: true</code> is rejected (314). Null areas take the same flag; see
+        <a href="#null-areas" style="color:var(--accent)">Null areas</a>.
+      </p>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript — 30° rafter, 6 m plan span, pinned at A, roller at B</div>
+        <pre>
+<span class="c">// A at (0, 0, 0), B at (6000, 0, 3464.1); member R1 from A to B (6928 mm long)</span>
+{ <span class="k">loadCase</span>: <span class="s">"S"</span>, <span class="k">type</span>: <span class="s">"udl"</span>, <span class="k">memberId</span>: <span class="s">"R1"</span>, <span class="k">direction</span>: <span class="s">"Z"</span>, <span class="k">w</span>: <span class="n">-1.2</span>, <span class="k">projected</span>: <span class="b">true</span> },  <span class="c">// kN/m of plan</span>
+<span class="c">// reactions fz: A 3.6 kN, B 3.6 kN (1.2 × 6 m); M3 max 5.4 kN·m at mid-span (w·6²/8)</span>
+<span class="c">// without projected: A 4.1569 kN, B 4.1569 kN; M3 max 6.2354 kN·m (w over the 6.93 m member)</span></pre>
       </div>
 
       <div class="sub-label">Example</div>
@@ -629,7 +647,7 @@
 
       <div class="alert alert--error">
         <span>⚠️</span>
-        <span>Throws <strong>FrameAnalysisError 308</strong> if a point load lies outside <code>0 ≤ a ≤ L</code>, or a uniform, trapezoidal or torque load does not satisfy <code>0 ≤ start &lt; end ≤ L</code>; <strong>302</strong> if a load names a node or member that is not in the model; <strong>309</strong> if its <code>loadCase</code> is not in <code>loadCases</code>.</span>
+        <span>Throws <strong>FrameAnalysisError 308</strong> if a point load lies outside <code>0 ≤ a ≤ L</code>, or a uniform, trapezoidal or torque load does not satisfy <code>0 ≤ start &lt; end ≤ L</code>; <strong>302</strong> if a load names a node or member that is not in the model; <strong>309</strong> if its <code>loadCase</code> is not in <code>loadCases</code>; <strong>314</strong> (<code>details.field: "projected"</code>) if <code>projected</code> is not a boolean, or is <code>true</code> with a local direction or on a point or torque load.</span>
       </div>
 
       <div class="sub-label">Not supported yet</div>
@@ -637,7 +655,6 @@
         <thead><tr><th>Load</th><th>Workaround</th></tr></thead>
         <tbody>
           <tr><td>Concentrated moment inside a member</td><td>Split the member with a node at that point and apply a nodal moment</td></tr>
-          <tr><td>Load per projected length</td><td>Enter <code>w · cos θ</code> per member length (see above)</td></tr>
           <tr><td>Temperature load</td><td>—</td></tr>
           <tr><td>Imposed support settlement</td><td>—</td></tr>
         </tbody>
@@ -704,9 +721,10 @@
           <tr><td>Corners</td><td>nodeIds</td><td>3 or 4 <code>nodeIds</code> in order around the area, forming a planar, strictly convex polygon (no reflex corner, no three corners in line). Skewed and trapezoidal quads are allowed. Checks use <code>AREA_GEOMETRY_TOLERANCE</code> (10⁻⁶, exported from <code>core</code>) times the longest edge.</td></tr>
           <tr><td>Edges</td><td>supportEdges</td><td>Edge <code>i</code> runs from <code>nodeIds[i]</code> to <code>nodeIds[i + 1]</code>, the last one back to the first node. <code>supportEdges</code> lists edge indices.</td></tr>
           <tr><td>Direction</td><td>direction</td><td><code>"3"</code> acts along the area's normal (local 3, right-hand rule around the corners) — use it for pressure on a ramp or an inclined roof. <code>"X"</code>, <code>"Y"</code>, <code>"Z"</code> act along a global axis.</td></tr>
-          <tr><td>Sign and size</td><td>q</td><td><code>q</code> is per unit <strong>true</strong> (not projected) area and positive along the positive direction axis, so gravity is <code>direction: "Z", q &lt; 0</code>. A load given per plan area on an inclined area must be entered as <code>q · cos θ</code>.</td></tr>
+          <tr><td>Sign and size</td><td>q</td><td><code>q</code> is per unit <strong>true</strong> area and positive along the positive direction axis, so gravity is <code>direction: "Z", q &lt; 0</code>.</td></tr>
+          <tr><td>Projected load</td><td>projected</td><td>With <code>projected: true</code> and a global direction, <code>q</code> is per unit area projected onto the plane normal to <code>direction</code> — e.g. live load per plan area on a ramp — and is applied as <code>q · |n · direction|</code> on the true area (<code>q · cos θ</code> for gravity on an area inclined at θ), so the total is <code>q · A<sub>proj</sub></code>. An area parallel to <code>direction</code> receives nothing. Rejected (314) with the normal <code>"3"</code>. Default <code>false</code>.</td></tr>
           <tr><td>Members along an edge</td><td>members</td><td>Every edge that receives load must be covered by members from corner to corner. Nodes along the edge (where a secondary beam frames in) split it, and the load is cut at them; members may run either way. Edges that receive no load (one-way unsupported edges, a cantilever's free edges) need no members.</td></tr>
-          <tr><td>Generated loads</td><td>memberLoads</td><td>Piecewise-linear <code>trapezoidal</code> loads in global X, Y and Z per member (and a <code>torque</code> for a cantilever), tagged with the area load's case. Breakpoints are exact, so there is no discretisation error.</td></tr>
+          <tr><td>Generated loads</td><td>memberLoads</td><td>Piecewise-linear <code>trapezoidal</code> loads per member length in global X, Y and Z per member (and a <code>torque</code> for a cantilever), tagged with the area load's case; a projected area load is already converted, so they carry no <code>projected</code>. Breakpoints are exact, so there is no discretisation error.</td></tr>
         </tbody>
       </table>
 
@@ -775,6 +793,15 @@
 { <span class="k">loadCase</span>: <span class="s">"L"</span>, <span class="k">type</span>: <span class="s">"torque"</span>, <span class="k">memberId</span>: <span class="s">"B12"</span>, <span class="k">t</span>: <span class="n">3.375</span> },  <span class="c">// q·c²/2, kN·m/m about +X (balcony on the −Y side)</span>
 <span class="c">// Σ reactions fz from analyzeFrame: 36 kN in "SD" (1.5 × 24 m²), 99 kN in "L" (3 × 24 + 3 × 9 m²)</span></pre>
       </div>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript — projected live load on a ramp rising 3 m over 4 m (true depth 5 m)</div>
+        <pre>
+<span class="c">// corners (0,0,0) (6000,0,0) (6000,4000,3000) (0,4000,3000); beams B12 and B34 on the level edges</span>
+{ <span class="k">id</span>: <span class="s">"R"</span>, <span class="k">nodeIds</span>: [<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>, <span class="n">4</span>], <span class="k">distribution</span>: <span class="s">"oneWay"</span>, <span class="k">supportEdges</span>: [<span class="n">0</span>, <span class="n">2</span>] },
+{ <span class="k">loadCase</span>: <span class="s">"L"</span>, <span class="k">areaId</span>: <span class="s">"R"</span>, <span class="k">direction</span>: <span class="s">"Z"</span>, <span class="k">q</span>: <span class="n">-4</span>, <span class="k">projected</span>: <span class="b">true</span> },  <span class="c">// kN/m² of plan</span>
+<span class="c">// distributeAreaLoads → B12 and B34 each: trapezoidal "Z", w1 = w2 = -8 kN/m (4 × 0.8 × 5 m / 2)</span>
+<span class="c">// Σ reactions fz = 96 kN (4 × 24 m² of plan)</span></pre>
+      </div>
 
       <div class="alert alert--info">
         <span>ℹ️</span>
@@ -790,7 +817,7 @@
       </div>
       <div class="alert alert--error">
         <span>⚠️</span>
-        <span>Throws <strong>FrameAnalysisError 315</strong> for invalid area geometry (not 3 or 4 corners, repeated, warped, non-convex, or a cantilever that is not a rectangle); <strong>316</strong> if an edge that receives load is not covered by members (<code>details.edge</code> names it); <strong>317</strong> if <code>supportEdges</code> does not fit the distribution, or a cantilever load acts along its support edge; <strong>302</strong> for an unknown node or area id; <strong>303</strong> for a duplicate area id; <strong>309</strong> for an unknown load case; <strong>314</strong> for an invalid <code>distribution</code>, <code>direction</code> or <code>q</code>.</span>
+        <span>Throws <strong>FrameAnalysisError 315</strong> for invalid area geometry (not 3 or 4 corners, repeated, warped, non-convex, or a cantilever that is not a rectangle); <strong>316</strong> if an edge that receives load is not covered by members (<code>details.edge</code> names it); <strong>317</strong> if <code>supportEdges</code> does not fit the distribution, or a cantilever load acts along its support edge; <strong>302</strong> for an unknown node or area id; <strong>303</strong> for a duplicate area id; <strong>309</strong> for an unknown load case; <strong>314</strong> for an invalid <code>distribution</code>, <code>direction</code>, <code>q</code> or <code>projected</code> (not a boolean, or <code>true</code> with direction <code>"3"</code>).</span>
       </div>
     </div>
 
@@ -1891,8 +1918,9 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>type</td><td>"udl"</td><td>—</td><td><span class="req">Required</span></td><td>—</td></tr>
               <tr><td>memberId</td><td>FrameId</td><td>—</td><td><span class="req">Required</span></td><td>Loaded member</td></tr>
               <tr><td>direction</td><td>LoadDirection</td><td>—</td><td><span class="req">Required</span></td><td>Local <code>"1" | "2" | "3"</code> or global <code>"X" | "Y" | "Z"</code>; see <a href="#load-direction" style="color:var(--accent)">LoadDirection</a></td></tr>
-              <tr><td>w</td><td>number</td><td>kN/m</td><td><span class="req">Required</span></td><td>Load per unit member length, positive along the direction axis</td></tr>
+              <tr><td>w</td><td>number</td><td>kN/m</td><td><span class="req">Required</span></td><td>Load per unit member length (per unit projected length if <code>projected</code>), positive along the direction axis</td></tr>
               <tr><td>start, end</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Loaded length from the member start for a partial load (default 0 and the member length); <code>0 ≤ start &lt; end ≤ L</code></td></tr>
+              <tr><td>projected</td><td>boolean</td><td>—</td><td><span class="opt">Optional</span></td><td><code>true</code>: <code>w</code> is per unit length projected onto the plane normal to a global <code>direction</code> (applied as <code>w · L<sub>proj</sub> / L</code>); see <a href="#projected-loads" style="color:var(--accent)">Projected loads</a>. Default <code>false</code></td></tr>
             </tbody>
           </table>
         </div>
@@ -1913,8 +1941,9 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>type</td><td>"trapezoidal"</td><td>—</td><td><span class="req">Required</span></td><td>—</td></tr>
               <tr><td>memberId</td><td>FrameId</td><td>—</td><td><span class="req">Required</span></td><td>Loaded member</td></tr>
               <tr><td>direction</td><td>LoadDirection</td><td>—</td><td><span class="req">Required</span></td><td>Local <code>"1" | "2" | "3"</code> or global <code>"X" | "Y" | "Z"</code>; see <a href="#load-direction" style="color:var(--accent)">LoadDirection</a></td></tr>
-              <tr><td>w1, w2</td><td>number</td><td>kN/m</td><td><span class="req">Required</span></td><td>Load per unit member length at <code>start</code> and at <code>end</code></td></tr>
+              <tr><td>w1, w2</td><td>number</td><td>kN/m</td><td><span class="req">Required</span></td><td>Load per unit member length (per unit projected length if <code>projected</code>) at <code>start</code> and at <code>end</code></td></tr>
               <tr><td>start, end</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Loaded length from the member start for a partial load (default 0 and the member length); <code>0 ≤ start &lt; end ≤ L</code></td></tr>
+              <tr><td>projected</td><td>boolean</td><td>—</td><td><span class="opt">Optional</span></td><td>As for <a href="#uniform-member-load" style="color:var(--accent)">UniformMemberLoad</a>; <code>start</code> and <code>end</code> stay measured along the member. Default <code>false</code></td></tr>
             </tbody>
           </table>
         </div>
@@ -2035,7 +2064,8 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>loadCase</td><td>string</td><td>—</td><td><span class="req">Required</span></td><td>Id of the load case this load belongs to</td></tr>
               <tr><td>areaId</td><td>string | number</td><td>—</td><td><span class="req">Required</span></td><td>Loaded area</td></tr>
               <tr><td>direction</td><td>AreaLoadDirection</td><td>—</td><td><span class="req">Required</span></td><td><code>"3"</code> (the area's normal) or <code>"X" | "Y" | "Z"</code> (global)</td></tr>
-              <tr><td>q</td><td>number</td><td>kN/m²</td><td><span class="req">Required</span></td><td>Load per unit true area, positive along the direction axis (gravity: <code>"Z"</code> with <code>q &lt; 0</code>)</td></tr>
+              <tr><td>q</td><td>number</td><td>kN/m²</td><td><span class="req">Required</span></td><td>Load per unit true area (per unit projected area if <code>projected</code>), positive along the direction axis (gravity: <code>"Z"</code> with <code>q &lt; 0</code>)</td></tr>
+              <tr><td>projected</td><td>boolean</td><td>—</td><td><span class="opt">Optional</span></td><td><code>true</code> with a global direction: <code>q</code> is per unit area projected onto the plane normal to <code>direction</code>, applied as <code>q · |n · direction|</code> on the true area. Not allowed with <code>"3"</code>. Default <code>false</code></td></tr>
             </tbody>
           </table>
         </div>
@@ -2549,7 +2579,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td class="path-cell">311</td><td class="path-cell">INVALID_LOAD_FACTOR</td><td>A combination factor or self-weight multiplier is not a finite number, or a combination has no terms.</td></tr>
           <tr><td class="path-cell">312</td><td class="path-cell">NO_LOAD_CASES</td><td>The model has no load cases.</td></tr>
           <tr><td class="path-cell">313</td><td class="path-cell">MISSING_UNIT_WEIGHT</td><td>A load case requests self-weight but a member section has no <code>unitWeight</code>.</td></tr>
-          <tr><td class="path-cell">314</td><td class="path-cell">INVALID_INPUT_VALUE</td><td>A number is not finite (<code>NaN</code>, <code>Infinity</code>, or not a number at all, e.g. the string <code>"10"</code>), a spring stiffness is negative, a member end release is not <code>true</code>, <code>false</code> or a number ≥ 0, or a value is not one of its allowed options (load <code>direction</code>, member load <code>type</code>, load case <code>type</code>, area <code>distribution</code>).</td></tr>
+          <tr><td class="path-cell">314</td><td class="path-cell">INVALID_INPUT_VALUE</td><td>A number is not finite (<code>NaN</code>, <code>Infinity</code>, or not a number at all, e.g. the string <code>"10"</code>), a spring stiffness is negative, a member end release is not <code>true</code>, <code>false</code> or a number ≥ 0, or a value is not one of its allowed options (load <code>direction</code>, member load <code>type</code>, load case <code>type</code>, area <code>distribution</code>), or <code>projected</code> is not a boolean or is <code>true</code> on a load that cannot be projected (local or normal direction, point or torque load).</td></tr>
           <tr><td class="path-cell">315</td><td class="path-cell">INVALID_AREA_GEOMETRY</td><td>An area does not have 3 or 4 distinct corners forming a planar, strictly convex polygon, or a cantilever area is not a rectangle.</td></tr>
           <tr><td class="path-cell">316</td><td class="path-cell">AREA_EDGE_UNSUPPORTED</td><td>An area edge that receives load is not fully covered by members; <code>details.edge</code> names the edge.</td></tr>
           <tr><td class="path-cell">317</td><td class="path-cell">INVALID_AREA_DISTRIBUTION</td><td><code>supportEdges</code> does not fit the distribution (two-way takes none; one-way needs its unsupported edges all parallel and at least one of them; cantilever takes exactly one), or a cantilever load acts along its support edge.</td></tr>

@@ -47,14 +47,21 @@ const toLocalLoads = (load: MemberLoad, lambda: Matrix, L: number): LocalMemberL
     // kN·m/m = 10³ N·mm/mm
     return [{ type: "torque", t: load.t * 1e3, start: load.start ?? 0, end: load.end ?? L }];
   }
+  // per projected length → per member length: Lproj / L = |local 1 × d| = √(1 − (local 1 · d)²)
+  let projection = 1;
+  if (load.type !== "point" && load.projected) {
+    const v = GLOBAL_DIRECTIONS[load.direction as "X" | "Y" | "Z"];
+    const c = lambda[0][0] * v[0] + lambda[0][1] * v[1] + lambda[0][2] * v[2];
+    projection = Math.sqrt(Math.max(0, 1 - c * c));
+  }
   return components(load.direction).map(({ axis, factor }): LocalMemberLoad => {
     if (load.type === "point") return { type: "point", axis, P: load.P * factor * 1e3, a: load.a };
     const [w1, w2] = load.type === "udl" ? [load.w, load.w] : [load.w1, load.w2];
     return {
       type: "distributed",
       axis,
-      w1: w1 * factor, // kN/m = N/mm
-      w2: w2 * factor,
+      w1: w1 * factor * projection, // kN/m = N/mm
+      w2: w2 * factor * projection,
       start: load.start ?? 0,
       end: load.end ?? L,
     };

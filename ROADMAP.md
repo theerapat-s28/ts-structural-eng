@@ -35,6 +35,7 @@ Every feature added must conform to the following core principles:
 | [x] | — | Null areas (area loads to beams) | L | Varying loads, torque |
 | [x] | — | Axial-only members (automatic joint restraint) | S | — |
 | [x] | — | Partial-fixity end releases + release deformations | M | — |
+| [x] | — | Projected loads | S | — |
 | [ ] | 1 | Sections & materials (new `sections` module, referenced by id) | L | — |
 | [ ] | 1 | Property modifiers (cracked sections) | S | — |
 | [ ] | 1 | Member point moments | S | — |
@@ -44,7 +45,6 @@ Every feature added must conform to the following core principles:
 | [ ] | 2 | End offsets (rigid zones) | M | — |
 | [ ] | 2 | Shear deformation (Timoshenko) | S | Sections & materials |
 | [ ] | 2 | Local axes from a reference vector | S | — |
-| [ ] | 2 | Projected loads | S | — |
 | [ ] | 2 | Distributed member moments | M | Member point moments |
 | [ ] | 2 | Member twist | S | — |
 | [ ] | 2 | Support settlement | M | — |
@@ -103,6 +103,13 @@ Every feature added must conform to the following core principles:
   - [x] `calculationDetails.autoRestrainedDofs: { nodeId, axis, dof? }[]`
   - [x] Scope decision: only rotations that *no member at the joint* resists are held. Member rigid-body motions (e.g. a truss with torsion connected at both ends spinning about the member axes, or a beam without torsional support) still throw 304 — release `r1` at one end as in ETABS
   - [x] Tests in `tests/fea/frame/auto-restraint.test.ts`: truss vs method of joints, manual-restraint equivalence, inclined null axis, load-on-held-axis 304, no restraint at continuous columns or springs
+
+- [x] **Projected Loads** (was 2.4)
+  - [x] `projected?: boolean` on `udl`, `trapezoidal` and `AreaLoad`
+  - [x] Global member loads scaled by the projected-length factor $L_{proj} / L = \sqrt{1 - (\mathbf{e}_1 \cdot \mathbf{e}_{dir})^2}$ in [`load-case-solver.ts`](src/fea/frame/solver/load-case-solver.ts); `start`/`end` stay along the member
+  - [x] Global area loads scaled by $|\mathbf{n} \cdot \mathbf{e}_{dir}|$ on the true area in [`distribute-area-loads.ts`](src/fea/frame/area/distribute-area-loads.ts); generated member loads carry no `projected`
+  - [x] Validation: 314 (`field: "projected"`) for a non-boolean, or `true` with a local direction, the normal `"3"`, or on a point/torque load
+  - [x] Tests in `tests/fea/frame/projected-loads.test.ts`: 30° rafter vs $w \cos\theta$, partial trapezoidal, vertical column (zero load), skewed 3D member, combination, inclined ramp (two-way, one-way, cantilever) with $\sum R = q \cdot A_{plan}$, vertical area, validation
 
 ---
 
@@ -213,13 +220,6 @@ Replaces the earlier "envelope sets" item: an envelope combination does that job
 - [ ] `Member.localAxis?: { refVector: [x, y, z] } | { refPoint: [x, y, z] }`: local 2 lies in the plane of local 1 and the reference, as an alternative to `angle`.
 - [ ] Validation: reference not parallel to the member (error 314).
 - [ ] Tests: equivalence with the matching `angle`; vertical and inclined members.
-
-### 2.4 Projected Loads
-- [ ] `projected?: boolean` on `udl`, `trapezoidal` and `AreaLoad`.
-- [ ] Global member loads scaled by the projected-length factor ($w \cdot L_{proj} / L$).
-- [ ] Global area loads scaled by $|\mathbf{n} \cdot \mathbf{e}_{dir}|$ on the true area.
-- [ ] Validation: reject `projected: true` with local directions or the normal `"3"` (error 314).
-- [ ] Tests: sloped portal-frame rafter under snow/roof live, vertical column (zero load), inclined ramp area.
 
 ### 2.5 Distributed Member Moments
 - [ ] Member load type: `{ type: "distributedMoment", axis: "2" | "3", m: number, start?: number, end?: number }`.
@@ -384,7 +384,6 @@ Codes 301–314 are the existing validation and solver errors in [`frame-analysi
 | `TYPE` | `Member.endOffsets` | `MemberEndOffsets` | Rigid joint zones and face moments |
 | `TYPE` | `AnalyzeFrameOptions.shearDeformation` | `boolean` | Timoshenko beam formulation |
 | `TYPE` | `Member.localAxis` | `MemberLocalAxis` | Local axes from a reference vector or point |
-| `TYPE` | `projected` | `boolean` | Projected-length loads on sloped members and areas |
 | `TYPE` | `DistributedMomentMemberLoad` | `MemberLoad` | Moment per unit length about local 2 or 3 |
 | `TYPE` | `MemberStation.r1` | `number` | Twist along the member |
 | `TYPE` | `FrameModel.supportDisplacements` | `SupportDisplacement[]` | Prescribed support settlements per load case |
