@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [2.2.0] — 2026-10-24
+
+### Added
+
+- **Partial-fixity end releases**: any member end DOF in `releases.start` / `releases.end` (`u1`, `u2`, `u3`, `r1`, `r2`, `r3`) can be a spring stiffness in kN/mm or kN·m/rad instead of `true`, modelling semi-rigid connections. The spring acts in series with the member end; `0` is the same as `true` (fully released). Springs never make a member a mechanism (307).
+- **Release deformations**: every load case and combination result has `releaseDeformations`, the node-minus-member displacement across each released or spring end DOF of the members that have any — the rotation across a hinge, or the rotation of a semi-rigid connection.
+- **Automatic joint restraint**: joint rotations that no member, support or spring resists (for example every joint of a pin-jointed truss) are held automatically instead of throwing 304, with no effect on the results. They are listed in `calculationDetails.autoRestrainedDofs`. A load with a moment about such a rotation still throws 304, now naming the load case.
+- Types `DofRelease`, `ReleaseDeformation`, `MemberReleaseDeformations` and `AutoRestrainedDof`, exported from `/fea` and the package root.
+
+### Changed
+
+- `MemberEndRelease` fields are typed `DofRelease` (`boolean | number`) instead of `boolean`. Release values that are not `true`, `false` or a finite number ≥ 0 are now rejected with 314 (`details.field` such as `"releases.end.r3"`); before, any truthy value counted as a release.
+
 ## [2.1.1] — 2026-10-23
 
 ### Fixed
@@ -118,7 +131,8 @@ Maintenance release with no changes to the library code.
 
 First version, under the unscoped name `ts-structural-eng-tools`: `rectBeamMomentCapacity` (singly and doubly reinforced rectangular beams per ACI 318-19), steel plate jacketing, and concrete property helpers.
 
-[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.1.1...HEAD
+[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.0.0...v2.0.1
