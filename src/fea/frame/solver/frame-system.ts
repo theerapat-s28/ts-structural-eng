@@ -12,18 +12,16 @@ import {
 } from "@app-utils/skyline";
 
 import { beam3dLocalStiffnessRightHanded } from "../elements/beam-3d-stiffness";
-import { condenseMember } from "../elements/static-condensation";
+import { memberEndReleases } from "../elements/end-releases";
+import { condenseMember, type CondensedMember } from "../elements/static-condensation";
 import { memberAxes, transformationMatrix } from "../transformation/coordinate-transform";
-import type { FrameId, FrameModel, FrameNode, MemberEndRelease } from "../types/model.type";
+import type { FrameId, FrameModel, FrameNode } from "../types/model.type";
 import { frameIssue, throwIssues } from "../validation/validate-model";
+import { findAutoRestraints, type AutoRestraint } from "./auto-restraint";
 import { buildBoundaryConditions, type BoundaryConditions } from "./boundary-conditions";
 import { memberDofs, memberGlobalStiffness, type AssemblyMember } from "./global-assembly";
 
-const RELEASE_KEYS = ["u1", "u2", "u3", "r1", "r2", "r3"] as const;
 const DOF_NAMES = ["ux", "uy", "uz", "rx", "ry", "rz"] as const;
-
-const releasedIndices = (release: MemberEndRelease | undefined, offset: number): number[] =>
-  RELEASE_KEYS.flatMap((key, k) => (release?.[key] ? [offset + k] : []));
 
 /** A member with everything that does not depend on the loads. */
 export interface SystemMember extends AssemblyMember {
@@ -31,9 +29,12 @@ export interface SystemMember extends AssemblyMember {
   section: SectionProperties;
   length: number; // mm
   lambda: Matrix; // 3×3 direction cosines, rows = local 1, 2, 3
-  released: boolean[]; // 12 local end DOFs
+  /** True when any end DOF is released or tied by a spring. */
+  hasReleases: boolean;
   /** Condenses a member's fixed-end forces for its end releases. */
-  condenseFixedEndForces: (fixed: number[]) => number[];
+  condenseFixedEndForces: CondensedMember["condenseFixedEndForces"];
+  /** The member's own end displacements from its end nodes' (differ across releases). */
+  memberEndDisplacements: CondensedMember["memberEndDisplacements"];
 }
 
 /** The load-independent part of a frame analysis: geometry, stiffness and its factorisation. */
@@ -48,6 +49,8 @@ export interface FrameSystem {
   equation: Int32Array;
   /** Global DOF of each equation. */
   free: number[];
+  /** Joint rotations held because nothing resists them (see `findAutoRestraints`). */
+  autoRestraints: AutoRestraint[];
   /** Skyline Cholesky factor of the free stiffness including springs; null when nothing is free. */
   factor: SkylineMatrix | null;
   /** Stored entries of the factor (a measure of bandwidth, memory and work). */
@@ -57,7 +60,8 @@ export interface FrameSystem {
 /**
  * Builds the member matrices of a model that passed `validateFrameModel`, assembles the free
  * stiffness in skyline storage with nodes in reverse Cuthill–McKee order, and factorises it
- * once for all load cases.
+ * once for all load cases. Joint rotations that no member resists (e.g. at truss joints) are
+ * held by a spring along each null direction, which carries no force.
  *
  * @throws {FrameAnalysisError} 304 if the structure is a mechanism; `details` names a node and
  *   a DOF involved in it
@@ -78,13 +82,10 @@ export const prepareFrameSystem = (model: FrameModel): FrameSystem => {
       member.angle ?? 0,
     );
     const { E, G, A, I22, I33, J } = member.section;
-    const releasedDofs = [
-      ...releasedIndices(member.releases?.start, 0),
-      ...releasedIndices(member.releases?.end, 6),
-    ];
+    const releases = memberEndReleases(member.releases);
     const condensed = condenseMember(
       beam3dLocalStiffnessRightHanded(E, G, A, I22, I33, J, length),
-      releasedDofs,
+      releases,
     );
     return {
       id: member.id,
@@ -93,8 +94,9 @@ export const prepareFrameSystem = (model: FrameModel): FrameSystem => {
       endIndex: nodeIndex.get(member.endNodeId) as number,
       T: transformationMatrix(lambda),
       k: condensed.k,
+      hasReleases: releases.length > 0,
       condenseFixedEndForces: condensed.condenseFixedEndForces,
-      released: Array.from({ length: 12 }, (_, i) => releasedDofs.includes(i)),
+      memberEndDisplacements: condensed.memberEndDisplacements,
       length,
       lambda,
     };
@@ -118,6 +120,17 @@ export const prepareFrameSystem = (model: FrameModel): FrameSystem => {
     }
   }
 
+  const kGlobal = systemMembers.map(memberGlobalStiffness);
+  const autoRestraints = findAutoRestraints(
+    nodes.length,
+    systemMembers.map((m, i) => ({
+      startIndex: m.startIndex,
+      endIndex: m.endIndex,
+      kGlobal: kGlobal[i],
+    })),
+    boundary,
+  );
+
   // ---- Profile, assembly and factorisation -----------------------------------------
   let factor: SkylineMatrix | null = null;
   if (free.length > 0) {
@@ -130,20 +143,29 @@ export const prepareFrameSystem = (model: FrameModel): FrameSystem => {
     }
 
     const K = createSkyline(first);
-    systemMembers.forEach((m, index) => {
-      const kGlobal = memberGlobalStiffness(m);
-      const eqs = memberEquations[index];
+    memberEquations.forEach((eqs, index) => {
       // a member's 12 DOFs are distinct, so each unordered pair and each diagonal is added once
       for (let a = 0; a < 12; a++) {
         if (eqs[a] < 0) continue;
         for (let b = 0; b < 12; b++) {
-          if (eqs[b] >= eqs[a]) skylineAdd(K, eqs[a], eqs[b], kGlobal[a][b]);
+          if (eqs[b] >= eqs[a]) skylineAdd(K, eqs[a], eqs[b], kGlobal[index][a][b]);
         }
       }
     });
     free.forEach((dof, e) => {
       if (boundary.spring[dof] > 0) skylineAdd(K, e, e, boundary.spring[dof]);
     });
+    // k·n·nᵀ on the node's free rotations, inside the profile: its members span all 6 node DOFs
+    for (const { node, axis, stiffness } of autoRestraints) {
+      for (let i = 0; i < 3; i++) {
+        const ei = equation[6 * node + 3 + i];
+        if (ei < 0) continue;
+        for (let j = 0; j < 3; j++) {
+          const ej = equation[6 * node + 3 + j];
+          if (ej >= ei) skylineAdd(K, ei, ej, stiffness * axis[i] * axis[j]);
+        }
+      }
+    }
 
     const result = skylineFactor(K, SINGULARITY_TOLERANCE);
     if (!result.ok) {
@@ -167,6 +189,7 @@ export const prepareFrameSystem = (model: FrameModel): FrameSystem => {
     boundary,
     equation,
     free,
+    autoRestraints,
     factor,
     profileSize: factor ? skylineSize(factor) : 0,
   };

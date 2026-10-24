@@ -366,6 +366,7 @@
       <a href="#load-cases"><span style="font-size:14px">▤</span> Load cases &amp; combinations</a>
       <a href="#loads"><span style="font-size:14px">↓</span> Loads</a>
       <a href="#null-areas"><span style="font-size:14px">▱</span> Null areas</a>
+      <a href="#end-releases"><span style="font-size:14px">⊸</span> End releases &amp; springs</a>
       <a href="#member-diagrams"><span style="font-size:14px">∿</span> Member diagrams</a>
       <a href="#frontend"><span style="font-size:14px">▣</span> Using in a frontend</a>
       <a href="#analysis-flow"><span style="font-size:14px">◆</span> Analysis flow</a>
@@ -388,6 +389,7 @@
       <a href="#frame-node"><span class="mbadge m-type">TYPE</span> FrameNode</a>
       <a href="#member"><span class="mbadge m-type">TYPE</span> Member</a>
       <a href="#member-end-release"><span class="mbadge m-type">TYPE</span> MemberEndRelease</a>
+      <a href="#dof-release"><span class="mbadge m-type">TYPE</span> DofRelease</a>
       <a href="#section-properties"><span class="mbadge m-type">TYPE</span> SectionProperties</a>
       <a href="#restraint"><span class="mbadge m-type">TYPE</span> Restraint</a>
       <a href="#dof-restraint"><span class="mbadge m-type">TYPE</span> DofRestraint</a>
@@ -412,11 +414,14 @@
       <a href="#demand-envelope-options"><span class="mbadge m-type">TYPE</span> DemandEnvelopeOptions</a>
       <div class="nav-section-label">Types — Results</div>
       <a href="#frame-result"><span class="mbadge m-type">TYPE</span> FrameResult</a>
+      <a href="#auto-restrained-dof"><span class="mbadge m-type">TYPE</span> AutoRestrainedDof</a>
       <a href="#frame-case-result"><span class="mbadge m-type">TYPE</span> FrameCaseResult</a>
       <a href="#nodal-displacement"><span class="mbadge m-type">TYPE</span> NodalDisplacement</a>
       <a href="#nodal-reaction"><span class="mbadge m-type">TYPE</span> NodalReaction</a>
       <a href="#member-end-forces"><span class="mbadge m-type">TYPE</span> MemberEndForces</a>
       <a href="#member-end-force"><span class="mbadge m-type">TYPE</span> MemberEndForce</a>
+      <a href="#member-release-deformations"><span class="mbadge m-type">TYPE</span> MemberReleaseDeformations</a>
+      <a href="#release-deformation"><span class="mbadge m-type">TYPE</span> ReleaseDeformation</a>
       <a href="#member-diagram"><span class="mbadge m-type">TYPE</span> MemberDiagram</a>
       <a href="#member-station"><span class="mbadge m-type">TYPE</span> MemberStation</a>
       <a href="#station-component"><span class="mbadge m-type">TYPE</span> StationComponent</a>
@@ -446,7 +451,7 @@
         <code>@theerapat-s28/ts-structural-eng-tools/fea</code>
       </div>
       <h1>Frame Analysis</h1>
-      <p>Linear-elastic 3D frame analysis by the direct stiffness method, run for user-defined load cases and factored load combinations, with member loads, area loads on null areas, self-weight, end releases, spring supports, force diagrams, envelopes and design demands that feed the RC capacity functions.</p>
+      <p>Linear-elastic 3D frame analysis by the direct stiffness method, run for user-defined load cases and factored load combinations, with member loads, area loads on null areas, self-weight, end releases and partial-fixity springs, spring supports, force diagrams, envelopes and design demands that feed the RC capacity functions.</p>
     </div>
 
     <!-- ══════════════ Overview ══════════════ -->
@@ -473,6 +478,7 @@
         <tbody>
           <tr><td>Element stiffness</td><td>Euler–Bernoulli prismatic beam, 12 DOF; no shear deformation</td><td>Adaptation (standard matrix analysis)</td></tr>
           <tr><td>Member loads</td><td>Exact fixed-end forces from the beam shape functions</td><td>Adaptation</td></tr>
+          <tr><td>End releases and partial fixity</td><td>Static condensation of released end DOFs; partial fixity as a linear spring in series with the member end</td><td>Adaptation (standard matrix analysis)</td></tr>
           <tr><td>Area loads (null areas)</td><td>Tributary distribution to the edge members: corner bisectors (two-way), strips split at mid-span (one-way), line load plus torque (cantilever); the area adds no stiffness</td><td>Adaptation (common hand-calculation practice)</td></tr>
           <tr><td>Solution</td><td>Linear, small displacements; no P-Δ, no cracking</td><td>Adaptation</td></tr>
           <tr><td>Load combinations</td><td>Linear superposition of load-case results, factors entered by the user</td><td>Adaptation; valid because the analysis is linear</td></tr>
@@ -511,7 +517,7 @@
           <tr><td>Null area axes</td><td>Local 3 is the area's normal by the right-hand rule around its <code>nodeIds</code>: corners listed counter-clockwise seen from above give local 3 = +Z. Edge <code>i</code> runs from <code>nodeIds[i]</code> to <code>nodeIds[i + 1]</code>, the last edge back to the first node.</td></tr>
           <tr><td>Self-weight</td><td>Acts along global −Z (gravity, with Z up), as <code>selfWeight · unitWeight · A</code> per unit length of member.</td></tr>
           <tr><td>Internal forces</td><td>Forces and moments acting on the positive (+1) face of a cut, along the positive local axes. N is positive in tension; M3 is positive for sagging when local 2 points up; V2 = −dM3/dx.</td></tr>
-          <tr><td>Member displacements</td><td><code>u1</code>, <code>u2</code>, <code>u3</code> along the local axes and <code>ux</code>, <code>uy</code>, <code>uz</code> along the global axes, in mm, including the member's rigid-body motion. Bending follows <code>u2″ = M3/EI33</code> and <code>u3″ = −M2/EI22</code>.</td></tr>
+          <tr><td>Member displacements</td><td><code>u1</code>, <code>u2</code>, <code>u3</code> along the local axes and <code>ux</code>, <code>uy</code>, <code>uz</code> along the global axes, in mm, including the member's rigid-body motion. They are the member's own, so they differ from the node across a released or spring end DOF. Bending follows <code>u2″ = M3/EI33</code> and <code>u3″ = −M2/EI22</code>.</td></tr>
         </tbody>
       </table>
 
@@ -612,7 +618,7 @@
       <div class="sub-label">How member loads enter the analysis</div>
       <p>
         Each member load is turned into the exact fixed-end forces of a prismatic member (from the beam
-        shape functions), adjusted for any end releases, and applied to the end nodes as equivalent
+        shape functions), condensed for any end releases and springs (see <a href="#end-releases" style="color:var(--accent)">End releases</a>), and applied to the end nodes as equivalent
         nodal loads. The member's force diagrams are then built from its end forces plus the loads
         themselves, so a point load shows a shear jump (both sides are reported) and a partial load
         changes slope exactly where it starts and ends. Under a trapezoidal load the shear is a
@@ -788,6 +794,219 @@
       </div>
     </div>
 
+    <!-- ══════════════ End releases ══════════════ -->
+    <div class="section" id="end-releases">
+      <div class="section__title">End releases &amp; partial fixity <code style="font-size:13px">static-condensation.ts</code></div>
+      <p>
+        Each member end has six local DOFs: U1, U2, U3, R1, R2, R3. A member's
+        <code>releases.start</code> and <code>releases.end</code> say how each one is tied to its node, independently
+        for every DOF at either end. Releases are part of the <strong>model</strong>, set on each member in
+        <code>model.members[i].releases</code> — not an option of <code>analyzeFrame</code>:
+      </p>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript — where releases go</div>
+        <pre>
+<span class="u">analyzeFrame</span>({
+  <span class="k">nodes</span>: [<span class="c">…</span>],
+  <span class="k">members</span>: [
+    {
+      <span class="k">id</span>: <span class="s">"B1"</span>, <span class="k">startNodeId</span>: <span class="s">"A"</span>, <span class="k">endNodeId</span>: <span class="s">"B"</span>, <span class="k">section</span>,
+      <span class="k">releases</span>: {                          <span class="c">// optional, per member</span>
+        <span class="k">start</span>: { <span class="k">r2</span>: <span class="b">true</span>, <span class="k">r3</span>: <span class="b">true</span> },     <span class="c">// pinned at the start node</span>
+        <span class="k">end</span>:   { <span class="k">r3</span>: <span class="n">10000</span> },              <span class="c">// semi-rigid at the end node, kN·m/rad</span>
+      },
+    },
+  ],
+  <span class="k">restraints</span>: [<span class="c">…</span>],
+  <span class="k">loadCases</span>: [<span class="c">…</span>],
+});</pre>
+      </div>
+      <p>
+        <code>start</code> is the end at <code>startNodeId</code>, <code>end</code> the end at <code>endNodeId</code>; the
+        keys are the member's local axes, so <code>r3</code> is the major-axis moment (bending in the 1–2 plane) whatever
+        the member's direction. See <a href="#member-end-release" style="color:var(--accent)">MemberEndRelease</a> for every field.
+      </p>
+      <table class="param-table">
+        <thead><tr><th>Value</th><th>Connection</th><th>Force carried across it</th></tr></thead>
+        <tbody>
+          <tr><td>omitted, <code>false</code></td><td style="white-space:normal;font-family:inherit;font-size:inherit">Rigid: the member end moves with the node</td><td>All of it</td></tr>
+          <tr><td><code>true</code>, <code>0</code></td><td style="white-space:normal;font-family:inherit;font-size:inherit">Full release: hinge (<code>r2</code>, <code>r3</code>), roller (<code>u1</code>–<code>u3</code>), torsion release (<code>r1</code>)</td><td>None</td></tr>
+          <tr><td>number &gt; 0</td><td style="white-space:normal;font-family:inherit;font-size:inherit">Partial fixity: a linear spring <em>s</em> in series with the member end, in kN/mm for <code>u1</code>–<code>u3</code> and kN·m/rad for <code>r1</code>–<code>r3</code></td><td><em>s</em> · (node − member) displacement</td></tr>
+        </tbody>
+      </table>
+
+      <div class="sub-label">Full release — static condensation</div>
+      <p>
+        Split the member's 12 local DOFs into the released set <em>r</em> and the connected set <em>c</em>. The member end
+        forces are <code>f = k·u + f⁰</code>, with <code>f⁰</code> the fixed-end forces of the member loads. A released DOF
+        carries no force, <code>f_r = 0</code>, which gives its displacement and eliminates it:
+      </p>
+      <div class="code-block">
+        <div class="code-block__label">Theory</div>
+        <pre>
+[ k_cc  k_cr ] [ u_c ]   [ f_c⁰ ]   [ f_c ]
+[ k_rc  k_rr ] [ u_r ] + [ f_r⁰ ] = [  0  ]
+
+u_r = −k_rr⁻¹ · (k_rc·u_c + f_r⁰)
+
+k*  = k_cc − k_cr · k_rr⁻¹ · k_rc        <span class="c">// condensed stiffness</span>
+f*  = f_c⁰ − k_cr · k_rr⁻¹ · f_r⁰        <span class="c">// condensed fixed-end forces</span></pre>
+      </div>
+      <p>
+        The released rows and columns of <code>k*</code> are zero, so the node feels nothing through that DOF. In plane
+        bending, releasing the moment at end b turns the end-a stiffness 4EI/L into 3EI/L with no carry-over, and a uniform
+        load's fixed-end moment wL²/12 at a into wL²/8.
+      </p>
+
+      <div class="sub-label">Partial fixity — a spring in series with the member end</div>
+      <p>
+        A spring splits its DOF into a member-side value <code>u_m</code> and a node-side value <code>u_n</code>; the spring
+        force <code>s·(u_n − u_m)</code> is the force the node exerts on the member end. Writing member and springs together
+        (<code>S = diag(s)</code>) and eliminating <code>u_m</code>:
+      </p>
+      <div class="code-block">
+        <div class="code-block__label">Theory</div>
+        <pre>
+         u_c        u_m         u_n
+     [ k_cc       k_cr          0  ]
+     [ k_rc     k_rr + S       −S  ]          A = k_rr + S
+     [  0        −S             S  ]
+
+k*_cc = k_cc − k_cr · A⁻¹ · k_rc
+k*_cn = k_cr · A⁻¹ · S                 <span class="c">// = k*_ncᵀ</span>
+k*_nn = S · A⁻¹ · k_rr                 <span class="c">// = S − S·A⁻¹·S, without the cancellation</span>
+f*_c  = f_c⁰ − k_cr · A⁻¹ · f_r⁰
+f*_n  = S · A⁻¹ · f_r⁰</pre>
+      </div>
+      <p>
+        The result is still a 12×12 matrix in the node DOFs, assembled like any other member: a spring adds no node and no
+        DOF. <code>s → 0</code> recovers the full release and <code>s → ∞</code> the rigid connection, and one routine
+        handles all three. Where every released DOF has <code>s &gt; 0</code>, <code>A</code> is positive definite, so
+        springs never make a member a mechanism — error 307 can only come from full releases.
+      </p>
+
+      <div class="sub-label">Check — plane bending with a rotational spring at end b</div>
+      <p>With <code>k = EI/L</code>, rotate end a by a unit angle while node b is held:</p>
+      <div class="code-block">
+        <div class="code-block__label">Theory</div>
+        <pre>
+M_a = 4k · (s + 3k) / (s + 4k)          <span class="c">// s → 0: 3k     s → ∞: 4k</span>
+M_b = 2k · s / (s + 4k)                 <span class="c">// s → 0: 0      s → ∞: 2k</span>
+carry-over factor = s / (2·(s + 3k))    <span class="c">// 0 … ½</span></pre>
+      </div>
+      <p>
+        Semi-rigid connections are often described by the <strong>fixity factor</strong> γ = 1 / (1 + 3EI/(s·L)) of Monforton
+        and Wu (1963): 0 for a pin, 1 for a rigid joint, so <code>s = 3EI·γ / (L·(1 − γ))</code>. For a beam fixed at a and
+        semi-rigid at b under a uniform load w:
+      </p>
+      <div class="code-block">
+        <div class="code-block__label">Theory</div>
+        <pre>
+M_a = (wL²/12) · (6k + s) / (4k + s)  =  (wL²/12) · (6 − 3γ) / (4 − γ)
+M_b = (wL²/12) · s / (4k + s)         =  (wL²/12) · 3γ / (4 − γ)</pre>
+      </div>
+
+      <div class="sub-label">Member-side displacements and release deformations</div>
+      <p>The member's own displacement at a released or spring DOF follows from member equilibrium:</p>
+      <div class="code-block">
+        <div class="code-block__label">Theory</div>
+        <pre>
+u_m = A⁻¹ · (S·u_n − k_rc·u_c − f_r⁰)
+Δ   = u_n − u_m                         <span class="c">// releaseDeformations</span>
+s·Δ = member end force                  <span class="c">// at a spring</span></pre>
+      </div>
+      <p>
+        Member diagrams start from these member-side displacements, so the deflected shape kinks at a hinge and turns
+        correctly at a semi-rigid end even though the node does not rotate with the member. Each result lists
+        <a href="#member-release-deformations" style="color:var(--accent)">releaseDeformations</a>: Δ at every released or
+        spring DOF of the members that have any. At a hinge it is the relative rotation across the hinge; at a rotational
+        spring it is the connection rotation, the rotation demand on a partially restrained connection. Δ is linear in the
+        loads, so a combination's values are the factored sums of its cases.
+      </p>
+
+      <div class="sub-label">Example — fixed beam with one semi-rigid end</div>
+      <p>A 6 m steel beam along X, fixed at A and joined to B (also fixed) through a rotational spring of 10 000 kN·m/rad about local 3, under 20 kN/m downward:</p>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript</div>
+        <pre>
+<span class="b">const</span> fixed = { <span class="k">ux</span>: <span class="b">true</span>, <span class="k">uy</span>: <span class="b">true</span>, <span class="k">uz</span>: <span class="b">true</span>, <span class="k">rx</span>: <span class="b">true</span>, <span class="k">ry</span>: <span class="b">true</span>, <span class="k">rz</span>: <span class="b">true</span> };
+<span class="b">const</span> result = <span class="u">analyzeFrame</span>({
+  <span class="k">nodes</span>: [{ <span class="k">id</span>: <span class="s">"A"</span>, <span class="k">x</span>: <span class="n">0</span>, <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">0</span> }, { <span class="k">id</span>: <span class="s">"B"</span>, <span class="k">x</span>: <span class="n">6000</span>, <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">0</span> }],  <span class="c">// mm</span>
+  <span class="k">members</span>: [{
+    <span class="k">id</span>: <span class="s">"B1"</span>, <span class="k">startNodeId</span>: <span class="s">"A"</span>, <span class="k">endNodeId</span>: <span class="s">"B"</span>,
+    <span class="k">section</span>: { <span class="k">E</span>: <span class="n">200000</span>, <span class="k">G</span>: <span class="n">77000</span>, <span class="k">A</span>: <span class="n">6450</span>, <span class="k">I22</span>: <span class="n">1.2e7</span>, <span class="k">I33</span>: <span class="n">1e8</span>, <span class="k">J</span>: <span class="n">2.5e5</span> },  <span class="c">// MPa, mm², mm⁴</span>
+    <span class="k">releases</span>: { <span class="k">end</span>: { <span class="k">r3</span>: <span class="n">10000</span> } },  <span class="c">// kN·m/rad</span>
+  }],
+  <span class="k">restraints</span>: [{ <span class="k">nodeId</span>: <span class="s">"A"</span>, ...fixed }, { <span class="k">nodeId</span>: <span class="s">"B"</span>, ...fixed }],
+  <span class="k">loadCases</span>: [{ <span class="k">id</span>: <span class="s">"D"</span> }],
+  <span class="k">memberLoads</span>: [{ <span class="k">loadCase</span>: <span class="s">"D"</span>, <span class="k">type</span>: <span class="s">"udl"</span>, <span class="k">memberId</span>: <span class="s">"B1"</span>, <span class="k">direction</span>: <span class="s">"Z"</span>, <span class="k">w</span>: <span class="n">-20</span> }],  <span class="c">// kN/m</span>
+});</pre>
+      </div>
+      <div class="code-block">
+        <div class="code-block__label">Result (excerpt) — result.cases.D</div>
+        <pre>
+<span class="k">memberEndForces</span>: [{ <span class="k">memberId</span>: <span class="s">"B1"</span>,
+  <span class="k">start</span>: { <span class="k">f2</span>: <span class="n">68.5714</span>, <span class="k">m3</span>: <span class="n">77.1429</span>, <span class="c">… },  // kN, kN·m</span>
+  <span class="k">end</span>:   { <span class="k">f2</span>: <span class="n">51.4286</span>, <span class="k">m3</span>: <span class="n">-25.7143</span>, <span class="c">… } }],</span>
+<span class="k">releaseDeformations</span>: [{ <span class="k">memberId</span>: <span class="s">"B1"</span>,
+  <span class="k">start</span>: { <span class="k">u1</span>: <span class="n">0</span>, <span class="k">u2</span>: <span class="n">0</span>, <span class="k">u3</span>: <span class="n">0</span>, <span class="k">r1</span>: <span class="n">0</span>, <span class="k">r2</span>: <span class="n">0</span>, <span class="k">r3</span>: <span class="n">0</span> },
+  <span class="k">end</span>:   { <span class="k">u1</span>: <span class="n">0</span>, <span class="k">u2</span>: <span class="n">0</span>, <span class="k">u3</span>: <span class="n">0</span>, <span class="k">r1</span>: <span class="n">0</span>, <span class="k">r2</span>: <span class="n">0</span>, <span class="k">r3</span>: <span class="n">-0.00257143</span> } }],  <span class="c">// mm, rad</span>
+<span class="k">memberDiagrams</span>[<span class="n">0</span>].<span class="k">extremes</span>.<span class="k">M3</span>
+  <span class="c">// { max: { value: 40.4082, x: 3428.571 }, min: { value: -77.1429, x: 0 } }  kN·m, mm</span>
+<span class="k">memberDiagrams</span>[<span class="n">0</span>].<span class="k">extremes</span>.<span class="k">u2</span>
+  <span class="c">// { max: { value: 0, x: 0 }, min: { value: -5.40866, x: 3324.583 } }  mm</span></pre>
+      </div>
+      <p>
+        Hand check: <code>k = EI/L</code> = 3.333·10⁹ N·mm/rad and <code>s</code> = 10¹⁰ N·mm/rad = 3k, so γ = 0.5. With
+        wL²/12 = 60 kN·m: M<sub>a</sub> = 60 · 4.5/3.5 = 77.1429 kN·m and M<sub>b</sub> = 60 · 1.5/3.5 = 25.7143 kN·m.
+        R<sub>A</sub> = 60 + (77.1429 − 25.7143)/6 = 68.5714 kN, so the peak sagging moment is at x = R<sub>A</sub>/w =
+        3.4286 m and equals R<sub>A</sub>²/(2w) − M<sub>a</sub> = 40.4082 kN·m. The spring turns by
+        Δ = M<sub>end</sub>/s = −25.7143/10 000 = −0.00257143 rad: the member end rotates 0.00257 rad past the fixed node.
+      </p>
+
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span><strong>Choosing a connection spring.</strong> AISC 360-22 Commentary B3.4 classifies a connection by K<sub>S</sub>·L/EI, with K<sub>S</sub> its secant rotational stiffness at service loads: ≥ 20 fully restrained, ≤ 2 simple, in between partially restrained. The example has s·L/EI = 3. This is guidance for picking <code>s</code>; the engine applies no classification, and the spring is linear, so use the secant stiffness at the load level being analysed.</span>
+      </div>
+
+      <div class="sub-label" id="auto-restraint">Automatic joint restraint</div>
+      <p>
+        When every member at a joint releases a rotation and no support resists it — every node of a pin-jointed truss —
+        that joint rotation has no stiffness at all. The stiffness matrix would be singular (304) although the structure is
+        stable. <code>analyzeFrame</code> holds such rotations itself:
+      </p>
+      <div class="flow-steps">
+        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Sum each joint's rotational block</strong> <code>B</code> (3×3, global) from its members' condensed global stiffness, plus rotational springs on its free rotations; fixed rotations are left out.</div></div>
+        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Find the null directions</strong> by decomposing <code>B</code> (Jacobi eigenvalues): each eigenvector <code>n</code> whose eigenvalue is at most 10⁻⁹ times the block's largest diagonal term is a rotation that nothing resists.</div></div>
+        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Hold it</strong> with a spring <code>k·n·nᵀ</code> on that joint's rotations. Every member stiffness is positive semi-definite, so <code>nᵀ·B·n = 0</code> makes the whole stiffness column of that rotation zero: it is decoupled from every other DOF, the spring carries no force, and all other results are exact.</div></div>
+        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Check every load case:</strong> a load with a moment about a held axis (a nodal moment on a truss joint, or a member torque with torsion released at the far end) has no load path and throws <strong>304</strong> naming the node, the DOF and the load case.</div></div>
+      </div>
+      <p>
+        The held axes are listed in <code>calculationDetails.autoRestrainedDofs</code> (see
+        <a href="#auto-restrained-dof" style="color:var(--accent)">AutoRestrainedDof</a>). The node rotation reported about a
+        held axis is 0, because the structure does not define it; the members' own end rotations are in their diagrams and
+        <code>releaseDeformations</code>. For the two-panel truss A(0, 0), B(4, 0), C(8, 0), D(4, 3) m with 20 kN at B and 30 kN at D,
+        built from members with <code>r2</code>, <code>r3</code> released at both ends and <code>r1</code> at the start:
+      </p>
+      <div class="code-block">
+        <div class="code-block__label">Result (excerpt)</div>
+        <pre>
+<span class="k">calculationDetails</span>.<span class="k">autoRestrainedDofs</span>  <span class="c">// 12 entries: rx, ry, rz at each of the 4 joints</span>
+  [{ <span class="k">nodeId</span>: <span class="s">"A"</span>, <span class="k">axis</span>: [<span class="n">1</span>, <span class="n">0</span>, <span class="n">0</span>], <span class="k">dof</span>: <span class="s">"rx"</span> }, { <span class="k">nodeId</span>: <span class="s">"A"</span>, <span class="k">axis</span>: [<span class="n">0</span>, <span class="n">1</span>, <span class="n">0</span>], <span class="k">dof</span>: <span class="s">"ry"</span> }, <span class="c">…]</span>
+<span class="c">// axial force N (kN): AB 33.3333, BC 33.3333, AD −41.6667, DC −41.6667, BD 20</span>
+<span class="c">// — the method-of-joints values</span></pre>
+      </div>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>Only joint rotations that <em>no member</em> resists are held. A mechanism that moves members still throws 304: unsupported translations, and members spinning about their own axes. For a pin-jointed truss member release <code>r2</code> and <code>r3</code> at both ends and <code>r1</code> at one end, as in ETABS. With torsion connected at both ends and no rotational support, the joints and members of a truss can spin together about the member axes — a real rigid-body mechanism.</span>
+      </div>
+
+      <div class="alert alert--error">
+        <span>⚠️</span>
+        <span>Throws <strong>FrameAnalysisError 314</strong> for a release value that is not <code>true</code>, <code>false</code> or a finite number ≥ 0 (<code>details.field</code> is e.g. <code>"releases.end.r3"</code>); <strong>307</strong> if the full releases leave the member a mechanism, e.g. <code>u1</code> or <code>r1</code> fully released at both ends; <strong>304</strong> if a load case has a moment about an automatically held joint rotation.</span>
+      </div>
+    </div>
+
     <!-- ══════════════ Member diagrams ══════════════ -->
     <div class="section" id="member-diagrams">
       <div class="section__title">Member diagrams <code style="font-size:13px">member-diagram.ts</code></div>
@@ -844,7 +1063,7 @@
 
       <div class="alert alert--info">
         <span>ℹ️</span>
-        <span>Values between stations follow the exact curves: under a uniform load the moment is a parabola and the deflection a quartic (a cubic moment and a quintic deflection under a trapezoidal load). Straight lines through the default 21 stations are close; the peak moment is always a station, and the deflection extremes are found on a 40-interval grid and then refined. At a hinged member end the member's own rotation is used, so the curve kinks there correctly even though the node does not rotate.</span>
+        <span>Values between stations follow the exact curves: under a uniform load the moment is a parabola and the deflection a quartic (a cubic moment and a quintic deflection under a trapezoidal load). Straight lines through the default 21 stations are close; the peak moment is always a station, and the deflection extremes are found on a 40-interval grid and then refined. At a released or spring member end the curve starts from the member's own end displacements (see <a href="#end-releases" style="color:var(--accent)">End releases</a>), so it kinks at a hinge and turns correctly at a semi-rigid end even though the node does not rotate with the member.</span>
       </div>
     </div>
 
@@ -905,10 +1124,10 @@ self.onmessage = ({ data }) =&gt; {
       <div class="flow-steps">
         <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Validate</strong> the model, load cases, loads and combinations with <code>validateFrameModel</code> (errors 301–303 and 305–317); every problem is collected, and the first is thrown with all of them in <code>issues</code>.</div></div>
         <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Distribute area loads</strong>: each null area's edge profiles are built once for a unit load, then scaled for each area load and cut at the members along the edges, giving <code>trapezoidal</code> (and cantilever <code>torque</code>) member loads in their load cases — what <code>distributeAreaLoads</code> returns.</div></div>
-        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Build the system once:</strong> member local stiffness, end-release condensation and transformation <code>T</code>; number the free DOFs with the nodes in reverse Cuthill–McKee order (which narrows the band), assemble the stiffness in skyline (variable-band) storage, add spring stiffnesses and factorise by Cholesky once. A singular matrix throws 304, naming a node and DOF of the mechanism.</div></div>
-        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Solve each load case</strong> against that factorisation: group the loads by their <code>loadCase</code>, resolve member loads and self-weight into local fixed-end forces, form <code>F</code> = nodal loads − fixed-end forces, and recover displacements, reactions <code>R = K·U − F</code> and member end forces.</div></div>
+        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Build the system once:</strong> member local stiffness, condensation of end releases and partial-fixity springs, and transformation <code>T</code>; number the free DOFs with the nodes in reverse Cuthill–McKee order (which narrows the band), assemble the stiffness in skyline (variable-band) storage, add spring stiffnesses, hold joint rotations that no member resists (<a href="#auto-restraint" style="color:var(--accent)">automatic joint restraint</a>) and factorise by Cholesky once. A singular matrix throws 304, naming a node and DOF of the mechanism.</div></div>
+        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Solve each load case</strong> against that factorisation: group the loads by their <code>loadCase</code>, resolve member loads and self-weight into local fixed-end forces, form <code>F</code> = nodal loads − fixed-end forces, check that it has no moment about an automatically held rotation (304), and recover displacements, reactions <code>R = K·U − F</code> and member end forces.</div></div>
         <div class="flow-step"><div class="step-num">5</div><div class="step-body"><strong>Combine</strong>: expand nested combinations into net case factors and superpose the unrounded case results; rebuild each combination's diagrams exactly.</div></div>
-        <div class="flow-step"><div class="step-num">6</div><div class="step-body"><strong>Check and present</strong>: global force and moment equilibrium of each case and combination, rounding of presented values, and the envelope over all combinations.</div></div>
+        <div class="flow-step"><div class="step-num">6</div><div class="step-body"><strong>Check and present</strong>: global force and moment equilibrium of each case and combination, member-side end displacements for the diagrams and release deformations, rounding of presented values, and the envelope over all combinations.</div></div>
       </div>
     </div>
 
@@ -930,7 +1149,7 @@ self.onmessage = ({ data }) =&gt; {
           <table class="param-table">
             <thead><tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>model</td><td>FrameModel</td><td>—</td><td><span class="req">Required</span></td><td>Nodes, members, restraints, at least one load case, and optional loads, null areas and combinations; see <a href="#frame-model" style="color:var(--accent)">FrameModel</a></td></tr>
+              <tr><td>model</td><td>FrameModel</td><td>—</td><td><span class="req">Required</span></td><td>Nodes, members, restraints, at least one load case, and optional loads, null areas and combinations; see <a href="#frame-model" style="color:var(--accent)">FrameModel</a>. Member end releases and partial-fixity springs are set on each member, <code>members[i].releases</code>; see <a href="#end-releases" style="color:var(--accent)">End releases</a></td></tr>
               <tr><td>options.stations</td><td>number</td><td>—</td><td><span class="opt">Optional</span></td><td>Evenly spaced stations per member diagram (default 21); load breakpoints and zero-shear points are added. See <a href="#analyze-frame-options" style="color:var(--accent)">AnalyzeFrameOptions</a></td></tr>
               <tr><td>options.diagrams</td><td>"full" | "extremes"</td><td>—</td><td><span class="opt">Optional</span></td><td><code>"full"</code> (default) returns every member diagram with its <code>stations</code>. <code>"extremes"</code> keeps each diagram's <code>extremes</code> — so the envelope and <code>memberDemandEnvelope</code> still work — but leaves <code>stations</code> empty, about 4× smaller for large models. Get full diagrams on demand from <a href="#create-frame-analysis" style="color:var(--accent)">createFrameAnalysis</a></td></tr>
             </tbody>
@@ -1013,7 +1232,7 @@ self.onmessage = ({ data }) =&gt; {
     <span class="k">nodalDisplacements</span>: [<span class="c">…</span>]
   },
   <span class="k">calculationDetails</span>: { <span class="k">nodeCount</span>: <span class="n">3</span>, <span class="k">memberCount</span>: <span class="n">2</span>, <span class="k">dofCount</span>: <span class="n">18</span>, <span class="k">freeDofCount</span>: <span class="n">10</span>, <span class="k">profileSize</span>: <span class="n">47</span>,
-                         <span class="k">loadCaseCount</span>: <span class="n">3</span>, <span class="k">combinationCount</span>: <span class="n">3</span> },
+                         <span class="k">loadCaseCount</span>: <span class="n">3</span>, <span class="k">combinationCount</span>: <span class="n">3</span>, <span class="k">autoRestrainedDofs</span>: [] },
   <span class="k">units</span>: { <span class="k">force</span>: <span class="s">"kN"</span>, <span class="k">moment</span>: <span class="s">"kN·m"</span>, <span class="k">length</span>: <span class="s">"mm"</span>, <span class="k">rotation</span>: <span class="s">"rad"</span> },
   <span class="k">warnings</span>: []
 }</pre>
@@ -1026,7 +1245,7 @@ self.onmessage = ({ data }) =&gt; {
               <tr><td>cases</td><td>Record&lt;string, FrameCaseResult&gt;</td><td>—</td><td>Result of each load case, keyed by its id; see <a href="#frame-case-result" style="color:var(--accent)">FrameCaseResult</a></td></tr>
               <tr><td>combinations</td><td>Record&lt;string, FrameCaseResult&gt;</td><td>—</td><td>Result of each load combination, keyed by its id; empty when none are defined</td></tr>
               <tr><td>envelope</td><td>FrameEnvelope | undefined</td><td>—</td><td>Max/min over all combinations with the governing combination; absent when there are no combinations. See <a href="#frame-envelope" style="color:var(--accent)">FrameEnvelope</a></td></tr>
-              <tr><td>calculationDetails</td><td>object</td><td>—</td><td>Node, member, DOF, load case and combination counts, and <code>profileSize</code> — the stored entries of the banded stiffness factor, a measure of memory and solve work</td></tr>
+              <tr><td>calculationDetails</td><td>object</td><td>—</td><td>Node, member, DOF, load case and combination counts, <code>profileSize</code> — the stored entries of the banded stiffness factor, a measure of memory and solve work — and <code>autoRestrainedDofs</code>, the joint rotations held because no member resists them (see <a href="#auto-restraint" style="color:var(--accent)">automatic joint restraint</a>)</td></tr>
               <tr><td>units</td><td>object</td><td>—</td><td>Units of every result field</td></tr>
               <tr><td>warnings</td><td>Warnings</td><td>—</td><td>Every case and combination warning, each message prefixed with its load case or combination id</td></tr>
             </tbody>
@@ -1362,7 +1581,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
               <tr><td>nodes</td><td>FrameNode[]</td><td>mm</td><td><span class="req">Required</span></td><td><code>{ id, x, y, z }</code></td></tr>
-              <tr><td>members</td><td>Member[]</td><td>—</td><td><span class="req">Required</span></td><td><code>{ id, startNodeId, endNodeId, section, angle?, releases? }</code>. <code>angle</code> in rad. <code>releases: { start?, end? }</code> hold flags <code>u1, u2, u3, r1, r2, r3</code> for local end DOFs that carry no force (hinges, rollers)</td></tr>
+              <tr><td>members</td><td>Member[]</td><td>—</td><td><span class="req">Required</span></td><td><code>{ id, startNodeId, endNodeId, section, angle?, releases? }</code>. <code>angle</code> in rad. <code>releases: { start?, end? }</code> set each local end DOF <code>u1, u2, u3, r1, r2, r3</code> to <code>true</code> (released: hinge, roller) or a spring stiffness (partial fixity); see <a href="#member-end-release" style="color:var(--accent)">MemberEndRelease</a></td></tr>
               <tr><td>restraints</td><td>Restraint[]</td><td>kN/mm, kN·m/rad</td><td><span class="req">Required</span></td><td><code>{ nodeId, ux, uy, uz, rx, ry, rz }</code> in global axes. <code>true</code> fixes the DOF, a positive number is a spring stiffness, omitted is free. At least one DOF must be restrained</td></tr>
               <tr><td>loadCases</td><td>LoadCase[]</td><td>—</td><td><span class="req">Required</span></td><td>At least one; see <a href="#load-case" style="color:var(--accent)">LoadCase</a></td></tr>
               <tr><td>nodalLoads</td><td>NodalLoad[]</td><td>kN, kN·m</td><td><span class="opt">Optional</span></td><td><code>{ loadCase, nodeId, fx, fy, fz, mx, my, mz }</code> along and about global axes; see <a href="#nodal-load" style="color:var(--accent)">NodalLoad</a></td></tr>
@@ -1419,7 +1638,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>startNodeId, endNodeId</td><td>FrameId</td><td>—</td><td><span class="req">Required</span></td><td>End nodes; local 1 runs from start to end. They must not coincide (301)</td></tr>
               <tr><td>section</td><td>SectionProperties</td><td>MPa, mm², mm⁴</td><td><span class="req">Required</span></td><td>E, G, A, I22, I33, J and optional unitWeight; see <a href="#section-properties" style="color:var(--accent)">SectionProperties</a></td></tr>
               <tr><td>angle</td><td>number</td><td>rad</td><td><span class="opt">Optional</span></td><td>Rotates local 2 and 3 about local 1 by the right-hand rule (default 0)</td></tr>
-              <tr><td>releases</td><td>{ start?, end? }</td><td>—</td><td><span class="opt">Optional</span></td><td>End DOFs that carry no force, each a <a href="#member-end-release" style="color:var(--accent)">MemberEndRelease</a></td></tr>
+              <tr><td>releases</td><td>{ start?, end? }</td><td>—</td><td><span class="opt">Optional</span></td><td>Released or partially fixed end DOFs, each end a <a href="#member-end-release" style="color:var(--accent)">MemberEndRelease</a>; see <a href="#end-releases" style="color:var(--accent)">End releases</a></td></tr>
             </tbody>
           </table>
         </div>
@@ -1432,20 +1651,47 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">Local end DOFs of a member that transmit no force: hinges, rollers, torsion releases. Set the flag to <code>true</code>; omitted is connected.</p>
+          <p class="ex-desc">How the local DOFs at one member end are tied to the node: released (hinges, rollers, torsion releases) or partially fixed by a spring in series with the member end. Each field is a <a href="#dof-release" style="color:var(--accent)">DofRelease</a>; omitted is a rigid connection. See <a href="#end-releases" style="color:var(--accent)">End releases</a> for the theory.</p>
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>u1</td><td>boolean</td><td>—</td><td><span class="opt">Optional</span></td><td>Axial force</td></tr>
-              <tr><td>u2, u3</td><td>boolean</td><td>—</td><td><span class="opt">Optional</span></td><td>Shear along local 2, local 3</td></tr>
-              <tr><td>r1</td><td>boolean</td><td>—</td><td><span class="opt">Optional</span></td><td>Torsion</td></tr>
-              <tr><td>r2, r3</td><td>boolean</td><td>—</td><td><span class="opt">Optional</span></td><td>Moment about local 2, local 3. <code>{ r2: true, r3: true }</code> at an end makes a pin in both planes</td></tr>
+              <tr><td>u1</td><td>DofRelease</td><td>kN/mm</td><td><span class="opt">Optional</span></td><td>Axial force</td></tr>
+              <tr><td>u2, u3</td><td>DofRelease</td><td>kN/mm</td><td><span class="opt">Optional</span></td><td>Shear along local 2, local 3</td></tr>
+              <tr><td>r1</td><td>DofRelease</td><td>kN·m/rad</td><td><span class="opt">Optional</span></td><td>Torsion</td></tr>
+              <tr><td>r2, r3</td><td>DofRelease</td><td>kN·m/rad</td><td><span class="opt">Optional</span></td><td>Moment about local 2, local 3. <code>{ r2: true, r3: true }</code> at an end makes a pin in both planes; <code>{ r3: 10000 }</code> a semi-rigid joint for bending in the 1–2 plane</td></tr>
             </tbody>
           </table>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre>
+<span class="c">// beam pinned at its start, semi-rigid (major axis) at its end</span>
+<span class="k">releases</span>: { <span class="k">start</span>: { <span class="k">r2</span>: <span class="b">true</span>, <span class="k">r3</span>: <span class="b">true</span> }, <span class="k">end</span>: { <span class="k">r3</span>: <span class="n">10000</span> } }  <span class="c">// kN·m/rad</span>
+<span class="c">// truss member (ETABS practice): moments released at both ends, torsion at one</span>
+<span class="k">releases</span>: { <span class="k">start</span>: { <span class="k">r1</span>: <span class="b">true</span>, <span class="k">r2</span>: <span class="b">true</span>, <span class="k">r3</span>: <span class="b">true</span> }, <span class="k">end</span>: { <span class="k">r2</span>: <span class="b">true</span>, <span class="k">r3</span>: <span class="b">true</span> } }</pre>
+          </div>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws <strong>FrameAnalysisError 307</strong> if the releases leave the member a mechanism, e.g. <code>u1</code> or <code>r1</code> released at both ends.</span>
+            <span>Throws <strong>FrameAnalysisError 314</strong> for a value that is not <code>true</code>, <code>false</code> or a finite number ≥ 0 (<code>details.field</code> e.g. <code>"releases.start.u1"</code>); <strong>307</strong> if the full releases leave the member a mechanism, e.g. <code>u1</code> or <code>r1</code> fully released at both ends. Springs never cause 307.</span>
           </div>
+        </div>
+      </div>
+
+      <div class="export-card" id="dof-release">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">DofRelease = boolean | number</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">How one member end DOF of a <code>MemberEndRelease</code> is tied to its node.</p>
+          <table class="param-table">
+            <thead><tr><th>Value</th><th>Meaning</th></tr></thead>
+            <tbody>
+              <tr><td>false, omitted</td><td style="white-space:normal;font-family:inherit;font-size:inherit">Rigid connection</td></tr>
+              <tr><td>true, 0</td><td style="white-space:normal;font-family:inherit;font-size:inherit">Full release: carries no force</td></tr>
+              <tr><td>number &gt; 0</td><td style="white-space:normal;font-family:inherit;font-size:inherit">Spring stiffness in series with the member end (partial fixity): kN/mm for <code>u1</code>–<code>u3</code>, kN·m/rad for <code>r1</code>–<code>r3</code>. Negative or non-finite numbers are rejected (314)</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -1872,8 +2118,28 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>calculationDetails.dofCount, freeDofCount</td><td>number</td><td>—</td><td>All DOFs (6 per node) and the unrestrained ones solved for</td></tr>
               <tr><td>calculationDetails.profileSize</td><td>number</td><td>—</td><td>Stored entries of the banded stiffness factor: a measure of memory and solve work</td></tr>
               <tr><td>calculationDetails.loadCaseCount, combinationCount</td><td>number</td><td>—</td><td>Number of load cases and combinations</td></tr>
+              <tr><td>calculationDetails.autoRestrainedDofs</td><td>AutoRestrainedDof[]</td><td>—</td><td>Joint rotations held because no member resists them, e.g. at truss joints; empty when there are none. See <a href="#auto-restrained-dof" style="color:var(--accent)">AutoRestrainedDof</a></td></tr>
               <tr><td>units</td><td>object</td><td>—</td><td><code>{ force: "kN", moment: "kN·m", length: "mm", rotation: "rad" }</code></td></tr>
               <tr><td>warnings</td><td>Warnings</td><td>—</td><td>Null-area warnings, then every case and combination warning prefixed with its id</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="auto-restrained-dof">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">AutoRestrainedDof</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">A rotation direction at a joint that no member, support or spring resists, held by <code>analyzeFrame</code> with a spring that carries no force; see <a href="#auto-restraint" style="color:var(--accent)">automatic joint restraint</a>. The node's reported rotation about this axis is 0.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>nodeId</td><td>FrameId</td><td>—</td><td>The joint</td></tr>
+              <tr><td>axis</td><td>[number, number, number]</td><td>—</td><td>Unit vector of the held rotation axis in global X, Y, Z (9 decimals; largest component positive)</td></tr>
+              <tr><td>dof</td><td>"rx" | "ry" | "rz" | undefined</td><td>—</td><td>The global rotation DOF when <code>axis</code> is a global axis; absent for an inclined axis</td></tr>
             </tbody>
           </table>
         </div>
@@ -1894,6 +2160,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>nodalDisplacements</td><td>NodalDisplacement[]</td><td>mm, rad</td><td>ux, uy, uz, rx, ry, rz per node (global axes); see <a href="#nodal-displacement" style="color:var(--accent)">NodalDisplacement</a></td></tr>
               <tr><td>reactions</td><td>NodalReaction[]</td><td>kN, kN·m</td><td>fx…mz per node; zero at unrestrained DOFs. A spring DOF reports the force the spring exerts on the node; see <a href="#nodal-reaction" style="color:var(--accent)">NodalReaction</a></td></tr>
               <tr><td>memberEndForces</td><td>MemberEndForces[]</td><td>kN, kN·m</td><td>f1, f2, f3, m1, m2, m3 that the node exerts on each member end, local axes, right-hand; see <a href="#member-end-forces" style="color:var(--accent)">MemberEndForces</a></td></tr>
+              <tr><td>releaseDeformations</td><td>MemberReleaseDeformations[]</td><td>mm, rad</td><td>Node-minus-member displacement across every released or spring end DOF, for each member that has any (model order); see <a href="#member-release-deformations" style="color:var(--accent)">MemberReleaseDeformations</a></td></tr>
               <tr><td>memberDiagrams</td><td>MemberDiagram[]</td><td>kN, kN·m, mm</td><td><code>{ memberId, length, stations, extremes }</code>: forces N, V2, V3, T, M2, M3 and displacements u1, u2, u3 (local) and ux, uy, uz (global) at stations along the member, and each component's <code>{ max, min }</code> as <code>{ value, x }</code>; see <a href="#member-diagram" style="color:var(--accent)">MemberDiagram</a> and <a href="#member-diagrams" style="color:var(--accent)">Member diagrams</a></td></tr>
               <tr><td>equilibriumResidual</td><td>{ force, moment }</td><td>kN, kN·m</td><td>Global equilibrium residual of applied loads plus reactions</td></tr>
               <tr><td>warnings</td><td>Warnings</td><td>—</td><td>Warnings of this case or combination</td></tr>
@@ -1978,6 +2245,42 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
         </div>
       </div>
 
+      <div class="export-card" id="member-release-deformations">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">MemberReleaseDeformations</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Deformation across the end releases of one member. Only members with at least one released or spring end DOF are listed, in model order.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>memberId</td><td>FrameId</td><td>—</td><td>The member</td></tr>
+              <tr><td>start, end</td><td>ReleaseDeformation</td><td>mm, rad</td><td>At the start / end; see <a href="#release-deformation" style="color:var(--accent)">ReleaseDeformation</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="release-deformation">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">ReleaseDeformation</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Relative displacement across the release at one member end, <strong>node minus member</strong>, in the member's local axes with right-hand rotations; 0 at rigidly connected DOFs. At a spring it equals the member end force divided by the stiffness (<code>m3 / s</code> for <code>r3</code>), so it has the sign of the end force; at a hinge it is the rotation jump across the hinge. Linear in the loads, so combinations superpose.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>u1, u2, u3</td><td>number</td><td>mm</td><td>Along local 1, 2, 3, 5 decimals</td></tr>
+              <tr><td>r1, r2, r3</td><td>number</td><td>rad</td><td>About local 1, 2, 3, 8 decimals</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="export-card" id="member-diagram">
         <div class="export-card__header">
           <span class="kind m-type">TYPE</span>
@@ -2024,7 +2327,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">Internal forces and displacements at one point along a member. Forces act on the positive (+1) face of the cut; displacements include the member's rigid-body motion, so at the ends they equal the node displacements (except across a released translation).</p>
+          <p class="ex-desc">Internal forces and displacements at one point along a member. Forces act on the positive (+1) face of the cut; displacements are the member's own, including its rigid-body motion, so at the ends they equal the node displacements except across a released or spring end DOF (see <a href="#release-deformation" style="color:var(--accent)">ReleaseDeformation</a>).</p>
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
@@ -2236,17 +2539,17 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td class="path-cell">301</td><td class="path-cell">ZERO_LENGTH_MEMBER</td><td>A member's start and end nodes coincide.</td></tr>
           <tr><td class="path-cell">302</td><td class="path-cell">UNKNOWN_NODE_REFERENCE</td><td>A member, restraint, area or load refers to a node, member or area id that is not in the model.</td></tr>
           <tr><td class="path-cell">303</td><td class="path-cell">DUPLICATE_ID</td><td>Node ids, member ids, area ids or restrained node ids are not unique, or an id is used by more than one load case or combination.</td></tr>
-          <tr><td class="path-cell">304</td><td class="path-cell">STRUCTURE_UNSTABLE</td><td>The restrained structure is a mechanism (singular stiffness matrix): add supports or members. <code>details</code> names a node and DOF involved in the mechanism.</td></tr>
+          <tr><td class="path-cell">304</td><td class="path-cell">STRUCTURE_UNSTABLE</td><td>The restrained structure is a mechanism (singular stiffness matrix): add supports or members. <code>details</code> names a node and DOF involved in the mechanism. Also thrown, with <code>details.loadCaseId</code>, when a load has a moment about a joint rotation that no member resists (<a href="#auto-restraint" style="color:var(--accent)">automatic joint restraint</a>).</td></tr>
           <tr><td class="path-cell">305</td><td class="path-cell">INVALID_SECTION_PROPERTIES</td><td>E, G, A, I22, I33 or J is not a positive finite number, or <code>unitWeight</code> is negative.</td></tr>
           <tr><td class="path-cell">306</td><td class="path-cell">NO_RESTRAINTS</td><td>No DOF is fixed or sprung.</td></tr>
-          <tr><td class="path-cell">307</td><td class="path-cell">INVALID_RELEASE</td><td>The end releases let the member move as a rigid body, for example axial or torsion released at both ends.</td></tr>
+          <tr><td class="path-cell">307</td><td class="path-cell">INVALID_RELEASE</td><td>The full end releases let the member move as a rigid body, for example axial or torsion released at both ends. Partial-fixity springs never cause it.</td></tr>
           <tr><td class="path-cell">308</td><td class="path-cell">LOAD_OUTSIDE_MEMBER</td><td>A point load, or a uniform, trapezoidal or torque load, lies outside the member, or a distributed load's start is not before its end.</td></tr>
           <tr><td class="path-cell">309</td><td class="path-cell">UNKNOWN_LOAD_CASE</td><td>A load's <code>loadCase</code>, or a combination term, refers to a load case or combination that is not in the model, or a term names neither.</td></tr>
           <tr><td class="path-cell">310</td><td class="path-cell">CIRCULAR_COMBINATION</td><td>Load combinations reference each other in a loop.</td></tr>
           <tr><td class="path-cell">311</td><td class="path-cell">INVALID_LOAD_FACTOR</td><td>A combination factor or self-weight multiplier is not a finite number, or a combination has no terms.</td></tr>
           <tr><td class="path-cell">312</td><td class="path-cell">NO_LOAD_CASES</td><td>The model has no load cases.</td></tr>
           <tr><td class="path-cell">313</td><td class="path-cell">MISSING_UNIT_WEIGHT</td><td>A load case requests self-weight but a member section has no <code>unitWeight</code>.</td></tr>
-          <tr><td class="path-cell">314</td><td class="path-cell">INVALID_INPUT_VALUE</td><td>A number is not finite (<code>NaN</code>, <code>Infinity</code>, or not a number at all, e.g. the string <code>"10"</code>), a spring stiffness is negative, or a value is not one of its allowed options (load <code>direction</code>, member load <code>type</code>, load case <code>type</code>, area <code>distribution</code>).</td></tr>
+          <tr><td class="path-cell">314</td><td class="path-cell">INVALID_INPUT_VALUE</td><td>A number is not finite (<code>NaN</code>, <code>Infinity</code>, or not a number at all, e.g. the string <code>"10"</code>), a spring stiffness is negative, a member end release is not <code>true</code>, <code>false</code> or a number ≥ 0, or a value is not one of its allowed options (load <code>direction</code>, member load <code>type</code>, load case <code>type</code>, area <code>distribution</code>).</td></tr>
           <tr><td class="path-cell">315</td><td class="path-cell">INVALID_AREA_GEOMETRY</td><td>An area does not have 3 or 4 distinct corners forming a planar, strictly convex polygon, or a cantilever area is not a rectangle.</td></tr>
           <tr><td class="path-cell">316</td><td class="path-cell">AREA_EDGE_UNSUPPORTED</td><td>An area edge that receives load is not fully covered by members; <code>details.edge</code> names the edge.</td></tr>
           <tr><td class="path-cell">317</td><td class="path-cell">INVALID_AREA_DISTRIBUTION</td><td><code>supportEdges</code> does not fit the distribution (two-way takes none; one-way needs its unsupported edges all parallel and at least one of them; cantilever takes exactly one), or a cantilever load acts along its support edge.</td></tr>
@@ -2274,7 +2577,8 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameId</td><td>—</td><td>Node, member or area id: string or number</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameNode</td><td>—</td><td>Node coordinates</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">Member</td><td>—</td><td>Member: end nodes, section, angle, releases</td></tr>
-          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberEndRelease</td><td>—</td><td>Released local end DOFs</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberEndRelease</td><td>—</td><td>Released or partially fixed local end DOFs</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">DofRelease</td><td>—</td><td>Rigid, released or spring stiffness</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">SectionProperties</td><td>—</td><td>E, G, A, I22, I33, J, unitWeight (core)</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">Restraint</td><td>—</td><td>Supports of a node</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">DofRestraint</td><td>—</td><td>Fixed, free or spring stiffness</td></tr>
@@ -2296,11 +2600,14 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">AnalyzeFrameOptions</td><td>—</td><td>Station count and diagram detail</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">DemandEnvelopeOptions</td><td>—</td><td>Selection and shear critical distance</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameResult</td><td>—</td><td>Analysis output</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">AutoRestrainedDof</td><td>—</td><td>Joint rotation held because no member resists it</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameCaseResult</td><td>—</td><td>Results of one load case or combination</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">NodalDisplacement</td><td>—</td><td>Node translations and rotations</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">NodalReaction</td><td>—</td><td>Support reactions of a node</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberEndForces</td><td>—</td><td>Start and end forces of a member</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberEndForce</td><td>—</td><td>Local force a node exerts on a member end</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberReleaseDeformations</td><td>—</td><td>Deformation across a member's end releases</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ReleaseDeformation</td><td>—</td><td>Node-minus-member displacement at one end</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberDiagram</td><td>—</td><td>Stations and extremes along a member</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberStation</td><td>—</td><td>Forces and displacements at one point</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">StationComponent</td><td>—</td><td>Components that have extremes</td></tr>

@@ -22,14 +22,21 @@ export interface Restraint {
   rz?: DofRestraint; // true | kN·m/rad
 }
 
-/** Local end DOFs of a member that transmit no force (hinges, rollers…). */
+/**
+ * How a member end DOF is tied to its node: `true` (or 0) is a full release that carries no
+ * force, a positive number is a spring stiffness in series with the member end (partial
+ * fixity), omitted/`false` is a rigid connection.
+ */
+export type DofRelease = boolean | number;
+
+/** Local end DOFs of a member that are released (hinges, rollers…) or partially fixed. */
 export interface MemberEndRelease {
-  u1?: boolean; // axial
-  u2?: boolean; // shear in local 2
-  u3?: boolean; // shear in local 3
-  r1?: boolean; // torsion
-  r2?: boolean; // moment about local 2
-  r3?: boolean; // moment about local 3
+  u1?: DofRelease; // axial: true | kN/mm
+  u2?: DofRelease; // shear in local 2: true | kN/mm
+  u3?: DofRelease; // shear in local 3: true | kN/mm
+  r1?: DofRelease; // torsion: true | kN·m/rad
+  r2?: DofRelease; // moment about local 2: true | kN·m/rad
+  r3?: DofRelease; // moment about local 3: true | kN·m/rad
 }
 
 export interface Member {

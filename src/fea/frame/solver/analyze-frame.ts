@@ -1,13 +1,19 @@
 import type { Warnings } from "@app-core/types/output-message.type";
+import { roundToDecimalPlaces } from "@app-utils/math";
 
 import { areaMemberLoads } from "../area/distribute-area-loads";
 import { buildEnvelope } from "../post/envelope";
 import { presentMemberDiagram, presentState } from "../post/present-state";
 import type { FrameId, FrameModel, MemberLoad, NodalLoad } from "../types/model.type";
-import type { FrameCaseResult, FrameResult, MemberDiagram } from "../types/results.type";
+import type {
+  AutoRestrainedDof,
+  FrameCaseResult,
+  FrameResult,
+  MemberDiagram,
+} from "../types/results.type";
 import { throwIssues, validateFrameModel } from "../validation/validate-model";
 import { resolveCombinations } from "./combinations";
-import { prepareFrameSystem } from "./frame-system";
+import { prepareFrameSystem, type FrameSystem } from "./frame-system";
 import { combineStates, solveLoadCase, type RawState } from "./load-case-solver";
 
 export interface AnalyzeFrameOptions {
@@ -37,6 +43,20 @@ export interface FrameAnalysis {
    */
   memberDiagram: (resultId: string, memberId: FrameId, stations?: number) => MemberDiagram;
 }
+
+const ROTATION_DOFS = ["rx", "ry", "rz"] as const;
+
+/** The presented form of the joint rotations held by the solver. */
+const autoRestrainedDofs = (system: FrameSystem): AutoRestrainedDof[] =>
+  system.autoRestraints.map(({ node, axis }) => {
+    const rounded = axis.map((c) => roundToDecimalPlaces(c, 9) + 0) as [number, number, number];
+    const aligned = rounded.findIndex((c) => Math.abs(c) === 1);
+    return {
+      nodeId: system.nodes[node].id,
+      axis: rounded,
+      ...(aligned >= 0 ? { dof: ROTATION_DOFS[aligned] } : {}),
+    };
+  });
 
 /** Groups loads by their load case id, keeping the input order within each case. */
 const groupByCase = <T extends { loadCase: string }>(loads: T[] = []): Map<string, T[]> => {
@@ -135,6 +155,7 @@ export const createFrameAnalysis = (
       profileSize: system.profileSize,
       loadCaseCount: model.loadCases.length,
       combinationCount: combinations.length,
+      autoRestrainedDofs: autoRestrainedDofs(system),
     },
     units: { force: "kN", moment: "kN·m", length: "mm", rotation: "rad" },
     warnings,

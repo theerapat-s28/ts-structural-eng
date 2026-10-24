@@ -3,10 +3,16 @@ import type { Warnings } from "@app-core/types/output-message.type";
 import { roundToDecimalPlaces } from "@app-utils/math";
 import { matVec } from "@app-utils/matrix";
 
+import { fixedEndForces } from "../elements/fixed-end-forces";
 import type { FrameSystem } from "../solver/frame-system";
 import { memberDofs } from "../solver/global-assembly";
 import type { RawState } from "../solver/load-case-solver";
-import type { FrameCaseResult, MemberDiagram, MemberEndForce } from "../types/results.type";
+import type {
+  FrameCaseResult,
+  MemberDiagram,
+  MemberEndForce,
+  ReleaseDeformation,
+} from "../types/results.type";
 import { memberDiagram } from "./member-diagram";
 
 const FORCE_DECIMALS = 4;
@@ -24,6 +30,35 @@ const endForce = (f: number[]): MemberEndForce => ({
   m2: roundForce(f[4], 1e-6),
   m3: roundForce(f[5], 1e-6),
 });
+
+const mm = (v: number) => roundToDecimalPlaces(v, DISPLACEMENT_DECIMALS) + 0;
+const rad = (v: number) => roundToDecimalPlaces(v, ROTATION_DECIMALS) + 0;
+
+/** Node minus member displacement at one end (6 local terms, mm and rad). */
+const releaseDeformation = (d: number[]): ReleaseDeformation => ({
+  u1: mm(d[0]),
+  u2: mm(d[1]),
+  u3: mm(d[2]),
+  r1: rad(d[3]),
+  r2: rad(d[4]),
+  r3: rad(d[5]),
+});
+
+/**
+ * The 12 local displacements of member `m`'s end nodes and the member's own end displacements
+ * (which differ across released or spring DOFs), mm and rad.
+ */
+const memberEnd = (system: FrameSystem, state: RawState, m: number) => {
+  const member = system.members[m];
+  const node = matVec(
+    member.T,
+    memberDofs(member).map((d) => state.U[d]),
+  );
+  const own = member.hasReleases
+    ? member.memberEndDisplacements(node, fixedEndForces(state.memberLoads[m], member.length))
+    : node;
+  return { node, own };
+};
 
 /** Global force and moment residual of applied loads plus reactions, in kN and kN·m. */
 const equilibrium = (system: FrameSystem, state: RawState) => {
@@ -68,14 +103,10 @@ export const presentMemberDiagram = (
   stations?: number,
   withStations = true,
 ): MemberDiagram => {
-  const member = system.members[m];
   return memberDiagram(
-    member,
+    system.members[m],
     state.memberForces[m].slice(0, 6),
-    matVec(
-      member.T,
-      memberDofs(member).map((d) => state.U[d]),
-    ),
+    memberEnd(system, state, m).own,
     state.memberLoads[m],
     stations,
     withStations,
@@ -104,9 +135,6 @@ export const presentState = (
     });
   }
 
-  const mm = (v: number) => roundToDecimalPlaces(v, DISPLACEMENT_DECIMALS) + 0;
-  const rad = (v: number) => roundToDecimalPlaces(v, ROTATION_DECIMALS) + 0;
-
   return {
     ...meta,
     nodalDisplacements: system.nodes.map((node, n) => ({
@@ -132,6 +160,18 @@ export const presentState = (
       start: endForce(state.memberForces[m].slice(0, 6)),
       end: endForce(state.memberForces[m].slice(6, 12)),
     })),
+    releaseDeformations: system.members.flatMap((member, m) => {
+      if (!member.hasReleases) return [];
+      const { node, own } = memberEnd(system, state, m);
+      const jump = node.map((v, i) => v - own[i]);
+      return [
+        {
+          memberId: member.id,
+          start: releaseDeformation(jump.slice(0, 6)),
+          end: releaseDeformation(jump.slice(6, 12)),
+        },
+      ];
+    }),
     memberDiagrams: system.members.map((_, m) =>
       presentMemberDiagram(system, state, m, diagram.stations, diagram.withStations ?? true),
     ),

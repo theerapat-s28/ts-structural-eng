@@ -38,10 +38,39 @@ export interface MemberEndForces {
 }
 
 /**
+ * Relative displacement across the release at one member end, node minus member, in local
+ * axes 1, 2, 3 (right-hand rotations). 0 at rigidly connected DOFs. At a spring it equals the
+ * end force divided by the spring stiffness.
+ */
+export interface ReleaseDeformation {
+  u1: number; // mm
+  u2: number; // mm
+  u3: number; // mm
+  r1: number; // rad
+  r2: number; // rad
+  r3: number; // rad
+}
+
+export interface MemberReleaseDeformations {
+  memberId: FrameId;
+  start: ReleaseDeformation;
+  end: ReleaseDeformation;
+}
+
+/** A rotation direction at a node held by `analyzeFrame` because no member resists it. */
+export interface AutoRestrainedDof {
+  nodeId: FrameId;
+  /** Unit vector of the held rotation axis, global X, Y, Z. */
+  axis: [number, number, number];
+  /** The global rotation DOF when `axis` is a global axis. */
+  dof?: "rx" | "ry" | "rz";
+}
+
+/**
  * Internal forces and displacements at a distance `x` from the member start. Forces act on
- * the positive (+1) face of the cut; N is positive in tension. Displacements include the
- * rigid-body motion of the member, so at the ends they equal the node displacements (except
- * across a released translation).
+ * the positive (+1) face of the cut; N is positive in tension. Displacements are the member's
+ * own, including its rigid-body motion: at the ends they equal the node displacements except
+ * across a released or spring end DOF (see `MemberReleaseDeformations`).
  */
 export interface MemberStation {
   x: number; // mm
@@ -95,6 +124,8 @@ export interface FrameCaseResult {
   nodalDisplacements: NodalDisplacement[];
   reactions: NodalReaction[];
   memberEndForces: MemberEndForces[];
+  /** One entry per member with any released or spring end DOF, in model order. */
+  releaseDeformations: MemberReleaseDeformations[];
   memberDiagrams: MemberDiagram[];
   equilibriumResidual: { force: number; moment: number }; // kN, kN·m
   warnings: Warnings;
@@ -130,6 +161,8 @@ export interface FrameResult {
     profileSize: number; // stored entries of the banded stiffness factor (memory / work measure)
     loadCaseCount: number;
     combinationCount: number;
+    /** Joint rotations held because every member there releases them (e.g. truss joints). */
+    autoRestrainedDofs: AutoRestrainedDof[];
   };
   units: { force: "kN"; moment: "kN·m"; length: "mm"; rotation: "rad" };
   warnings: Warnings;

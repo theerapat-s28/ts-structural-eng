@@ -1,9 +1,11 @@
+import { SINGULARITY_TOLERANCE } from "@app-core/constants/frame.constant";
 import { FrameAnalysisError, FrameErrors } from "@app-core/errors/frame-analysis.error";
 import { matVec, type Matrix } from "@app-utils/matrix";
 import { skylineSolve } from "@app-utils/skyline";
 
 import { fixedEndForces, type LocalMemberLoad } from "../elements/fixed-end-forces";
 import type { LoadCase, LoadDirection, MemberLoad, NodalLoad } from "../types/model.type";
+import { frameIssue, throwIssues } from "../validation/validate-model";
 import type { FrameSystem } from "./frame-system";
 import { memberDofs, scatterMemberForces } from "./global-assembly";
 
@@ -67,7 +69,8 @@ const toLocalLoads = (load: MemberLoad, lambda: Matrix, L: number): LocalMemberL
  * @param loadCase - The load case (id and self-weight multiplier)
  * @param loads - The nodal and member loads tagged with this load case
  *
- * @throws {FrameAnalysisError} 308 for a load outside its member, 313 if self-weight is
+ * @throws {FrameAnalysisError} 304 if a load has a moment about a joint rotation that nothing
+ *   resists (an auto-restrained axis), 308 for a load outside its member, 313 if self-weight is
  *   requested for a member without `unitWeight`
  */
 export const solveLoadCase = (
@@ -114,6 +117,25 @@ export const solveLoadCase = (
     const base = 6 * (nodeIndex.get(load.nodeId) as number);
     [load.fx, load.fy, load.fz].forEach((v, k) => (F[base + k] += (v ?? 0) * 1e3));
     [load.mx, load.my, load.mz].forEach((v, k) => (F[base + 3 + k] += (v ?? 0) * 1e6));
+  }
+
+  // A held rotation axis is decoupled from the structure: a moment about it has no load path.
+  let momentScale = 0;
+  for (let n = 0; n < system.nodes.length; n++) {
+    for (let k = 3; k < 6; k++) momentScale = Math.max(momentScale, Math.abs(F[6 * n + k]));
+  }
+  for (const { node, axis } of system.autoRestraints) {
+    const moment = axis.reduce((sum, a, i) => sum + a * F[6 * node + 3 + i], 0);
+    if (Math.abs(moment) > SINGULARITY_TOLERANCE * momentScale) {
+      const lead = axis.reduce((best, a, i) => (Math.abs(a) > Math.abs(axis[best]) ? i : best), 0);
+      throwIssues([
+        frameIssue(FrameErrors.STRUCTURE_UNSTABLE, {
+          nodeId: system.nodes[node].id,
+          dof: (["rx", "ry", "rz"] as const)[lead],
+          loadCaseId: loadCase.id,
+        }),
+      ]);
+    }
   }
 
   const U = new Array<number>(dofCount).fill(0);

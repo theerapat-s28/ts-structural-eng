@@ -38,7 +38,6 @@ export interface DiagramMember {
   length: number; // mm
   section: Pick<SectionProperties, "E" | "A" | "I22" | "I33">;
   lambda: Matrix; // 3×3 direction cosines, rows = local 1, 2, 3
-  released: boolean[]; // 12 local end DOFs
 }
 
 /**
@@ -100,9 +99,9 @@ const internalForces = (
  * smooth piece where N is at most quadratic and M at most cubic, and one 3-point Gauss panel per
  * interval integrates the (at most quartic) integrands exactly.
  *
- * The constants come from the member's own end displacements: end translations first, an end
- * rotation only where a translation is released. A released rotation (hinge) never enters, so
- * the curve is correct at hinged ends whose rotation differs from the node's.
+ * The constants a, b come from the member's own end translations (u at x = 0 and x = L), which
+ * differ from the node displacements across a released or spring end DOF; with them the curve
+ * is correct at hinged and semi-rigid ends whose rotation differs from the node's.
  */
 const displacementsOnGrid = (
   member: DiagramMember,
@@ -141,43 +140,17 @@ const displacementsOnGrid = (
   const [strain, k3, sk3, k2, sk2] = cumulative;
   const last = n - 1;
 
-  /** a, b of `u = a + b·x + P(x)` from the first independent pair of end conditions. */
-  const planeConstants = (
-    translation: number,
-    rotation: number,
-    rotationSign: number,
-    PL: number, // P(L)
-    dPL: number, // P'(L)
-  ) => {
-    const { released } = member;
-    // rows [ca, cb | rhs] of ca·a + cb·b = rhs
-    const conditions: [number, number, number][] = [];
-    if (!released[translation]) conditions.push([1, 0, endDisplacements[translation]]);
-    if (!released[6 + translation]) {
-      conditions.push([1, L, endDisplacements[6 + translation] - PL]);
-    }
-    if (!released[rotation]) conditions.push([0, 1, rotationSign * endDisplacements[rotation]]);
-    if (!released[6 + rotation]) {
-      conditions.push([0, 1, rotationSign * endDisplacements[6 + rotation] - dPL]);
-    }
-    for (let i = 0; i < conditions.length; i++) {
-      for (let j = i + 1; j < conditions.length; j++) {
-        const [a1, b1, r1] = conditions[i];
-        const [a2, b2, r2] = conditions[j];
-        const det = a1 * b2 - a2 * b1;
-        if (Math.abs(det) > 1e-12 * Math.max(1, L)) {
-          return { a: (r1 * b2 - r2 * b1) / det, b: (a1 * r2 - a2 * r1) / det };
-        }
-      }
-    }
-    return { a: 0, b: 0 }; // unreachable: such releases are rejected as a mechanism (307)
+  /** a, b of `u = a + b·x + P(x)` from the end translations: u(0) = a, u(L) = a + b·L + P(L). */
+  const planeConstants = (translation: number, PL: number) => {
+    const a = endDisplacements[translation];
+    return { a, b: (endDisplacements[6 + translation] - a - PL) / L };
   };
 
   const P3 = (i: number) => grid[i] * k3[i] - sk3[i];
   const P2 = (i: number) => grid[i] * k2[i] - sk2[i];
-  const plane2 = planeConstants(1, 5, 1, P3(last), k3[last]); // u2, with u2' = R3
-  const plane3 = planeConstants(2, 4, -1, P2(last), k2[last]); // u3, with u3' = −R2
-  const axialStart = member.released[0] ? endDisplacements[6] - strain[last] : endDisplacements[0];
+  const plane2 = planeConstants(1, P3(last)); // u2
+  const plane3 = planeConstants(2, P2(last)); // u3
+  const axialStart = endDisplacements[0];
 
   const onGrid = grid.map((x, i) => ({
     u1: axialStart + strain[i],
@@ -229,9 +202,10 @@ const present = (c: StationComponent, value: number) =>
  * Builds the force and displacement diagrams of one member from its end forces, its end
  * displacements and its loads.
  *
- * @param member - Member geometry, section, axes and end releases
+ * @param member - Member geometry, section and axes
  * @param startForce - Force the start node exerts on the member, right-hand local, N and N·mm
- * @param endDisplacements - The 12 local right-hand displacements of the member's end nodes, mm and rad
+ * @param endDisplacements - The member's own 12 local right-hand end displacements (equal to the
+ *   node displacements except across released or spring end DOFs), mm and rad
  * @param loads - Member loads in local axes, N and mm
  * @param stationCount - Number of evenly spaced stations (at least 2); load breakpoints and
  *   zero-shear points are added, with both sides reported at a point load

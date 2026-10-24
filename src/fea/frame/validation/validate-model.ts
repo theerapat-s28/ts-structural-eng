@@ -18,6 +18,7 @@ import {
 } from "../area/area-geometry";
 import { edgeMemberChain, memberAdjacency } from "../area/edge-members";
 import { beam3dLocalStiffnessRightHanded } from "../elements/beam-3d-stiffness";
+import { memberEndReleases, RELEASE_KEYS } from "../elements/end-releases";
 import { condenseMember } from "../elements/static-condensation";
 import { resolveCombinations } from "../solver/combinations";
 import type {
@@ -25,14 +26,12 @@ import type {
   FrameId,
   FrameModel,
   LoadCaseType,
-  MemberEndRelease,
   NullArea,
 } from "../types/model.type";
 
 const DOF_KEYS = ["ux", "uy", "uz", "rx", "ry", "rz"] as const;
 const NODAL_LOAD_KEYS = ["fx", "fy", "fz", "mx", "my", "mz"] as const;
 const SECTION_KEYS = ["E", "G", "A", "I22", "I33", "J"] as const;
-const RELEASE_KEYS = ["u1", "u2", "u3", "r1", "r2", "r3"] as const;
 const DIRECTIONS = new Set(["1", "2", "3", "X", "Y", "Z"]);
 const AREA_DIRECTIONS: Record<string, Vec3 | "normal"> = {
   "3": "normal",
@@ -78,9 +77,6 @@ export const throwIssues = (issues: FrameModelIssue[]): never => {
   const first = issues[0];
   throw new FrameAnalysisError({ code: first.code, message: first.message }, first.details, issues);
 };
-
-const releasedIndices = (release: MemberEndRelease | undefined, offset: number): number[] =>
-  RELEASE_KEYS.flatMap((key, k) => (release?.[key] ? [offset + k] : []));
 
 /**
  * Checks a frame model without analysing it and returns every problem found, each with the
@@ -179,6 +175,19 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
       add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "angle" });
     }
 
+    // each release value: true/false, or a spring stiffness ≥ 0 (0 = full release)
+    let releasesOk = true;
+    for (const end of ["start", "end"] as const) {
+      const release = member.releases?.[end];
+      if (release === undefined) continue;
+      for (const key of RELEASE_KEYS) {
+        const v: unknown = release[key];
+        if (v === undefined || typeof v === "boolean" || (isFiniteNumber(v) && v >= 0)) continue;
+        add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: `releases.${end}.${key}` });
+        releasesOk = false;
+      }
+    }
+
     if (!geometryOk) continue;
     const a = nodeById.get(member.startNodeId)!;
     const b = nodeById.get(member.endNodeId)!;
@@ -189,14 +198,11 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
     }
     memberLength.set(member.id, L);
 
-    const released = [
-      ...releasedIndices(member.releases?.start, 0),
-      ...releasedIndices(member.releases?.end, 6),
-    ];
-    if (sectionOk && released.length > 0) {
+    const releases = releasesOk ? memberEndReleases(member.releases) : [];
+    if (sectionOk && releases.length > 0) {
       const { E, G, A, I22, I33, J } = section;
       try {
-        condenseMember(beam3dLocalStiffnessRightHanded(E, G, A, I22, I33, J, L), released);
+        condenseMember(beam3dLocalStiffnessRightHanded(E, G, A, I22, I33, J, L), releases);
       } catch {
         add(FrameErrors.INVALID_RELEASE, at);
       }

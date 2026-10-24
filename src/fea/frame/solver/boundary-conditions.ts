@@ -1,9 +1,7 @@
+import { SPRING_UNIT_FACTOR } from "../elements/end-releases";
 import type { DofRestraint, Restraint } from "../types/model.type";
 
 const DOF_KEYS = ["ux", "uy", "uz", "rx", "ry", "rz"] as const;
-
-/** Spring stiffness unit conversion: kN/mm → N/mm, kN·m/rad → N·mm/rad. */
-const SPRING_FACTOR = [1e3, 1e3, 1e3, 1e6, 1e6, 1e6];
 
 export interface BoundaryConditions {
   fixed: boolean[]; // per global DOF
@@ -37,7 +35,7 @@ export const buildBoundaryConditions = (
   for (const restraint of restraints) {
     const base = 6 * (nodeIndex.get(restraint.nodeId) as number);
     DOF_KEYS.forEach((key, k) => {
-      const parsed = parse(restraint[key], SPRING_FACTOR[k]);
+      const parsed = parse(restraint[key], SPRING_UNIT_FACTOR[k]);
       if (parsed.fixed) fixed[base + k] = true;
       spring[base + k] = parsed.spring;
     });
