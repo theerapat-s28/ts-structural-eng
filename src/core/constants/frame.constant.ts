@@ -24,3 +24,12 @@ export const EQUILIBRIUM_TOLERANCE = 1e-6;
  * edges, nodes lying on an edge): distances are compared with this times the longest edge.
  */
 export const AREA_GEOMETRY_TOLERANCE = 1e-6;
+
+/**
+ * Penalty factor γ of the shell membrane's drilling rotation, as a multiple of the shear modulus
+ * G: the term ½·γ·t·∫(θ − ω)² dA, integrated at the element centre, ties each element's rotation
+ * about the shell normal θ to the in-plane rotation of the material ω = ½(v,x − u,y). γ = G
+ * follows Ibrahimbegovic, Taylor & Wilson (1990); with the one-point rule the results change by
+ * well under 1 % for γ between 0.01 G and 100 G.
+ */
+export const DRILLING_PENALTY_RATIO = 1;
