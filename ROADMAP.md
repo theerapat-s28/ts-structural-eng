@@ -2,9 +2,9 @@
 
 > **Module**: [`@theerapat-s28/ts-structural-eng-tools/fea`](src/fea/index.ts)  
 > **Documentation**: [html-docs/fea/index.html](html-docs/fea/index.html)  
-> **Target users**: engineers analysing **RC and steel buildings** — moment frames, braced frames, wall–frame systems with floor slabs as null areas, under gravity, wind and seismic load cases.
+> **Target users**: engineers analysing **RC and steel buildings** — moment frames, braced frames, wall–frame systems with floor slabs as null areas and shell walls or slabs where their stiffness matters, under gravity, wind and seismic load cases.
 
-This roadmap lists what the `fea` engine still needs to be a dependable analysis core for building design: the modelling inputs a building model uses every day, lateral-system behaviour (diaphragms, second-order effects) and dynamics (modal, response spectrum).
+This roadmap lists what the `fea` engine still needs to be a dependable analysis core for building design: the modelling inputs a building model uses every day, lateral-system behaviour (diaphragms, second-order effects), dynamics (modal, response spectrum) and shell elements.
 
 ---
 
@@ -59,6 +59,15 @@ Every feature added must conform to the following core principles:
 | [ ] | 4 | Eigensolver & modal analysis | L | Mass |
 | [ ] | 4 | Linear buckling | S | Eigensolver, P-Δ ($\mathbf{K}_g$) |
 | [ ] | 4 | Response spectrum analysis | L | Modal, combination types |
+| [x] | 5 | Generic element assembly (refactor) | S | — |
+| [x] | 5 | Membrane element (drilling quad) | M | Generic assembly |
+| [ ] | 5 | DKQ plate element | M | Generic assembly |
+| [ ] | 5 | Flat shell element (axes, warping, modifiers) | M | Membrane, DKQ |
+| [ ] | 5 | Shells in the model (validation, assembly, loads) | L | Flat shell |
+| [ ] | 5 | Shell results & first release | M | Shells in the model |
+| [ ] | 5 | Engine meshing of shell areas | L | Shell results |
+| [ ] | 5 | Thick plates (DKMQ or MITC4) | M | Shell results |
+| [ ] | 5 | Triangular shells & openings | L | Engine meshing |
 
 *Effort scale*: **S** ≈ 1 day, **M** ≈ 2–3 days, **L** ≈ 1+ week (including tests and docs).
 
@@ -336,9 +345,74 @@ The shared transformation mechanism behind diaphragms (3.2), and usable on its o
 
 ---
 
+## Phase 5: Shell Elements
+
+Flat four-node shell elements with membrane, plate and shell behaviour, so walls, cores, transfer slabs and mats can be modelled with their own stiffness. The theory, the chosen formulations and the benchmark values are in [html-docs/shell-element.html](html-docs/shell-element.html). Phase 5 does not depend on Phases 1–4 and is being worked first. Null areas stay as they are; shells are opt-in, used only where a surface's stiffness matters.
+
+**API decisions**
+- **Behaviour on the area**: `ShellArea.type?: "shell" | "membrane" | "plate"` (default `"shell"`).
+- **Section inline on each area**: `ShellArea.section: { thickness, E, nu, unitWeight? }`, like `Member.section`. When 1.1 lands, `ShellArea.sectionId` references a shell entry (thickness and material) in `FrameModel.sections`, and exactly one of the two is given.
+- **Loads through `AreaLoad`**: `areaId` may name a null area or a shell area (one id namespace across `areas` and `shells`). Loads are routed by the kind of area: null-area loads go to the edge members through `distributeAreaLoads` as today; shell loads become equivalent nodal loads on the shell elements. `distributeAreaLoads` ignores loads on shells.
+- **Unsupported DOFs are errors, not auto-fixed**: a translation that nothing resists at a node connected only to membrane (or only to plate) shells throws 328, naming the node, a shell and the DOF, with a message that explains the behaviour (a membrane has no out-of-plane stiffness; a plate has no in-plane stiffness). Unresisted rotations there are held as at truss joints and reported in `autoRestrainedDofs`.
+
+### 5.0 Generic Element Assembly (Refactor)
+- [x] Assembly, RCM adjacency, skyline profile and auto-restraint take elements with any number of nodes (6 DOFs each) instead of 2-node members.
+- [x] Members keep their own data (`T`, releases, fixed-end forces) for loads and post-processing.
+- [x] Tests: the existing suite passes unchanged; the raw and presented results of all 113 analyses the suite runs are bit-for-bit identical before and after; `tests/fea/frame/global-assembly.test.ts` covers elements with more than 2 nodes.
+
+### 5.1 Membrane Element
+- [x] [`elements/shell/quad-geometry.ts`](src/fea/frame/elements/shell/quad-geometry.ts): bilinear and mid-side shape functions, Jacobian, 2×2 and 3×3 Gauss rules.
+- [x] [`elements/shell/membrane-quad.ts`](src/fea/frame/elements/shell/membrane-quad.ts): drilling quad after Ibrahimbegovic–Taylor–Wilson (Allman edge terms plus Hughes–Brezzi penalty, $\gamma = G$), 12×12 over $u, v, \theta_z$; strain rows exposed for stress recovery (5.5).
+  - Strain energy at 3×3 points: with 2×2 a rectangle has a fourth zero-energy mode (alternating corner rotations whose normal strains vanish at the 2×2 points).
+  - Penalty at one point (the centre): with 2×2 distorted elements lock as $\gamma$ grows (trapezoidal cantilever 0.0848 at $G$, 0.0323 at $100G$); at the centre results change by < 0.3 % over $0.01G$–$100G$.
+- [x] `DRILLING_PENALTY_RATIO` in [`frame.constant.ts`](src/core/constants/frame.constant.ts) (not re-exported yet).
+- [x] Tests in [`tests/fea/frame/shell/`](tests/fea/frame/shell/) (dense-solve harness, no model integration): symmetry, exactly 3 rigid-body modes (rectangle and distorted), tensor transformation and corner-order invariance; MacNeal–Harder patch test (exact field, θ = ω, $\sigma_x = \sigma_y = 1333.3$, $\tau_{xy} = 400$); straight cantilever 0.0977 / 0.0931 / 0.0829 (regular / parallelogram / trapezoidal, reference 0.1081 — a flipped edge-term sign gives 0.0031); penalty insensitivity; Cook's membrane converging from below to ≈ 25.2, where a bilinear quad and an independent 9-node element also converge; this is above the 23.9–23.96 usually quoted for the problem, a difference not yet explained (see Technical Debt).
+
+### 5.2 DKQ Plate Element
+- [ ] `elements/shell/dkq-plate.ts`: Batoz–Ben Tahar discrete Kirchhoff quadrilateral, 12×12 over $w, \theta_x, \theta_y$.
+- [ ] Tests: exactly 3 rigid-body modes; MacNeal–Harder plate patch test; square plate under uniform load, simply supported and clamped ($w_c = 0.00406$ and $0.00126\,qa^4/D$) with mesh convergence; centre point load ($0.01160\,Pa^2/D$); straight cantilever, out-of-plane shear (0.4321).
+
+### 5.3 Flat Shell Element
+- [ ] `elements/shell/shell-axes.ts`: local 3 normal by the right-hand rule around the nodes (as for null areas); local 2 = +Z projected onto the plane for non-horizontal elements, local 1 = +X for horizontal ones; optional `angle`.
+- [ ] `elements/shell/flat-shell.ts`: membrane and plate scattered into a 24×24 local matrix; `type` switch; stiffness modifiers on $\mathbf{D}_m$ and $\mathbf{D}_b$; block-wise transformation $\lambda^T \mathbf{k}_{ab} \lambda$; warped quads projected onto the mean plane with rigid links to the real nodes.
+- [ ] Tests: exactly 6 rigid-body modes in any orientation; invariance under node renumbering and rigid rotation; warped vs flat convergence; modifiers scale only their terms.
+
+### 5.4 Shells in the Model
+- [ ] Types: `ShellArea`, `ShellSection`, `ShellModifiers` (`f11, f22, f12, m11, m22, m12, weight`), `FrameModel.shells`.
+- [ ] Validation: geometry (4 distinct nodes, convex, $\det \mathbf{J} > 0$, warping limit) → 326; section values → 327; modifiers and options → 314; duplicate ids across `areas` and `shells` → 303; loads on shells checked like null-area loads.
+- [ ] System: shell element matrices assembled with the members; 328 for unsupported translations at membrane-only or plate-only nodes (see the API decisions).
+- [ ] Loads: `AreaLoad` on shells (local `"3"` or global, `projected`) and self-weight `selfWeight · unitWeight · t` along −Z, as equivalent nodal loads $\int N_i\,p\,dA$ per load case.
+- [ ] Benchmarks on user-meshed models: Scordelis–Lo roof (0.3024), pinched cylinder (1.8248 × 10⁻⁵), beam framing in-plane into a wall (moment transfer through the drilling DOF), finely meshed wall vs wide column, reactions equal to the applied load.
+
+### 5.5 Shell Results & First Release
+- [ ] `FrameCaseResult.shellForces`: per element, corner values of F11, F22, F12 (kN/m), M11, M22, M12 (kN·m/m, positive for sagging with local 3 up) and V13, V23 (kN/m), from the 2×2 Gauss points extrapolated to the corners; top and bottom face stresses (MPa).
+- [ ] Unrounded element results in `RawState`, superposed in combinations; rounding only in [`post/present-state.ts`](src/fea/frame/post/present-state.ts).
+- [ ] Envelope: max/min per element corner.
+- [ ] `calculationDetails.shellCount`; `units` gains the per-length units.
+- [ ] Docs: [html-docs/fea/index.html](html-docs/fea/index.html) (types, conventions, errors, an example with real outputs), theory page marked implemented, README, CHANGELOG; release as a minor version.
+
+### 5.6 Engine Meshing
+- [ ] `ShellArea.mesh?: { maxSize } | { divisions: [n1, n2] }`; without `mesh` an area is one element.
+- [ ] Structured mapping of each area; division counts shared per chord (union-find over opposite and shared edges) so adjacent meshes conform; model nodes on area edges become hard points.
+- [ ] Members along meshed edges split internally at the mesh nodes: releases at their real ends only, member loads mapped by position, end forces and diagrams reported under the original member id.
+- [ ] Deterministic ids for generated nodes and elements; shell results grouped by area id; mesh quality checks report the area id.
+- [ ] Worked as 5.6a (meshing) and 5.6b (members on meshed edges).
+
+### 5.7 Thick Plates
+- [ ] `ShellArea.plateTheory?: "thin" | "thick"` (default `"thin"`), using DKMQ (reuses the DKQ code) or MITC4, chosen after 5.2.
+- [ ] Tests: thick-plate benchmarks; the thin limit matches DKQ; no shear locking at $t/a = 10^{-3}$.
+
+### 5.8 Triangular Shells & Openings
+- [ ] 3-node shells: DKT plate with an Allman triangle membrane; triangular areas in the mesher.
+- [ ] Openings: documented approach (divide the area around the opening) or automatic subdivision.
+
+---
+
 ## Technical Debt & Pending Verifications
 
 - [ ] **ETABS local-axis convention check**: confirm the local 3 rule ($1 \times Z$ for non-vertical, $+X$ for vertical) matches CSI ETABS v21 documentation exactly.
+- [ ] **Cook's membrane reference**: our plane-stress set-up (E = 1, ν = 1/3, t = 1, unit uniform shear) converges to ≈ 25.2 with three element types, against the published 23.9–23.96. Find the published set-up (load distribution, ν, mesh) before quoting a value in the docs.
+- [ ] **ETABS area local-axis convention check**: confirm the shell local 1/2 default (5.3) against the CSI documentation before shells ship.
 - [ ] **ACI 318-19 Table 6.6.3.1.1 verification**: confirm the cracked moment of inertia factors before quoting them in the 1.2 docs and in [`src/rc/`](src/rc/).
 - [ ] **ACI 318-19 second-order limit**: confirm the clause number of the 1.4 × first-order moment limit used by the 3.3 warning.
 - [ ] **Null area distribution assumptions**: confirm with practising structural engineers whether two-way bisector or moment-coefficient methods are expected.
@@ -366,6 +440,9 @@ Codes 301–314 are the existing validation and solver errors in [`frame-analysi
 | **323** | `GEOMETRIC_INSTABILITY` | Linearized P-Δ | $\mathbf{K} + \mathbf{K}_g$ not positive definite |
 | **324** | `NO_MASS` | Modal analysis | No mass on any free DOF |
 | **325** | `EIGEN_NOT_CONVERGED` | Modal, buckling | Eigensolver did not converge within the iteration limit |
+| **326** | `INVALID_SHELL_GEOMETRY` | Shell elements | Not 4 distinct nodes (3 allowed from 5.8), non-convex, $\det \mathbf{J} \le 0$, or warping beyond the limit |
+| **327** | `INVALID_SHELL_SECTION` | Shell elements | Thickness or $E$ not positive, $\nu$ outside $[0, 0.5)$, or negative `unitWeight` |
+| **328** | `SHELL_DOF_UNSUPPORTED` | Shell elements | A translation nothing resists at a node connected only to membrane (or only to plate) shells |
 
 ---
 
@@ -397,6 +474,10 @@ Codes 301–314 are the existing validation and solver errors in [`frame-analysi
 | `FN` | `analyzeModal` | `ModalResult` | Periods, mode shapes, participating mass ratios |
 | `FN` | `analyzeBuckling` | `BucklingResult` | Critical load factors and buckling modes |
 | `TYPE` | `FrameModel.responseSpectra` | `ResponseSpectrum[]` | Response spectrum cases (CQC/SRSS) |
+| `TYPE` | `FrameModel.shells`, `ShellArea`, `ShellSection`, `ShellModifiers` | — | Shell areas with membrane, plate or shell behaviour |
+| `TYPE` | `FrameCaseResult.shellForces` | `ShellElementForces[]` | Corner membrane forces, moments, shears and face stresses |
+| `TYPE` | `ShellArea.mesh` | — | Engine meshing of shell areas |
+| `TYPE` | `ShellArea.plateTheory` | `"thin" \| "thick"` | Thick-plate formulation |
 
 ---
 
@@ -406,7 +487,7 @@ The following items are intentionally excluded from the `fea` frame solver:
 
 - **Nonlinear analysis that changes stiffness per load case**: tension-only braces, compression-only supports, gaps, plasticity / plastic hinges, pushover, large displacement. These break superposition. Tension-only X-bracing can be approximated with both braces active at reduced area — document this.
 - **Linear and nonlinear time history**: needs time integration and damping models; revisit only after response spectrum.
-- **Continuum plate, shell and wall elements**: null areas distribute surface loads to frames; walls are modelled as wide columns with rigid end offsets (2.1); in-plane slab flexibility is handled only through rigid diaphragms (semi-rigid diaphragms need shells).
+- **Curved shell and solid elements**: shells are flat facets (Phase 5), which cover building walls, cores and slabs; degenerated curved shells and 3D solid elements are not planned.
 - **Warping torsion** of open steel sections.
 - **Automatic code load generation**: ELF story forces, wind pressures and load combinations stay user-specified (the engine applies what it is given, plus the code-agnostic patterning helper in 2.10).
 - **Member design code checks**: belong in [`src/rc/`](src/rc/) or a dedicated steel design module.
