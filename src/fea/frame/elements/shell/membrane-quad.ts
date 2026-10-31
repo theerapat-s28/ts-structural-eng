@@ -9,12 +9,15 @@ import {
   quadJacobian,
   type Vec2,
 } from "./quad-geometry";
+import { isotropicRigidity, type RigidityModifiers } from "./rigidity";
 
 /** Material and thickness of a membrane: E in MPa, ν, t in mm. */
 export interface MembraneProperties {
   E: number;
   nu: number;
   t: number;
+  /** Stiffness modifiers on the 11, 22 and 12 components of the rigidity (default all 1). */
+  modifiers?: RigidityModifiers;
 }
 
 /** Strain rows of the drilling membrane at one point, over the 12 DOFs `[u₁ v₁ θ₁ … u₄ v₄ θ₄]`. */
@@ -83,15 +86,12 @@ export const membraneStrainRows = (
   return { B: [ux, vy, uy.map((v, a) => v + vx[a])], rotation, detJ: jacobian.detJ };
 };
 
-/** Plane-stress membrane rigidity `E·t/(1 − ν²)·[[1, ν, 0], [ν, 1, 0], [0, 0, (1 − ν)/2]]` (N/mm). */
-export const membraneRigidity = ({ E, nu, t }: MembraneProperties): Matrix => {
-  const c = (E * t) / (1 - nu * nu);
-  return [
-    [c, c * nu, 0],
-    [c * nu, c, 0],
-    [0, 0, (c * (1 - nu)) / 2],
-  ];
-};
+/**
+ * Plane-stress membrane rigidity `E·t/(1 − ν²)·[[1, ν, 0], [ν, 1, 0], [0, 0, (1 − ν)/2]]`
+ * (N/mm), with the stiffness modifiers applied (see `isotropicRigidity`).
+ */
+export const membraneRigidity = ({ E, nu, t, modifiers }: MembraneProperties): Matrix =>
+  isotropicRigidity((E * t) / (1 - nu * nu), nu, modifiers);
 
 /**
  * Local stiffness of the four-node membrane with drilling rotations (after Ibrahimbegovic,
@@ -104,6 +104,7 @@ export const membraneRigidity = ({ E, nu, t }: MembraneProperties): Matrix => {
  * - The penalty is integrated at the centre (one point). With 2×2 it over-constrains distorted
  *   elements and they lock as γ grows; at the centre it only ties the element's mean rotation
  *   to the material, so results hardly change with γ.
+ * - Stiffness modifiers scale the rigidity only; the penalty keeps the unmodified G.
  *
  * The DOFs are `[u₁ v₁ θ₁ … u₄ v₄ θ₄]`: in-plane displacements along the element's x and y and
  * the rotation about its normal, right-handed, at corners listed counter-clockwise about that

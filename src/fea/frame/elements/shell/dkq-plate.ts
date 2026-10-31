@@ -1,12 +1,15 @@
 import { zeros, type Matrix } from "@app-utils/matrix";
 
 import { GAUSS_2X2, quadJacobian, serendipityShape, type Vec2 } from "./quad-geometry";
+import { isotropicRigidity, type RigidityModifiers } from "./rigidity";
 
 /** Material and thickness of a plate: E in MPa, ν, t in mm. */
 export interface PlateProperties {
   E: number;
   nu: number;
   t: number;
+  /** Stiffness modifiers on the 11, 22 and 12 components of the rigidity (default all 1). */
+  modifiers?: RigidityModifiers;
 }
 
 /** Curvature rows of the DKQ plate at one point, over the 12 DOFs `[w₁ θx₁ θy₁ … w₄ θx₄ θy₄]`. */
@@ -103,15 +106,12 @@ export const dkqCurvatureRows = (
   return { B, detJ: jacobian.detJ };
 };
 
-/** Plate bending rigidity `E·t³/(12(1 − ν²))·[[1, ν, 0], [ν, 1, 0], [0, 0, (1 − ν)/2]]` (N·mm). */
-export const plateRigidity = ({ E, nu, t }: PlateProperties): Matrix => {
-  const c = (E * t ** 3) / (12 * (1 - nu * nu));
-  return [
-    [c, c * nu, 0],
-    [c * nu, c, 0],
-    [0, 0, (c * (1 - nu)) / 2],
-  ];
-};
+/**
+ * Plate bending rigidity `E·t³/(12(1 − ν²))·[[1, ν, 0], [ν, 1, 0], [0, 0, (1 − ν)/2]]`
+ * (N·mm), with the stiffness modifiers applied (see `isotropicRigidity`).
+ */
+export const plateRigidity = ({ E, nu, t, modifiers }: PlateProperties): Matrix =>
+  isotropicRigidity((E * t ** 3) / (12 * (1 - nu * nu)), nu, modifiers);
 
 /**
  * Local stiffness of the discrete Kirchhoff quadrilateral (DKQ, Batoz & Ben Tahar 1982), a thin
