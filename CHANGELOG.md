@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [3.2.0] — 2026-10-31
+
+**The analysis exports lose "Frame" from their names.** A model can be members, shells or both, so `analyzeFrame` is now `analyze`, `FrameModel` is `FeaModel`, `FrameAnalysisError` is `FeaError`, and so on, and a model of shells only, such as a mat foundation, no longer needs a `members` list. Nothing breaks: the old names still work as deprecated aliases until 4.0.0, and every result is identical to 3.1.0.
+
 ### Added
 
 - **New names for the analysis exports.** "Frame" now means frame members only, as in ETABS. The exports that apply to the whole model, which may have members, shells or both, are renamed:
@@ -241,7 +245,8 @@ Maintenance release with no changes to the library code.
 
 First version, under the unscoped name `ts-structural-eng-tools`: `rectBeamMomentCapacity` (singly and doubly reinforced rectangular beams per ACI 318-19), steel plate jacketing, and concrete property helpers.
 
-[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.3.0...v3.0.0
 [2.3.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.2.0...v2.3.0
