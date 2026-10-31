@@ -4,7 +4,7 @@
  * Run with: pnpm run dev
  */
 
-import { calculateSteelJacketedBeamMomentCapacity, rectBeamMomentCapacity } from "../src";
+import { calculateSteelJacketedBeamMomentCapacity, rectBeamMomentCapacity } from "../../src";
 
 // ── 1. Singly-reinforced beam ───────────────────────────────────────────────
 

@@ -19,7 +19,7 @@ pnpm vitest run tests/rc/rc-beam-design.test.ts        # single test file
 pnpm vitest run -t "calculates phiMn"                  # single test by name
 pnpm run lint               # ESLint on src/ (lint:fix to auto-fix)
 pnpm run format             # Prettier on src/, tests/, examples/
-pnpm run dev                # run examples/basic-usage.ts with ts-node
+pnpm run dev                # run examples/EX-0001-basic-usage/basic-usage.ts with ts-node
 ```
 
 ## Git

@@ -51,7 +51,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "dev": "ts-node -r tsconfig-paths/register examples/basic-usage.ts",
+    "dev": "ts-node -r tsconfig-paths/register examples/EX-0001-basic-usage/basic-usage.ts",
     "build": "rm -rf dist && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && tsc -p tsconfig.esm.json && tsc-alias -p tsconfig.esm.json --resolve-full-paths && node -e \"require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({ type: 'module' }))\"",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",

@@ -332,7 +332,7 @@ pnpm install
 
 | Command                 | Description                                                   |
 | ----------------------- | ------------------------------------------------------------- |
-| `pnpm run dev`          | Run [`examples/basic-usage.ts`](examples/basic-usage.ts) against the sources with `ts-node` |
+| `pnpm run dev`          | Run [`examples/EX-0001-basic-usage/basic-usage.ts`](examples/EX-0001-basic-usage/basic-usage.ts) against the sources with `ts-node` |
 | `pnpm run build`        | Compile `src/` into `dist/` (CommonJS and `.d.ts`) and `dist/esm/` (ES modules) |
 | `pnpm run lint`         | Lint source files with ESLint                                 |
 | `pnpm run lint:fix`     | Auto-fix lint issues                                          |
@@ -400,8 +400,10 @@ src/
     ├── matrix.ts         # Dense matrix helpers, Cholesky (factor once, solve many) and general linear solvers
     ├── skyline.ts        # Skyline (banded) Cholesky solver and reverse Cuthill–McKee ordering
     └── merge-warning.ts  # Warning array merging
-examples/
-└── basic-usage.ts        # Example usage of the library
+examples/                 # One folder per example, EX-<number>-<name>
+├── EX-0001-basic-usage/      # RC beam capacity and steel-plate jacketing (pnpm run dev)
+├── EX-0002-slab-on-columns/  # Flat plate on four columns, with its model.json and result.json
+└── EX-0003-shear-wall/       # Meshed shear wall, with its model.json and result.json
 tests/
 ├── rc/                   # Tests for RC module
 ├── strengthening/        # Tests for strengthening module

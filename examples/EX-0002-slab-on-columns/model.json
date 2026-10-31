@@ -1,0 +1,205 @@
+{
+  "nodes": [
+    {
+      "id": "A",
+      "x": 0,
+      "y": 0,
+      "z": 3500
+    },
+    {
+      "id": "B",
+      "x": 6000,
+      "y": 0,
+      "z": 3500
+    },
+    {
+      "id": "C",
+      "x": 6000,
+      "y": 6000,
+      "z": 3500
+    },
+    {
+      "id": "D",
+      "x": 0,
+      "y": 6000,
+      "z": 3500
+    },
+    {
+      "id": "A0",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    {
+      "id": "B0",
+      "x": 6000,
+      "y": 0,
+      "z": 0
+    },
+    {
+      "id": "C0",
+      "x": 6000,
+      "y": 6000,
+      "z": 0
+    },
+    {
+      "id": "D0",
+      "x": 0,
+      "y": 6000,
+      "z": 0
+    }
+  ],
+  "members": [
+    {
+      "id": "colA",
+      "startNodeId": "A0",
+      "endNodeId": "A",
+      "section": {
+        "E": 24870.062324007155,
+        "G": 10362.525968336315,
+        "A": 160000,
+        "I22": 1493333333.3333333,
+        "I33": 1493333333.3333333,
+        "J": 3605333333.3333335,
+        "unitWeight": 24
+      }
+    },
+    {
+      "id": "colB",
+      "startNodeId": "B0",
+      "endNodeId": "B",
+      "section": {
+        "E": 24870.062324007155,
+        "G": 10362.525968336315,
+        "A": 160000,
+        "I22": 1493333333.3333333,
+        "I33": 1493333333.3333333,
+        "J": 3605333333.3333335,
+        "unitWeight": 24
+      }
+    },
+    {
+      "id": "colC",
+      "startNodeId": "C0",
+      "endNodeId": "C",
+      "section": {
+        "E": 24870.062324007155,
+        "G": 10362.525968336315,
+        "A": 160000,
+        "I22": 1493333333.3333333,
+        "I33": 1493333333.3333333,
+        "J": 3605333333.3333335,
+        "unitWeight": 24
+      }
+    },
+    {
+      "id": "colD",
+      "startNodeId": "D0",
+      "endNodeId": "D",
+      "section": {
+        "E": 24870.062324007155,
+        "G": 10362.525968336315,
+        "A": 160000,
+        "I22": 1493333333.3333333,
+        "I33": 1493333333.3333333,
+        "J": 3605333333.3333335,
+        "unitWeight": 24
+      }
+    }
+  ],
+  "restraints": [
+    {
+      "nodeId": "A0",
+      "ux": true,
+      "uy": true,
+      "uz": true,
+      "rx": true,
+      "ry": true,
+      "rz": true
+    },
+    {
+      "nodeId": "B0",
+      "ux": true,
+      "uy": true,
+      "uz": true,
+      "rx": true,
+      "ry": true,
+      "rz": true
+    },
+    {
+      "nodeId": "C0",
+      "ux": true,
+      "uy": true,
+      "uz": true,
+      "rx": true,
+      "ry": true,
+      "rz": true
+    },
+    {
+      "nodeId": "D0",
+      "ux": true,
+      "uy": true,
+      "uz": true,
+      "rx": true,
+      "ry": true,
+      "rz": true
+    }
+  ],
+  "shells": [
+    {
+      "id": "slab",
+      "nodeIds": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "section": {
+        "thickness": 200,
+        "E": 24870.062324007155,
+        "nu": 0.2,
+        "unitWeight": 24
+      },
+      "mesh": {
+        "divisions": [
+          2,
+          2
+        ]
+      }
+    }
+  ],
+  "loadCases": [
+    {
+      "id": "D",
+      "type": "dead",
+      "selfWeight": 1
+    },
+    {
+      "id": "L",
+      "type": "live"
+    }
+  ],
+  "areaLoads": [
+    {
+      "loadCase": "L",
+      "areaId": "slab",
+      "direction": "Z",
+      "q": -2
+    }
+  ],
+  "combinations": [
+    {
+      "id": "1.2D+1.6L",
+      "terms": [
+        {
+          "case": "D",
+          "factor": 1.2
+        },
+        {
+          "case": "L",
+          "factor": 1.6
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "nodes": [
+    {
+      "id": "W1",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    {
+      "id": "W2",
+      "x": 4000,
+      "y": 0,
+      "z": 0
+    },
+    {
+      "id": "W3",
+      "x": 4000,
+      "y": 0,
+      "z": 3000
+    },
+    {
+      "id": "W4",
+      "x": 0,
+      "y": 0,
+      "z": 3000
+    }
+  ],
+  "restraints": [],
+  "lineRestraints": [
+    {
+      "nodeIds": [
+        "W1",
+        "W2"
+      ],
+      "ux": true,
+      "uy": true,
+      "uz": true,
+      "rx": true,
+      "ry": true,
+      "rz": true
+    }
+  ],
+  "shells": [
+    {
+      "id": "wall",
+      "nodeIds": [
+        "W1",
+        "W2",
+        "W3",
+        "W4"
+      ],
+      "section": {
+        "thickness": 200,
+        "E": 24870.062324007155,
+        "nu": 0.2,
+        "unitWeight": 24
+      },
+      "mesh": {
+        "maxSize": 1000
+      }
+    }
+  ],
+  "loadCases": [
+    {
+      "id": "W",
+      "type": "wind"
+    }
+  ],
+  "nodalLoads": [
+    {
+      "loadCase": "W",
+      "nodeId": "W4",
+      "fx": 100
+    }
+  ]
+}
