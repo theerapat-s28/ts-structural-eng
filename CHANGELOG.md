@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Documentation
+
+- README: a second quick start, with a slab meshed into shell elements on edge beams and columns; what changes for a front end when a model has shells (generated nodes, elements, shell forces); the model and result fields at a glance; null areas compared with shells; running in a Web Worker, with measured analysis times; and the shell error codes 326–329.
+
 ## [3.1.0] — 2026-10-31
 
 **Engine reorganised, and a guide for upgrading from 2.x.** The analysis engine behind `/fea` is reorganised into separate parts for frame members, shell elements and the analysis that runs them together. Nothing you call changes: every export keeps its name, its import path and its behaviour, and every result is identical to 3.0.0. Coming from 2.x? Read **Upgrading from 2.x** below; it covers this release and 3.0.0 together.
