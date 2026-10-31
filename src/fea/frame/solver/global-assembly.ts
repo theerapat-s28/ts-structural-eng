@@ -1,5 +1,15 @@
 import { matMul, transpose, type Matrix } from "@app-utils/matrix";
 
+/**
+ * A stiffness contribution to the global system: the nodes it connects and its stiffness over
+ * their DOFs (6 per node, in node order) in global axes. A member is a 2-node element; elements
+ * with more nodes assemble the same way.
+ */
+export interface StiffnessElement {
+  nodes: number[]; // node indices, all distinct
+  kGlobal: Matrix; // 6n×6n, global axes, N and mm
+}
+
 export interface AssemblyMember {
   startIndex: number; // node index
   endIndex: number; // node index
@@ -7,14 +17,18 @@ export interface AssemblyMember {
   k: Matrix; // 12×12 local stiffness, right-hand, N and mm
 }
 
-/** Global DOF numbers (6 per node) of a member's 12 end DOFs. */
-export const memberDofs = (member: Pick<AssemblyMember, "startIndex" | "endIndex">): number[] => {
+/** Global DOF numbers (6 per node, in node order) of an element connecting `nodes`. */
+export const elementDofs = (nodes: readonly number[]): number[] => {
   const dofs: number[] = [];
-  for (const node of [member.startIndex, member.endIndex]) {
+  for (const node of nodes) {
     for (let k = 0; k < 6; k++) dofs.push(6 * node + k);
   }
   return dofs;
 };
+
+/** Global DOF numbers (6 per node) of a member's 12 end DOFs. */
+export const memberDofs = (member: Pick<AssemblyMember, "startIndex" | "endIndex">): number[] =>
+  elementDofs([member.startIndex, member.endIndex]);
 
 /** A member's stiffness in global axes, `Tᵀ·k·T` (N and mm). */
 export const memberGlobalStiffness = (member: AssemblyMember): Matrix =>

@@ -19,7 +19,12 @@ import type { FrameId, FrameModel, FrameNode } from "../types/model.type";
 import { frameIssue, throwIssues } from "../validation/validate-model";
 import { findAutoRestraints, type AutoRestraint } from "./auto-restraint";
 import { buildBoundaryConditions, type BoundaryConditions } from "./boundary-conditions";
-import { memberDofs, memberGlobalStiffness, type AssemblyMember } from "./global-assembly";
+import {
+  elementDofs,
+  memberGlobalStiffness,
+  type AssemblyMember,
+  type StiffnessElement,
+} from "./global-assembly";
 
 const DOF_NAMES = ["ux", "uy", "uz", "rx", "ry", "rz"] as const;
 
@@ -102,11 +107,18 @@ export const prepareFrameSystem = (model: FrameModel): FrameSystem => {
     };
   });
 
+  // Everything that adds stiffness, as elements over 6 DOFs per node; members have 2 nodes
+  const elements: StiffnessElement[] = systemMembers.map((m) => ({
+    nodes: [m.startIndex, m.endIndex],
+    kGlobal: memberGlobalStiffness(m),
+  }));
+
   // ---- Equation numbering: nodes in RCM order, fixed DOFs skipped ------------------
   const adjacency: number[][] = nodes.map(() => []);
-  for (const m of systemMembers) {
-    adjacency[m.startIndex].push(m.endIndex);
-    adjacency[m.endIndex].push(m.startIndex);
+  for (const element of elements) {
+    for (const a of element.nodes) {
+      for (const b of element.nodes) if (a !== b) adjacency[a].push(b);
+    }
   }
   const equation = new Int32Array(dofCount).fill(-1);
   const free: number[] = [];
@@ -120,42 +132,34 @@ export const prepareFrameSystem = (model: FrameModel): FrameSystem => {
     }
   }
 
-  const kGlobal = systemMembers.map(memberGlobalStiffness);
-  const autoRestraints = findAutoRestraints(
-    nodes.length,
-    systemMembers.map((m, i) => ({
-      startIndex: m.startIndex,
-      endIndex: m.endIndex,
-      kGlobal: kGlobal[i],
-    })),
-    boundary,
-  );
+  const autoRestraints = findAutoRestraints(nodes.length, elements, boundary);
 
   // ---- Profile, assembly and factorisation -----------------------------------------
   let factor: SkylineMatrix | null = null;
   if (free.length > 0) {
     const first = free.map((_, e) => e);
-    const memberEquations = systemMembers.map((m) => memberDofs(m).map((d) => equation[d]));
-    for (const eqs of memberEquations) {
+    const elementEquations = elements.map((el) => elementDofs(el.nodes).map((d) => equation[d]));
+    for (const eqs of elementEquations) {
       const active = eqs.filter((e) => e >= 0);
       const low = Math.min(...active);
       for (const e of active) if (low < first[e]) first[e] = low;
     }
 
     const K = createSkyline(first);
-    memberEquations.forEach((eqs, index) => {
-      // a member's 12 DOFs are distinct, so each unordered pair and each diagonal is added once
-      for (let a = 0; a < 12; a++) {
+    elementEquations.forEach((eqs, index) => {
+      // an element's nodes, hence its DOFs, are distinct: each pair and diagonal is added once
+      const k = elements[index].kGlobal;
+      for (let a = 0; a < eqs.length; a++) {
         if (eqs[a] < 0) continue;
-        for (let b = 0; b < 12; b++) {
-          if (eqs[b] >= eqs[a]) skylineAdd(K, eqs[a], eqs[b], kGlobal[index][a][b]);
+        for (let b = 0; b < eqs.length; b++) {
+          if (eqs[b] >= eqs[a]) skylineAdd(K, eqs[a], eqs[b], k[a][b]);
         }
       }
     });
     free.forEach((dof, e) => {
       if (boundary.spring[dof] > 0) skylineAdd(K, e, e, boundary.spring[dof]);
     });
-    // k·n·nᵀ on the node's free rotations, inside the profile: its members span all 6 node DOFs
+    // k·n·nᵀ on the node's free rotations, inside the profile: its elements span all 6 node DOFs
     for (const { node, axis, stiffness } of autoRestraints) {
       for (let i = 0; i < 3; i++) {
         const ei = equation[6 * node + 3 + i];

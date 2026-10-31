@@ -2,6 +2,7 @@ import { SINGULARITY_TOLERANCE } from "@app-core/constants/frame.constant";
 import type { Matrix } from "@app-utils/matrix";
 
 import type { BoundaryConditions } from "./boundary-conditions";
+import type { StiffnessElement } from "./global-assembly";
 
 /** A rotation direction at a node that no member, restraint or spring resists. */
 export interface AutoRestraint {
@@ -60,29 +61,30 @@ const symmetricEigen = (M: Matrix): { values: number[]; vectors: number[][] } =>
  * Finds the joint rotations that nothing resists, so they can be held instead of making the
  * stiffness singular — e.g. a truss joint where every member releases its end moments.
  *
- * For each node with members, the free rotational block `B` (3×3, global) of the assembled
- * member stiffness plus rotational springs is decomposed; every eigenvector whose eigenvalue
+ * For each node with elements, the free rotational block `B` (3×3, global) of the assembled
+ * element stiffness plus rotational springs is decomposed; every eigenvector whose eigenvalue
  * is below `SINGULARITY_TOLERANCE` times the block's largest diagonal is a null direction `n`.
- * Each member's global stiffness is positive semi-definite, so `nᵀ·B·n = 0` makes the whole
+ * Each element's global stiffness is positive semi-definite, so `nᵀ·B·n = 0` makes the whole
  * stiffness column of `n` zero: the rotation along `n` is decoupled from every other DOF, and a
  * spring `k·n·nᵀ` there carries no force unless a load has a moment component along `n`.
  *
  * @param nodeCount - Number of nodes
- * @param members - Node indices and global 12×12 stiffness of every member (N and mm)
+ * @param elements - Node indices and global stiffness (6 DOFs per node) of every element, members
+ *   included (N and mm)
  * @param boundary - Fixed DOFs and spring stiffnesses
  */
 export const findAutoRestraints = (
   nodeCount: number,
-  members: { startIndex: number; endIndex: number; kGlobal: Matrix }[],
+  elements: StiffnessElement[],
   boundary: BoundaryConditions,
 ): AutoRestraint[] => {
   const blocks: (Matrix | null)[] = new Array(nodeCount).fill(null);
-  for (const m of members) {
-    [m.startIndex, m.endIndex].forEach((node, end) => {
+  for (const element of elements) {
+    element.nodes.forEach((node, position) => {
       const block = (blocks[node] ??= [0, 1, 2].map(() => [0, 0, 0]));
-      const base = 6 * end + 3;
+      const base = 6 * position + 3;
       for (let i = 0; i < 3; i++) {
-        for (let j = 0; j < 3; j++) block[i][j] += m.kGlobal[base + i][base + j];
+        for (let j = 0; j < 3; j++) block[i][j] += element.kGlobal[base + i][base + j];
       }
     });
   }
@@ -95,7 +97,7 @@ export const findAutoRestraints = (
 
   const restraints: AutoRestraint[] = [];
   blocks.forEach((block, node) => {
-    if (!block) return; // a node without members is a mechanism, left for the factorisation
+    if (!block) return; // a node without elements is a mechanism, left for the factorisation
     const free = [0, 1, 2].filter((i) => !boundary.fixed[6 * node + 3 + i]);
     if (free.length === 0) return;
     const sub = free.map((i) =>
