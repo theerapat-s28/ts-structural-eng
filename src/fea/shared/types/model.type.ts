@@ -1,7 +1,7 @@
-export type FrameId = string | number;
+export type FeaId = string | number;
 
-export interface FrameNode {
-  id: FrameId;
+export interface FeaNode {
+  id: FeaId;
   x: number; // mm, global X
   y: number; // mm, global Y
   z: number; // mm, global Z (up)
@@ -11,7 +11,7 @@ export interface FrameNode {
 export type DofRestraint = boolean | number;
 
 export interface Restraint {
-  nodeId: FrameId;
+  nodeId: FeaId;
   ux?: DofRestraint; // true | kN/mm
   uy?: DofRestraint; // true | kN/mm
   uz?: DofRestraint; // true | kN/mm
@@ -32,7 +32,7 @@ export type AreaLoadDirection = "3" | "X" | "Y" | "Z";
  */
 export interface AreaLoad {
   loadCase: string; // id of the load case this load belongs to
-  areaId: FrameId;
+  areaId: FeaId;
   direction: AreaLoadDirection;
   q: number; // kN/m², positive along the positive direction axis
   projected?: boolean; // q per unit projected area (global directions only); default false

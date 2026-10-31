@@ -1,4 +1,4 @@
-import type { FrameId, FrameNode } from "@app-fea/shared/types/model.type";
+import type { FeaId, FeaNode } from "@app-fea/shared/types/model.type";
 
 import { flatShellElement, type FlatShellElement } from "../elements/flat-shell";
 import { cornerAreas } from "../elements/quad-geometry";
@@ -7,9 +7,9 @@ import type { ShellArea, ShellModifiers, ShellSection, ShellType } from "../type
 
 /** A shell area with everything that does not depend on the loads. */
 export interface SystemShell {
-  id: FrameId;
+  id: FeaId;
   /** The shell area the element belongs to (its own id when the area is one element). */
-  areaId: FrameId;
+  areaId: FeaId;
   nodeIndices: number[]; // the four corners, in the shell's order
   type: ShellType;
   section: ShellSection;
@@ -21,7 +21,7 @@ export interface SystemShell {
 }
 
 /**
- * Builds the flat shell element of every shell of a model that passed `validateFrameModel`:
+ * Builds the flat shell element of every shell of a model that passed `validateModel`:
  * axes, corner transformations, local and global stiffness with the stiffness modifiers, and
  * each corner's share of a uniform surface load.
  *
@@ -30,9 +30,9 @@ export interface SystemShell {
  * @param nodeIndex - Map from node id to index into `nodes`
  */
 export const prepareSystemShells = (
-  shells: (ShellArea & { areaId?: FrameId })[],
-  nodes: FrameNode[],
-  nodeIndex: Map<FrameId, number>,
+  shells: (ShellArea & { areaId?: FeaId })[],
+  nodes: FeaNode[],
+  nodeIndex: Map<FeaId, number>,
 ): SystemShell[] =>
   shells.map((shell) => {
     const nodeIndices = shell.nodeIds.map((id) => nodeIndex.get(id) as number);

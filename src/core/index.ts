@@ -51,5 +51,8 @@ export {
 
 // Errors
 export { RCDesignError, Errors } from "./errors/rc-design.error";
-export { FrameAnalysisError, FrameErrors } from "./errors/frame-analysis.error";
-export type { FrameErrorDetails, FrameModelIssue } from "./errors/frame-analysis.error";
+export { FeaError, FeaErrors } from "./errors/fea.error";
+export type { FeaErrorDetails, FeaModelIssue } from "./errors/fea.error";
+// Deprecated names, removed in 4.0.0
+export { FrameAnalysisError, FrameErrors } from "./errors/fea.error";
+export type { FrameErrorDetails, FrameModelIssue } from "./errors/fea.error";

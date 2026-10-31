@@ -2,7 +2,7 @@ import {
   memberAxes,
   transformationMatrix,
 } from "@app-fea/frame/transformation/coordinate-transform";
-import { FrameAnalysisError } from "@app-core/errors/frame-analysis.error";
+import { FeaError } from "@app-core/errors/fea.error";
 import { matMul, transpose } from "@app-utils/matrix";
 
 const expectRows = (lambda: number[][], rows: number[][]) =>
@@ -60,11 +60,11 @@ describe("memberAxes (ETABS-style local axes)", () => {
   });
 
   it("throws 301 for a zero-length member", () => {
-    expect(() => memberAxes([1, 2, 3], [1, 2, 3])).toThrow(FrameAnalysisError);
+    expect(() => memberAxes([1, 2, 3], [1, 2, 3])).toThrow(FeaError);
     try {
       memberAxes([1, 2, 3], [1, 2, 3]);
     } catch (e) {
-      expect((e as FrameAnalysisError).code).toBe(301);
+      expect((e as FeaError).code).toBe(301);
     }
   });
 });

@@ -3,12 +3,12 @@ import { areaMemberLoads } from "@app-fea/frame/area/area-member-loads";
 import type { MemberLoad } from "@app-fea/frame/types/model.type";
 import { throwIssues } from "@app-fea/shared/validation/issues";
 
-import type { FrameModel } from "../types/model.type";
-import { validateFrameModel } from "../validation/validate-model";
+import type { FeaModel } from "../types/model.type";
+import { validateModel } from "../validation/validate-model";
 
 /**
  * The member loads that a model's null areas send to the members along their edges — what
- * `analyzeFrame` adds to `memberLoads` — so they can be checked or previewed.
+ * `analyze` adds to `memberLoads` — so they can be checked or previewed.
  *
  * Two-way areas send each point to the nearest edge (corner-bisector split); one-way areas
  * split strips parallel to their unsupported edges half to each end; cantilever areas send
@@ -17,14 +17,14 @@ import { validateFrameModel } from "../validation/validate-model";
  * `projected` load is first converted, `q · |n · direction|`) and come out as trapezoidal loads
  * per member length in global X, Y and Z (and torques), each tagged with its load case.
  *
- * @param model - The frame model, validated first
+ * @param model - The model, validated first
  * @returns `memberLoads` and `warnings` (a one-way support edge parallel to the span)
- * @throws {FrameAnalysisError} 301–317 for an invalid model, with every problem in `issues`
+ * @throws {FeaError} 301–317 for an invalid model, with every problem in `issues`
  */
 export const distributeAreaLoads = (
-  model: FrameModel,
+  model: FeaModel,
 ): { memberLoads: MemberLoad[]; warnings: Warnings } => {
-  const issues = validateFrameModel(model);
+  const issues = validateModel(model);
   if (issues.length > 0) throwIssues(issues);
   return areaMemberLoads(model);
 };

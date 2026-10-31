@@ -1,8 +1,8 @@
-import { FrameAnalysisError } from "@app-core/errors/frame-analysis.error";
-import { analyzeFrame } from "@app-fea/analysis/solver/analyze-frame";
+import { FeaError } from "@app-core/errors/fea.error";
+import { analyze } from "@app-fea/analysis/solver/analyze";
 import type { Member, MemberEndRelease } from "@app-fea/frame/types/model.type";
-import type { FrameModel } from "@app-fea/analysis/types/model.type";
-import type { FrameResult } from "@app-fea/analysis/types/results.type";
+import type { FeaModel } from "@app-fea/analysis/types/model.type";
+import type { FeaResult } from "@app-fea/analysis/types/results.type";
 import { toLoadCaseModel, type SingleCaseModel } from "../analysis/single-case";
 
 const section = { E: 200000, G: 80000, A: 2000, I22: 2e6, I33: 2e6, J: 1e6 };
@@ -48,13 +48,13 @@ const truss = (member = trussMember, extra: Partial<SingleCaseModel> = {}): Sing
   ...extra,
 });
 
-const run = (model: SingleCaseModel): FrameResult => analyzeFrame(toLoadCaseModel(model));
-const axial = (r: FrameResult, id: string) => {
+const run = (model: SingleCaseModel): FeaResult => analyze(toLoadCaseModel(model));
+const axial = (r: FeaResult, id: string) => {
   const d = r.cases.LC.memberDiagrams.find((m) => m.memberId === id)!;
   return d.stations[0].N;
 };
 
-describe("analyzeFrame — automatic restraint of unresisted joint rotations", () => {
+describe("analyze — automatic restraint of unresisted joint rotations", () => {
   it("pin-jointed truss solves without 304 and matches the method of joints", () => {
     const r = run(truss());
     // R_A = R_C = 25 kN; joint A: F_AD·3/5 = −25, F_AB = −F_AD·4/5; joint B: F_BD = 20
@@ -108,7 +108,7 @@ describe("analyzeFrame — automatic restraint of unresisted joint rotations", (
     it("throws 304 when nothing grounds it: joints and members can spin about in-plane axes", () => {
       // a real rigid-body mechanism (each member turning about its own axis), not a joint rotation
       // that no member resists — release torsion at one end of each truss member instead
-      expect(() => run(truss(withTorsion))).toThrow(FrameAnalysisError);
+      expect(() => run(truss(withTorsion))).toThrow(FeaError);
     });
   });
 
@@ -132,9 +132,9 @@ describe("analyzeFrame — automatic restraint of unresisted joint rotations", (
       run(truss(trussMember, { nodalLoads: [{ nodeId: "D", my: 5 }] }));
       expect.unreachable();
     } catch (e) {
-      expect(e).toBeInstanceOf(FrameAnalysisError);
-      expect((e as FrameAnalysisError).code).toBe(304);
-      expect((e as FrameAnalysisError).details).toEqual({
+      expect(e).toBeInstanceOf(FeaError);
+      expect((e as FeaError).code).toBe(304);
+      expect((e as FeaError).details).toEqual({
         nodeId: "D",
         dof: "ry",
         loadCaseId: "LC",
@@ -211,10 +211,10 @@ describe("analyzeFrame — automatic restraint of unresisted joint rotations", (
   });
 
   it("leaves a joint without members to the stiffness check (304)", () => {
-    const model: FrameModel = toLoadCaseModel({
+    const model: FeaModel = toLoadCaseModel({
       ...truss(),
       nodes: [...truss().nodes, { id: "lonely", x: 0, y: 5000, z: 0 }],
     });
-    expect(() => analyzeFrame(model)).toThrow(FrameAnalysisError);
+    expect(() => analyze(model)).toThrow(FeaError);
   });
 });

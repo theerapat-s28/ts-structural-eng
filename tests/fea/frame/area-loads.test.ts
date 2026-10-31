@@ -1,8 +1,8 @@
-import { FrameAnalysisError } from "@app-core/errors/frame-analysis.error";
+import { FeaError } from "@app-core/errors/fea.error";
 import { distributeAreaLoads } from "@app-fea/analysis/solver/distribute-area-loads";
-import { analyzeFrame } from "@app-fea/analysis/solver/analyze-frame";
+import { analyze } from "@app-fea/analysis/solver/analyze";
 import type { MemberLoad, NullArea, TrapezoidalMemberLoad } from "@app-fea/frame/types/model.type";
-import type { FrameModel } from "@app-fea/analysis/types/model.type";
+import type { FeaModel } from "@app-fea/analysis/types/model.type";
 import type { AreaLoadDirection } from "@app-fea/shared/types/model.type";
 
 type V3 = [number, number, number];
@@ -26,7 +26,7 @@ const slab = (
   corners: V3[],
   area: Partial<NullArea> = {},
   direction: AreaLoadDirection = "Z",
-): FrameModel => ({
+): FeaModel => ({
   nodes: corners.map(([x, y, z], i) => ({ id: i, x, y, z })),
   members: corners.map((_, i) => ({
     id: `e${i}`,
@@ -44,7 +44,7 @@ const loadsOn = (loads: MemberLoad[], memberId: string) =>
   loads.filter((l) => l.memberId === memberId) as TrapezoidalMemberLoad[];
 
 /** Resultant force (kN) and moment about the origin (kN·m) of generated member loads. */
-const resultant = (model: FrameModel, loads: MemberLoad[]) => {
+const resultant = (model: FeaModel, loads: MemberLoad[]) => {
   const node = (id: unknown): V3 => {
     const n = model.nodes.find((x) => x.id === id)!;
     return [n.x, n.y, n.z];
@@ -92,7 +92,7 @@ const polygon = (corners: V3[]) => {
 };
 
 /** Expects the loads to add up to q·A along global Z, acting at the area centroid. */
-const expectStaticallyEquivalent = (corners: V3[], model: FrameModel, loads: MemberLoad[]) => {
+const expectStaticallyEquivalent = (corners: V3[], model: FeaModel, loads: MemberLoad[]) => {
   const { area, centroid } = polygon(corners);
   const { F, M } = resultant(model, loads);
   const Fz = q * area * 1e-6;
@@ -309,7 +309,7 @@ describe("cantilever distribution", () => {
   });
 
   it("is carried by the beam: Σ reactions balance q·A and its moment about the edge", () => {
-    const r = analyzeFrame({
+    const r = analyze({
       ...model,
       members: [model.members[0]],
       restraints: model.restraints,
@@ -364,7 +364,7 @@ describe("inclined areas and edge chains", () => {
       [0, 2000, -0, -10],
       [2000, 3500, -10, -10],
     ]);
-    const reactions = (m: FrameModel) => analyzeFrame(m).cases.D.reactions;
+    const reactions = (m: FeaModel) => analyze(m).cases.D.reactions;
     const [r1, r2] = [reactions(whole), reactions(split)];
     for (const r of r1) {
       const other = r2.find((x) => x.nodeId === r.nodeId)!;
@@ -374,13 +374,13 @@ describe("inclined areas and edge chains", () => {
   });
 });
 
-describe("analyzeFrame with null areas", () => {
+describe("analyze with null areas", () => {
   it("adds the area loads to the case, so the reactions balance q·A, and factors them in combinations", () => {
-    const model: FrameModel = {
+    const model: FeaModel = {
       ...slab(rectangle),
       combinations: [{ id: "U", terms: [{ case: "D", factor: 1.4 }] }],
     };
-    const result = analyzeFrame(model);
+    const result = analyze(model);
     const fz = (r: (typeof result.cases)[string]) => r.reactions.reduce((s, x) => s + x.fz, 0);
     expect(fz(result.cases.D)).toBeCloseTo(-q * 24, 6); // 120 kN up
     expect(fz(result.combinations.U)).toBeCloseTo(-q * 24 * 1.4, 6);
@@ -388,9 +388,7 @@ describe("analyzeFrame with null areas", () => {
   });
 
   it("reports the distribution warnings in the result", () => {
-    const result = analyzeFrame(
-      slab(rectangle, { distribution: "oneWay", supportEdges: [0, 1, 2] }),
-    );
+    const result = analyze(slab(rectangle, { distribution: "oneWay", supportEdges: [0, 1, 2] }));
     expect(result.warnings.some((w) => w.message.includes("support edge 1"))).toBe(true);
   });
 
@@ -408,11 +406,11 @@ describe("analyzeFrame with null areas", () => {
   it("distributeAreaLoads validates the model first", () => {
     const model = slab(rectangle);
     model.members = model.members.slice(1);
-    expect(() => distributeAreaLoads(model)).toThrow(FrameAnalysisError);
+    expect(() => distributeAreaLoads(model)).toThrow(FeaError);
     try {
       distributeAreaLoads(model);
     } catch (e) {
-      expect((e as FrameAnalysisError).code).toBe(316);
+      expect((e as FeaError).code).toBe(316);
     }
   });
 });

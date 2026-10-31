@@ -10,5 +10,5 @@ export type {
   ShellCornerForces,
   ShellForceComponent,
   ShellElementForces,
-  FrameMesh,
+  FeaMesh,
 } from "./types/results.type";

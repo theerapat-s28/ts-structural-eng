@@ -6,8 +6,31 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **New names for the analysis exports.** "Frame" now means frame members only, as in ETABS. The exports that apply to the whole model, which may have members, shells or both, are renamed:
+
+  | Before | Now |
+  | --- | --- |
+  | `analyzeFrame`, `createFrameAnalysis`, `validateFrameModel` | `analyze`, `createAnalysis`, `validateModel` |
+  | `AnalyzeFrameOptions`, `FrameAnalysis` | `AnalyzeOptions`, `Analysis` |
+  | `FrameModel`, `FrameResult`, `FrameCaseResult`, `FrameEnvelope`, `FrameMesh`, `FrameNode`, `FrameId` | `FeaModel`, `FeaResult`, `FeaCaseResult`, `FeaEnvelope`, `FeaMesh`, `FeaNode`, `FeaId` |
+  | `FrameAnalysisError`, `FrameErrors`, `FrameModelIssue`, `FrameErrorDetails` | `FeaError`, `FeaErrors`, `FeaModelIssue`, `FeaErrorDetails` |
+
+  They are exported from the same places as the old names (the package root, `/fea`, and `/core` for the errors) and behave the same: same inputs, results, and error codes and messages.
+- **`members` is optional in `FeaModel`.** A model of shells only, such as a mat foundation, can leave it out instead of passing `members: []`.
+
+### Changed
+
+- The plain `Error` that `memberDemandEnvelope` throws for an id that is not in the result says "is not in the result" instead of "is not in the frame result".
+
+### Deprecated
+
+- The names before 3.2.0, listed under **Added**, still work: each is an alias of its new name (the same function, type, error class or object), so `instanceof FrameAnalysisError` still catches every error `analyze` throws. They are marked `@deprecated`, so editors strike them through, and will be removed in 4.0.0. To migrate, rename the imports and the types; nothing else changes.
+
 ### Documentation
 
+- The FEA reference page is titled **Frame and Shell Analysis** and uses the new names throughout. Its anchors follow them too (`#analyze`, `#create-analysis`, `#validate-model`, `#fea-model`, `#fea-result` and so on), so links to the old anchors such as `#analyze-frame` open the top of the page.
 - README: a second quick start, with a slab meshed into shell elements on edge beams and columns; what changes for a front end when a model has shells (generated nodes, elements, shell forces); the model and result fields at a glance; null areas compared with shells; running in a Web Worker, with measured analysis times; and the shell error codes 326–329.
 
 ## [3.1.0] — 2026-10-31

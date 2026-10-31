@@ -1,6 +1,6 @@
-import { analyzeFrame, memberDemandEnvelope } from "@app-fea/analysis/index";
+import { analyze, memberDemandEnvelope } from "@app-fea/analysis/index";
 import { rectBeamToSectionProperties, rectBeamMomentCapacity } from "@app-rc/index";
-import type { FrameModel } from "@app-fea/analysis/types/model.type";
+import type { FeaModel } from "@app-fea/analysis/types/model.type";
 
 describe("RC beam → load cases → combinations → demand envelope", () => {
   // Two 5 m spans, 300×600 beam; rollers at A and C, pin at B.
@@ -12,7 +12,7 @@ describe("RC beam → load cases → combinations → demand envelope", () => {
   const support = { uy: true, uz: true };
   const udl = (loadCase: string, memberId: string, w: number) =>
     ({ loadCase, type: "udl", memberId, direction: "Z", w }) as const;
-  const model: FrameModel = {
+  const model: FeaModel = {
     nodes: [
       { id: "A", x: 0, y: 0, z: 0 },
       { id: "B", x: span, y: 0, z: 0 },
@@ -56,7 +56,7 @@ describe("RC beam → load cases → combinations → demand envelope", () => {
       },
     ],
   };
-  const result = analyzeFrame(model);
+  const result = analyze(model);
   const wU = 1.2 * (4.32 + 10) + 1.6 * 15; // 41.184 kN/m
 
   it("gives the textbook two-span envelope for the governing combination", () => {

@@ -1,8 +1,8 @@
-import { FrameAnalysisError } from "@app-core/errors/frame-analysis.error";
+import { FeaError } from "@app-core/errors/fea.error";
 import type { SectionProperties } from "@app-core/types/section-properties.type";
-import { analyzeFrame } from "@app-fea/analysis/solver/analyze-frame";
-import type { FrameModel } from "@app-fea/analysis/types/model.type";
-import type { FrameCaseResult } from "@app-fea/analysis/types/results.type";
+import { analyze } from "@app-fea/analysis/solver/analyze";
+import type { FeaModel } from "@app-fea/analysis/types/model.type";
+import type { FeaCaseResult } from "@app-fea/analysis/types/results.type";
 import {
   flattenCases,
   type CaseWithLoads,
@@ -47,7 +47,7 @@ const prescaled = (cases: CaseWithLoads[], factors: Record<string, number>): Cas
   };
 };
 
-const expectSameResult = (a: FrameCaseResult, b: FrameCaseResult) => {
+const expectSameResult = (a: FeaCaseResult, b: FeaCaseResult) => {
   a.nodalDisplacements.forEach((d, i) => {
     const e = b.nodalDisplacements[i];
     (["ux", "uy", "uz"] as const).forEach((k) => expect(d[k]).toBeCloseTo(e[k], 4));
@@ -76,8 +76,8 @@ const expectSameResult = (a: FrameCaseResult, b: FrameCaseResult) => {
 // 3D L-shaped frame: fixed column, beam along X, cantilever along Y with a hinge
 const frame = (
   loadCases: CaseWithLoads[],
-  combinations: FrameModel["combinations"] = [],
-): FrameModel => ({
+  combinations: FeaModel["combinations"] = [],
+): FeaModel => ({
   nodes: [
     { id: "A", x: 0, y: 0, z: 0 },
     { id: "B", x: 0, y: 0, z: 3500 },
@@ -129,7 +129,7 @@ const W: CaseWithLoads = {
 };
 
 describe("load combinations — superposition", () => {
-  const result = analyzeFrame(
+  const result = analyze(
     frame(
       [D, L, W],
       [
@@ -172,12 +172,12 @@ describe("load combinations — superposition", () => {
     ["1.2D+1.0W+1.0L", { D: 1.2, W: 1, L: 1 }],
     ["0.9D-1.0W", { D: 0.9, W: -1 }],
   ])("%s equals one analysis of the pre-scaled, summed loads", (id, factors) => {
-    const oracle = analyzeFrame(frame([prescaled([D, L, W], factors)])).cases.ORACLE;
+    const oracle = analyze(frame([prescaled([D, L, W], factors)])).cases.ORACLE;
     expectSameResult(result.combinations[id], oracle);
   });
 
   it("reports each case independently of the case order", () => {
-    const reordered = analyzeFrame(frame([W, L, D]));
+    const reordered = analyze(frame([W, L, D]));
     (["D", "L", "W"] as const).forEach((id) =>
       expectSameResult(reordered.cases[id], result.cases[id]),
     );
@@ -185,17 +185,17 @@ describe("load combinations — superposition", () => {
 
   it("groups top-level loads by their load case regardless of their order", () => {
     const model = frame([D, L, W]);
-    const shuffled: FrameModel = {
+    const shuffled: FeaModel = {
       ...model,
       nodalLoads: [...(model.nodalLoads ?? [])].reverse(),
       memberLoads: [...(model.memberLoads ?? [])].reverse(),
     };
-    const r = analyzeFrame(shuffled);
+    const r = analyze(shuffled);
     (["D", "L", "W"] as const).forEach((id) => expectSameResult(r.cases[id], result.cases[id]));
   });
 
   it("gives a load case with no loads zero results", () => {
-    const r = analyzeFrame(frame([D, { id: "EMPTY" }])).cases.EMPTY;
+    const r = analyze(frame([D, { id: "EMPTY" }])).cases.EMPTY;
     r.reactions.forEach((x) => expect(x.fz).toBe(0));
     r.nodalDisplacements.forEach((x) => expect(x.uz).toBe(0));
   });
@@ -226,7 +226,7 @@ describe("load combinations — superposition", () => {
 
 describe("load combinations — nesting", () => {
   it("expands combinations of combinations into net case factors", () => {
-    const nested = analyzeFrame(
+    const nested = analyze(
       frame(
         [D, L],
         [
@@ -252,9 +252,9 @@ describe("load combinations — nesting", () => {
         ],
       ),
     );
-    const oracle = analyzeFrame(frame([prescaled([D, L], { D: 1, L: 1.5 })])).cases.ORACLE;
+    const oracle = analyze(frame([prescaled([D, L], { D: 1, L: 1.5 })])).cases.ORACLE;
     expectSameResult(nested.combinations.MIX, oracle);
-    const twoL = analyzeFrame(frame([prescaled([L], { L: 2 })])).cases.ORACLE;
+    const twoL = analyze(frame([prescaled([L], { L: 2 })])).cases.ORACLE;
     expectSameResult(nested.combinations.EARLY, twoL);
   });
 });
@@ -263,7 +263,7 @@ describe("load combinations — exact combined diagrams", () => {
   // Simply supported 6 m beam. Case D: UDL 10 kN/m. Case P: 30 kN at 1.5 m.
   // D+P: RA = 30 + 22.5 = 52.5 kN; zero shear at x = 2.25 m;
   // M = 52.5·2.25 − 10·2.25²/2 − 30·0.75 = 70.3125 kN·m (case extremes 45 + 33.75 would give 78.75).
-  const beam: FrameModel = {
+  const beam: FeaModel = {
     nodes: [
       { id: 1, x: 0, y: 0, z: 0 },
       { id: 2, x: 6000, y: 0, z: 0 },
@@ -288,7 +288,7 @@ describe("load combinations — exact combined diagrams", () => {
       },
     ],
   };
-  const result = analyzeFrame(beam);
+  const result = analyze(beam);
 
   it("finds the combined zero-shear moment peak, not the sum of case extremes", () => {
     expect(result.cases.D.memberDiagrams[0].extremes.M3.max.value).toBeCloseTo(45, 3);
@@ -309,7 +309,7 @@ describe("load combinations — exact combined diagrams", () => {
 });
 
 describe("load combinations — envelope", () => {
-  const result = analyzeFrame(
+  const result = analyze(
     frame(
       [D, L, W],
       [
@@ -381,14 +381,14 @@ describe("load combinations — envelope", () => {
   });
 
   it("is absent when the model has no combinations", () => {
-    expect(analyzeFrame(frame([D])).envelope).toBeUndefined();
+    expect(analyze(frame([D])).envelope).toBeUndefined();
   });
 });
 
 describe("self-weight", () => {
   const span = 6000;
   const w = (78.5 * A * 1e-6 * span) / 1000; // kN, γ·A·L
-  const simple = (selfWeight: number, sec: SectionProperties = section): FrameModel => ({
+  const simple = (selfWeight: number, sec: SectionProperties = section): FeaModel => ({
     nodes: [
       { id: 1, x: 0, y: 0, z: 0 },
       { id: 2, x: span, y: 0, z: 0 },
@@ -402,20 +402,20 @@ describe("self-weight", () => {
   });
 
   it("applies γ·A per unit length along global −Z", () => {
-    const r = analyzeFrame(simple(1)).cases.SW;
+    const r = analyze(simple(1)).cases.SW;
     expect(r.reactions[0].fz).toBeCloseTo(w / 2, 3); // reactions are presented to 4 decimals
     expect(r.reactions[1].fz).toBeCloseTo(w / 2, 3);
     expect(r.memberDiagrams[0].extremes.M3.max.value).toBeCloseTo((w * (span / 1000)) / 8, 3);
   });
 
   it("scales with the multiplier and is zero for a weightless member", () => {
-    expect(analyzeFrame(simple(2)).cases.SW.reactions[0].fz).toBeCloseTo(w, 3);
-    expect(analyzeFrame(simple(1, { ...section, unitWeight: 0 })).cases.SW.reactions[0].fz).toBe(0);
+    expect(analyze(simple(2)).cases.SW.reactions[0].fz).toBeCloseTo(w, 3);
+    expect(analyze(simple(1, { ...section, unitWeight: 0 })).cases.SW.reactions[0].fz).toBe(0);
   });
 
   it("gives the cantilever tip deflection wL⁴/8EI along an inclined member", () => {
     const len = 3000;
-    const r = analyzeFrame({
+    const r = analyze({
       nodes: [
         { id: 1, x: 0, y: 0, z: 0 },
         { id: 2, x: 0, y: len, z: 0 },
@@ -448,13 +448,13 @@ describe("self-weight", () => {
       { id: "DE", startNodeId: "D", endNodeId: "E", section: girder },
       { id: "AD", startNodeId: "A", endNodeId: "D", section: column }, // inclined brace
     ];
-    const model: FrameModel = {
+    const model: FeaModel = {
       nodes,
       members,
       restraints: ["A", "B", "F"].map((nodeId) => ({ nodeId, ...fixed })),
       loadCases: [{ id: "D", type: "dead", selfWeight: 1 }],
     };
-    const r = analyzeFrame(model).cases.D;
+    const r = analyze(model).cases.D;
 
     // Σ γ·A·L over every member, in kN
     const node = (id: string) => nodes.find((n) => n.id === id)!;
@@ -482,17 +482,17 @@ describe("self-weight", () => {
 
   it("is ignored when the multiplier is 0 even without a unit weight", () => {
     const { unitWeight: _omit, ...noWeight } = section;
-    expect(analyzeFrame(simple(0, noWeight)).cases.SW.reactions[0].fz).toBe(0);
+    expect(analyze(simple(0, noWeight)).cases.SW.reactions[0].fz).toBe(0);
   });
 });
 
 describe("load case and combination errors", () => {
-  const codeOf = (model: FrameModel): number | undefined => {
+  const codeOf = (model: FeaModel): number | undefined => {
     try {
-      analyzeFrame(model);
+      analyze(model);
     } catch (e) {
-      expect(e).toBeInstanceOf(FrameAnalysisError);
-      return (e as FrameAnalysisError).code;
+      expect(e).toBeInstanceOf(FeaError);
+      return (e as FeaError).code;
     }
     return undefined;
   };

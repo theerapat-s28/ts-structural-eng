@@ -1,4 +1,4 @@
-import type { FrameId } from "@app-fea/shared/types/model.type";
+import type { FeaId } from "@app-fea/shared/types/model.type";
 
 /** Force the node exerts on one member end, in local axes 1, 2, 3 (right-hand rotations). */
 export interface MemberEndForce {
@@ -11,7 +11,7 @@ export interface MemberEndForce {
 }
 
 export interface MemberEndForces {
-  memberId: FrameId;
+  memberId: FeaId;
   start: MemberEndForce;
   end: MemberEndForce;
 }
@@ -31,7 +31,7 @@ export interface ReleaseDeformation {
 }
 
 export interface MemberReleaseDeformations {
-  memberId: FrameId;
+  memberId: FeaId;
   start: ReleaseDeformation;
   end: ReleaseDeformation;
 }
@@ -67,7 +67,7 @@ export interface ExtremeValue {
 }
 
 export interface MemberDiagram {
-  memberId: FrameId;
+  memberId: FeaId;
   length: number; // mm
   stations: MemberStation[];
   extremes: Record<StationComponent, { max: ExtremeValue; min: ExtremeValue }>;

@@ -1,6 +1,6 @@
 import type { NullArea } from "@app-fea/frame/types/model.type";
-import type { FrameModel } from "@app-fea/analysis/types/model.type";
-import { validateFrameModel } from "@app-fea/analysis/validation/validate-model";
+import type { FeaModel } from "@app-fea/analysis/types/model.type";
+import { validateModel } from "@app-fea/analysis/validation/validate-model";
 
 const sec = { E: 200000, G: 80000, A: 5000, I22: 8e7, I33: 8e7, J: 1e7 };
 const fixed = { ux: true, uy: true, uz: true, rx: true, ry: true, rz: true };
@@ -9,7 +9,7 @@ const fixed = { ux: true, uy: true, uz: true, rx: true, ry: true, rz: true };
 const bad = <T>(value: unknown) => value as T;
 
 /** A 6 m × 4 m bay at z = 3000 with beams on all four sides; node 5 is off the plane. */
-const model = (over: Partial<FrameModel> = {}): FrameModel => ({
+const model = (over: Partial<FeaModel> = {}): FeaModel => ({
   nodes: [
     { id: 1, x: 0, y: 0, z: 3000 },
     { id: 2, x: 6000, y: 0, z: 3000 },
@@ -29,9 +29,9 @@ const model = (over: Partial<FrameModel> = {}): FrameModel => ({
   areaLoads: [{ loadCase: "D", areaId: "S1", direction: "Z", q: -5 }],
   ...over,
 });
-const withArea = (area: Partial<NullArea>, over: Partial<FrameModel> = {}) =>
+const withArea = (area: Partial<NullArea>, over: Partial<FeaModel> = {}) =>
   model({ areas: [{ id: "S1", nodeIds: [1, 2, 3, 4], distribution: "twoWay", ...area }], ...over });
-const issues = (m: FrameModel) => validateFrameModel(m).map((i) => [i.code, i.details]);
+const issues = (m: FeaModel) => validateModel(m).map((i) => [i.code, i.details]);
 
 describe("null area validation", () => {
   it("accepts two-way, one-way and cantilever areas with their supports", () => {
@@ -146,7 +146,7 @@ describe("null area validation", () => {
   });
 
   it("names the area and edge in the message", () => {
-    const [issue] = validateFrameModel(model({ members: model().members.slice(1) }));
+    const [issue] = validateModel(model({ members: model().members.slice(1) }));
     expect(issue.message).toContain('[area "S1", edge 0]');
   });
 });

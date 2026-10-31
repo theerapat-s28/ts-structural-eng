@@ -1,11 +1,11 @@
 import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/frame.constant";
-import type { FrameId } from "@app-fea/shared/types/model.type";
+import type { FeaId } from "@app-fea/shared/types/model.type";
 
 import type { Member } from "../types/model.type";
 import type { Vec3 } from "./area-geometry";
 
 /** The members meeting at each node, with the node at their other end. */
-export type MemberAdjacency = Map<FrameId, { member: Member; other: FrameId }[]>;
+export type MemberAdjacency = Map<FeaId, { member: Member; other: FeaId }[]>;
 
 /** One member covering part of an area edge, with positions along the edge from its start. */
 export interface EdgeSegment {
@@ -18,7 +18,7 @@ export interface EdgeSegment {
 /** Indexes members by the nodes they connect. */
 export const memberAdjacency = (members: Member[]): MemberAdjacency => {
   const adjacency: MemberAdjacency = new Map();
-  const link = (node: FrameId, entry: { member: Member; other: FrameId }) => {
+  const link = (node: FeaId, entry: { member: Member; other: FeaId }) => {
     const list = adjacency.get(node);
     if (list) list.push(entry);
     else adjacency.set(node, [entry]);
@@ -39,9 +39,9 @@ export const memberAdjacency = (members: Member[]): MemberAdjacency => {
  * @returns The segments in order along the edge, or `null` if a gap leaves part of it uncovered
  */
 export const edgeMemberChain = (
-  start: FrameId,
-  end: FrameId,
-  position: (id: FrameId) => Vec3,
+  start: FeaId,
+  end: FeaId,
+  position: (id: FeaId) => Vec3,
   adjacency: MemberAdjacency,
 ): EdgeSegment[] | null => {
   const A = position(start);
@@ -55,7 +55,7 @@ export const edgeMemberChain = (
   let current = start;
   let s = 0;
   while (current !== end) {
-    let next: { member: Member; other: FrameId; s: number } | undefined;
+    let next: { member: Member; other: FeaId; s: number } | undefined;
     for (const { member, other } of adjacency.get(current) ?? []) {
       const P = position(other);
       const r: Vec3 = [P[0] - A[0], P[1] - A[1], P[2] - A[2]];

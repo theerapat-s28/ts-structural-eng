@@ -1,7 +1,7 @@
 // Analysis of the whole model: members and shells together
-export { analyzeFrame, createFrameAnalysis } from "./solver/analyze-frame";
-export type { AnalyzeFrameOptions, FrameAnalysis } from "./solver/analyze-frame";
-export { validateFrameModel } from "./validation/validate-model";
+export { analyze, createAnalysis } from "./solver/analyze";
+export type { AnalyzeOptions, Analysis } from "./solver/analyze";
+export { validateModel } from "./validation/validate-model";
 export { distributeAreaLoads } from "./solver/distribute-area-loads";
 export { memberDemandEnvelope } from "./post/demand-envelope";
 export type { MemberDemandEnvelope, DemandEnvelopeOptions } from "./post/demand-envelope";
@@ -12,7 +12,7 @@ export type {
   LoadCase,
   CombinationTerm,
   LoadCombination,
-  FrameModel,
+  FeaModel,
 } from "./types/model.type";
 export type {
   NodalDisplacement,
@@ -21,7 +21,7 @@ export type {
   GoverningValue,
   GoverningExtremeValue,
   Bound,
-  FrameCaseResult,
-  FrameEnvelope,
-  FrameResult,
+  FeaCaseResult,
+  FeaEnvelope,
+  FeaResult,
 } from "./types/results.type";

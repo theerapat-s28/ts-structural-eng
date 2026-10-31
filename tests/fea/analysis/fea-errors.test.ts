@@ -1,6 +1,6 @@
-import { FrameAnalysisError, FrameErrors } from "@app-core/errors/frame-analysis.error";
-import { analyzeFrame } from "@app-fea/analysis/solver/analyze-frame";
-import type { FrameModel } from "@app-fea/analysis/types/model.type";
+import { FeaError, FeaErrors } from "@app-core/errors/fea.error";
+import { analyze } from "@app-fea/analysis/solver/analyze";
+import type { FeaModel } from "@app-fea/analysis/types/model.type";
 import { toLoadCaseModel, type SingleCaseModel } from "./single-case";
 
 const sec = { E: 200000, G: 80000, A: 5000, I22: 8e7, I33: 8e7, J: 1e7 };
@@ -16,27 +16,27 @@ const base = (): SingleCaseModel => ({
   nodalLoads: [{ nodeId: 2, fz: -1 }],
 });
 
-const codeOf = (input: SingleCaseModel | FrameModel): number | undefined => {
+const codeOf = (input: SingleCaseModel | FeaModel): number | undefined => {
   const model = "loadCases" in input ? input : toLoadCaseModel(input);
   try {
-    analyzeFrame(model);
+    analyze(model);
   } catch (e) {
-    expect(e).toBeInstanceOf(FrameAnalysisError);
-    return (e as FrameAnalysisError).code;
+    expect(e).toBeInstanceOf(FeaError);
+    return (e as FeaError).code;
   }
   return undefined;
 };
 
-describe("FrameAnalysisError", () => {
+describe("FeaError", () => {
   it("is a separate error class with a coded message", () => {
-    const error = new FrameAnalysisError(FrameErrors.STRUCTURE_UNSTABLE);
+    const error = new FeaError(FeaErrors.STRUCTURE_UNSTABLE);
     expect(error).toBeInstanceOf(Error);
     expect(error.code).toBe(304);
-    expect(error.message).toBe(FrameErrors.STRUCTURE_UNSTABLE.message);
+    expect(error.message).toBe(FeaErrors.STRUCTURE_UNSTABLE.message);
   });
 
   it("uses the 3XX group", () => {
-    const codes = Object.values(FrameErrors).map((e) => e.code);
+    const codes = Object.values(FeaErrors).map((e) => e.code);
     expect(codes).toEqual([
       301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 326, 327,
       328, 329,
@@ -44,7 +44,7 @@ describe("FrameAnalysisError", () => {
   });
 });
 
-describe("analyzeFrame validation", () => {
+describe("analyze validation", () => {
   it("accepts the base model", () => {
     expect(codeOf(base())).toBeUndefined();
   });

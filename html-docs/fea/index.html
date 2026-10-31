@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Frame Analysis — API Reference</title>
+  <title>Frame and Shell Analysis — API Reference</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -355,7 +355,7 @@
   <aside class="sidebar">
     <div class="sidebar__brand">
       <div class="brand-label">API Reference</div>
-      <h2>Frame Analysis</h2>
+      <h2>Frame and Shell Analysis</h2>
     </div>
     <nav>
       <a href="../"><span style="font-size:14px">←</span> All modules</a>
@@ -373,9 +373,9 @@
       <a href="#analysis-flow"><span style="font-size:14px">◆</span> Analysis flow</a>
 
       <div class="nav-section-label">Analysis</div>
-      <a href="#analyze-frame"><span class="mbadge m-fn">FN</span> analyzeFrame</a>
-      <a href="#create-frame-analysis"><span class="mbadge m-fn">FN</span> createFrameAnalysis</a>
-      <a href="#validate-frame-model"><span class="mbadge m-fn">FN</span> validateFrameModel</a>
+      <a href="#analyze"><span class="mbadge m-fn">FN</span> analyze</a>
+      <a href="#create-analysis"><span class="mbadge m-fn">FN</span> createAnalysis</a>
+      <a href="#validate-model"><span class="mbadge m-fn">FN</span> validateModel</a>
       <a href="#distribute-area-loads"><span class="mbadge m-fn">FN</span> distributeAreaLoads</a>
       <a href="#member-demand-envelope"><span class="mbadge m-fn">FN</span> memberDemandEnvelope</a>
 
@@ -385,9 +385,9 @@
       <a href="#member-axes"><span class="mbadge m-fn">FN</span> memberAxes</a>
 
       <div class="nav-section-label">Types — Model</div>
-      <a href="#frame-model"><span class="mbadge m-type">TYPE</span> FrameModel</a>
-      <a href="#frame-id"><span class="mbadge m-type">TYPE</span> FrameId</a>
-      <a href="#frame-node"><span class="mbadge m-type">TYPE</span> FrameNode</a>
+      <a href="#fea-model"><span class="mbadge m-type">TYPE</span> FeaModel</a>
+      <a href="#fea-id"><span class="mbadge m-type">TYPE</span> FeaId</a>
+      <a href="#fea-node"><span class="mbadge m-type">TYPE</span> FeaNode</a>
       <a href="#member"><span class="mbadge m-type">TYPE</span> Member</a>
       <a href="#member-end-release"><span class="mbadge m-type">TYPE</span> MemberEndRelease</a>
       <a href="#dof-release"><span class="mbadge m-type">TYPE</span> DofRelease</a>
@@ -417,12 +417,12 @@
       <a href="#area-load"><span class="mbadge m-type">TYPE</span> AreaLoad</a>
       <a href="#area-load-direction"><span class="mbadge m-type">TYPE</span> AreaLoadDirection</a>
       <div class="nav-section-label">Types — Options</div>
-      <a href="#analyze-frame-options"><span class="mbadge m-type">TYPE</span> AnalyzeFrameOptions</a>
+      <a href="#analyze-options"><span class="mbadge m-type">TYPE</span> AnalyzeOptions</a>
       <a href="#demand-envelope-options"><span class="mbadge m-type">TYPE</span> DemandEnvelopeOptions</a>
       <div class="nav-section-label">Types — Results</div>
-      <a href="#frame-result"><span class="mbadge m-type">TYPE</span> FrameResult</a>
+      <a href="#fea-result"><span class="mbadge m-type">TYPE</span> FeaResult</a>
       <a href="#auto-restrained-dof"><span class="mbadge m-type">TYPE</span> AutoRestrainedDof</a>
-      <a href="#frame-case-result"><span class="mbadge m-type">TYPE</span> FrameCaseResult</a>
+      <a href="#fea-case-result"><span class="mbadge m-type">TYPE</span> FeaCaseResult</a>
       <a href="#nodal-displacement"><span class="mbadge m-type">TYPE</span> NodalDisplacement</a>
       <a href="#nodal-reaction"><span class="mbadge m-type">TYPE</span> NodalReaction</a>
       <a href="#member-end-forces"><span class="mbadge m-type">TYPE</span> MemberEndForces</a>
@@ -432,22 +432,22 @@
       <a href="#member-diagram"><span class="mbadge m-type">TYPE</span> MemberDiagram</a>
       <a href="#shell-element-forces"><span class="mbadge m-type">TYPE</span> ShellElementForces</a>
       <a href="#shell-corner-forces"><span class="mbadge m-type">TYPE</span> ShellCornerForces</a>
-      <a href="#frame-mesh"><span class="mbadge m-type">TYPE</span> FrameMesh</a>
+      <a href="#fea-mesh"><span class="mbadge m-type">TYPE</span> FeaMesh</a>
       <a href="#member-station"><span class="mbadge m-type">TYPE</span> MemberStation</a>
       <a href="#station-component"><span class="mbadge m-type">TYPE</span> StationComponent</a>
       <a href="#extreme-value"><span class="mbadge m-type">TYPE</span> ExtremeValue</a>
-      <a href="#frame-envelope"><span class="mbadge m-type">TYPE</span> FrameEnvelope</a>
+      <a href="#fea-envelope"><span class="mbadge m-type">TYPE</span> FeaEnvelope</a>
       <a href="#governing-value"><span class="mbadge m-type">TYPE</span> GoverningValue</a>
       <a href="#governing-extreme-value"><span class="mbadge m-type">TYPE</span> GoverningExtremeValue</a>
       <a href="#bound"><span class="mbadge m-type">TYPE</span> Bound</a>
-      <a href="#frame-analysis-type"><span class="mbadge m-type">TYPE</span> FrameAnalysis</a>
+      <a href="#analysis-type"><span class="mbadge m-type">TYPE</span> Analysis</a>
       <a href="#member-demand-envelope-type"><span class="mbadge m-type">TYPE</span> MemberDemandEnvelope</a>
       <div class="nav-section-label">Types — Validation</div>
-      <a href="#frame-model-issue"><span class="mbadge m-type">TYPE</span> FrameModelIssue</a>
-      <a href="#frame-error-details"><span class="mbadge m-type">TYPE</span> FrameErrorDetails</a>
+      <a href="#fea-model-issue"><span class="mbadge m-type">TYPE</span> FeaModelIssue</a>
+      <a href="#fea-error-details"><span class="mbadge m-type">TYPE</span> FeaErrorDetails</a>
 
       <div class="nav-section-label">Reference</div>
-      <a href="#errors"><span class="mbadge m-error">ERR</span> FrameAnalysisError codes</a>
+      <a href="#errors"><span class="mbadge m-error">ERR</span> FeaError codes</a>
       <a href="#summary"><span style="font-size:14px">☰</span> Export summary</a>
     </nav>
   </aside>
@@ -460,22 +460,28 @@
         <span class="label">Import from</span>
         <code>@theerapat-s28/ts-structural-eng-tools/fea</code>
       </div>
-      <h1>Frame Analysis</h1>
-      <p>Linear-elastic 3D frame analysis by the direct stiffness method, run for user-defined load cases and factored load combinations, with member loads, area loads on null areas, shell areas (walls and slabs with their own stiffness), self-weight, end releases and partial-fixity springs, spring supports, force diagrams, envelopes and design demands that feed the RC capacity functions.</p>
+      <h1>Frame and Shell Analysis</h1>
+      <p>Linear-elastic 3D analysis of frames, shells or both by the direct stiffness method, run for user-defined load cases and factored load combinations, with member loads, area loads on null areas, shell areas (walls and slabs with their own stiffness), self-weight, end releases and partial-fixity springs, spring supports, force diagrams, envelopes and design demands that feed the RC capacity functions.</p>
     </div>
 
     <!-- ══════════════ Overview ══════════════ -->
     <div class="section" id="overview">
       <div class="section__title">Overview</div>
       <p>
-        <code>analyzeFrame</code> takes nodes, members, supports, the <strong>load cases</strong> (dead,
+        <code>analyze</code> takes nodes, members, shells, supports, the <strong>load cases</strong> (dead,
         superimposed dead, live, wind…) and the <strong>load combinations</strong> built from them. It analyses
         every load case, forms every combination by superposition, and returns displacements, reactions,
         member end forces and force diagrams, and shell forces and stresses for each, plus an envelope over the combinations. Section
         properties come from
         <a href="../rc/#rect-beam-to-section-properties" style="color:var(--accent)">rectBeamToSectionProperties</a>
-        or are supplied directly, so the module itself does not depend on the RC code.
+        or are supplied directly, so the module itself does not depend on the RC code. A model can be
+        members only, shells only (a mat foundation, a wall) or both.
       </p>
+
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span><strong>Renamed in 3.2.0.</strong> The exports that apply to the whole model no longer say "frame": <code>analyzeFrame</code> → <code>analyze</code>, <code>createFrameAnalysis</code> → <code>createAnalysis</code>, <code>validateFrameModel</code> → <code>validateModel</code>, <code>AnalyzeFrameOptions</code> → <code>AnalyzeOptions</code>, <code>FrameAnalysis</code> → <code>Analysis</code>, and <code>Fea</code> in place of <code>Frame</code> in <code>FeaModel</code>, <code>FeaResult</code>, <code>FeaCaseResult</code>, <code>FeaEnvelope</code>, <code>FeaMesh</code>, <code>FeaNode</code>, <code>FeaId</code>, <code>FeaModelIssue</code>, <code>FeaErrorDetails</code>, <code>FeaError</code> and <code>FeaErrors</code>. The old names still work as deprecated aliases of the new ones (so <code>instanceof FrameAnalysisError</code> still catches the errors) and are removed in 4.0.0.</span>
+      </div>
 
       <div class="alert alert--info">
         <span>ℹ️</span>
@@ -501,13 +507,13 @@
 
       <div class="sub-label" style="margin-top:20px">Model</div>
       <div class="model-grid">
-        <div class="model-card"><div class="model-card__title">FrameModel</div><div class="model-card__desc">Nodes, members, restraints, null areas, load cases, the loads tagged with their case, and combinations.</div></div>
+        <div class="model-card"><div class="model-card__title">FeaModel</div><div class="model-card__desc">Nodes, members, shell areas, restraints, null areas, load cases, the loads tagged with their case, and combinations.</div></div>
         <div class="model-card"><div class="model-card__title">LoadCase</div><div class="model-card__desc">One independently analysed set of loads: an id, a label and a self-weight multiplier.</div></div>
         <div class="model-card"><div class="model-card__title">NullArea</div><div class="model-card__desc">A 3- or 4-node area that only turns area loads into loads on the members along its edges.</div></div>
         <div class="model-card"><div class="model-card__title">ShellArea</div><div class="model-card__desc">A 4-node flat shell element with its own stiffness: a wall, slab or core panel.</div></div>
         <div class="model-card"><div class="model-card__title">LoadCombination</div><div class="model-card__desc">Factored sum of load cases and other combinations.</div></div>
         <div class="model-card"><div class="model-card__title">SectionProperties</div><div class="model-card__desc">E, G, A, I22, I33, J and optional unitWeight of a prismatic member.</div></div>
-        <div class="model-card"><div class="model-card__title">FrameResult</div><div class="model-card__desc">Per-case and per-combination results keyed by id, and the envelope.</div></div>
+        <div class="model-card"><div class="model-card__title">FeaResult</div><div class="model-card__desc">Per-case and per-combination results keyed by id, and the envelope.</div></div>
         <div class="model-card"><div class="model-card__title">MemberDemandEnvelope</div><div class="model-card__desc">Mu⁺, Mu⁻, Vu and Nu for design checks, with the governing combination.</div></div>
       </div>
     </div>
@@ -525,7 +531,7 @@
           <tr><td>Vertical member</td><td>Local 2 = +X, local 3 = 1 × 2. A column along +Z has local 3 = +Y.</td></tr>
           <tr><td>Member angle</td><td>Rotates local 2 and 3 about local 1 by the right-hand rule, in rad.</td></tr>
           <tr><td>Section axes</td><td>I33 is about local 3 and governs bending in the 1–2 plane (U2–R3, the major axis); I22 is about local 2 and governs the 1–3 plane (U3–R2). A rectangle with depth h along local 2: I33 = b·h³/12.</td></tr>
-          <tr><td>Rotations</td><td>All results use the right-hand rule. The reference stiffness matrix measures R2 and R3 the other way; <code>analyzeFrame</code> converts internally.</td></tr>
+          <tr><td>Rotations</td><td>All results use the right-hand rule. The reference stiffness matrix measures R2 and R3 the other way; <code>analyze</code> converts internally.</td></tr>
           <tr><td>Units</td><td>Coordinates, lengths and positions in mm; E, G in MPa; A in mm²; I, J in mm⁴; shell thickness in mm; loads in kN, kN·m, kN/m and kN/m²; springs in kN/mm and kN·m/rad; unit weight in kN/m³. Results in kN, kN·m, mm and rad.</td></tr>
           <tr><td>Null area axes</td><td>Local 3 is the area's normal by the right-hand rule around its <code>nodeIds</code>: corners listed counter-clockwise seen from above give local 3 = +Z. Edge <code>i</code> runs from <code>nodeIds[i]</code> to <code>nodeIds[i + 1]</code>, the last edge back to the first node.</td></tr>
           <tr><td>Shell axes</td><td>Local 3 is the shell's normal by the right-hand rule around its <code>nodeIds</code>. On a wall (any shell that is not horizontal) local 2 is +Z projected onto the shell, pointing up, and local 1 = 2 × 3 is horizontal; on a horizontal shell local 1 = +X and local 2 = 3 × 1. <code>angle</code> rotates local 1 and 2 about local 3. A wall in the XZ plane, corners counter-clockwise seen from −Y, has local 1 = +X, 2 = +Z, 3 = −Y, like a member along +X.</td></tr>
@@ -661,7 +667,7 @@
 
       <div class="alert alert--error">
         <span>⚠️</span>
-        <span>Throws <strong>FrameAnalysisError 308</strong> if a point load lies outside <code>0 ≤ a ≤ L</code>, or a uniform, trapezoidal or torque load does not satisfy <code>0 ≤ start &lt; end ≤ L</code>; <strong>302</strong> if a load names a node or member that is not in the model; <strong>309</strong> if its <code>loadCase</code> is not in <code>loadCases</code>; <strong>314</strong> (<code>details.field: "projected"</code>) if <code>projected</code> is not a boolean, or is <code>true</code> with a local direction or on a point or torque load.</span>
+        <span>Throws <strong>FeaError 308</strong> if a point load lies outside <code>0 ≤ a ≤ L</code>, or a uniform, trapezoidal or torque load does not satisfy <code>0 ≤ start &lt; end ≤ L</code>; <strong>302</strong> if a load names a node or member that is not in the model; <strong>309</strong> if its <code>loadCase</code> is not in <code>loadCases</code>; <strong>314</strong> (<code>details.field: "projected"</code>) if <code>projected</code> is not a boolean, or is <code>true</code> with a local direction or on a point or torque load.</span>
       </div>
 
       <div class="sub-label">Not supported yet</div>
@@ -805,7 +811,7 @@
 { <span class="k">loadCase</span>: <span class="s">"L"</span>, <span class="k">type</span>: <span class="s">"trapezoidal"</span>, <span class="k">memberId</span>: <span class="s">"B12"</span>, <span class="k">direction</span>: <span class="s">"Z"</span>, <span class="k">w1</span>: <span class="n">-6</span>,   <span class="k">w2</span>: <span class="n">0</span>,    <span class="k">start</span>: <span class="n">4000</span>, <span class="k">end</span>: <span class="n">6000</span> },  <span class="c">// bay: q·Lshort/2</span>
 { <span class="k">loadCase</span>: <span class="s">"L"</span>, <span class="k">type</span>: <span class="s">"trapezoidal"</span>, <span class="k">memberId</span>: <span class="s">"B12"</span>, <span class="k">direction</span>: <span class="s">"Z"</span>, <span class="k">w1</span>: <span class="n">-4.5</span>, <span class="k">w2</span>: <span class="n">-4.5</span>, <span class="k">start</span>: <span class="n">0</span>,    <span class="k">end</span>: <span class="n">6000</span> },  <span class="c">// balcony: q·c</span>
 { <span class="k">loadCase</span>: <span class="s">"L"</span>, <span class="k">type</span>: <span class="s">"torque"</span>, <span class="k">memberId</span>: <span class="s">"B12"</span>, <span class="k">t</span>: <span class="n">3.375</span> },  <span class="c">// q·c²/2, kN·m/m about +X (balcony on the −Y side)</span>
-<span class="c">// Σ reactions fz from analyzeFrame: 36 kN in "SD" (1.5 × 24 m²), 99 kN in "L" (3 × 24 + 3 × 9 m²)</span></pre>
+<span class="c">// Σ reactions fz from analyze: 36 kN in "SD" (1.5 × 24 m²), 99 kN in "L" (3 × 24 + 3 × 9 m²)</span></pre>
       </div>
       <div class="code-block">
         <div class="code-block__label">TypeScript — projected live load on a ramp rising 3 m over 4 m (true depth 5 m)</div>
@@ -831,7 +837,7 @@
       </div>
       <div class="alert alert--error">
         <span>⚠️</span>
-        <span>Throws <strong>FrameAnalysisError 315</strong> for invalid area geometry (not 3 or 4 corners, repeated, warped, non-convex, or a cantilever that is not a rectangle); <strong>316</strong> if an edge that receives load is not covered by members (<code>details.edge</code> names it); <strong>317</strong> if <code>supportEdges</code> does not fit the distribution, or a cantilever load acts along its support edge; <strong>302</strong> for an unknown node or area id; <strong>303</strong> for a duplicate area id; <strong>309</strong> for an unknown load case; <strong>314</strong> for an invalid <code>distribution</code>, <code>direction</code>, <code>q</code> or <code>projected</code> (not a boolean, or <code>true</code> with direction <code>"3"</code>).</span>
+        <span>Throws <strong>FeaError 315</strong> for invalid area geometry (not 3 or 4 corners, repeated, warped, non-convex, or a cantilever that is not a rectangle); <strong>316</strong> if an edge that receives load is not covered by members (<code>details.edge</code> names it); <strong>317</strong> if <code>supportEdges</code> does not fit the distribution, or a cantilever load acts along its support edge; <strong>302</strong> for an unknown node or area id; <strong>303</strong> for a duplicate area id; <strong>309</strong> for an unknown load case; <strong>314</strong> for an invalid <code>distribution</code>, <code>direction</code>, <code>q</code> or <code>projected</code> (not a boolean, or <code>true</code> with direction <code>"3"</code>).</span>
       </div>
     </div>
 
@@ -881,7 +887,7 @@
       <div class="code-block">
         <div class="code-block__label">TypeScript</div>
         <pre>
-<span class="b">const</span> result = <span class="u">analyzeFrame</span>({
+<span class="b">const</span> result = <span class="u">analyze</span>({
   <span class="k">nodes</span>: [
     { <span class="k">id</span>: <span class="n">1</span>, <span class="k">x</span>: <span class="n">0</span>,    <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">0</span> },     <span class="c">// mm, wall in the XZ plane</span>
     { <span class="k">id</span>: <span class="n">2</span>, <span class="k">x</span>: <span class="n">2000</span>, <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">0</span> },
@@ -947,7 +953,7 @@
       </div>
       <div class="alert alert--error">
         <span>⚠️</span>
-        <span>Throws <strong>FrameAnalysisError 326</strong> for invalid shell geometry (not 4 distinct corners, not convex, wrong order, or too warped); <strong>327</strong> for an invalid <code>section</code>; <strong>328</strong> for a translation nothing resists at a node connected only to shells; <strong>314</strong> for an invalid <code>type</code>, <code>angle</code> or modifier; <strong>303</strong> for an id used twice among null areas and shells; <strong>302</strong> for an unknown node; <strong>313</strong> for self-weight without <code>unitWeight</code>; <strong>329</strong> when the areas cannot be meshed (no division counts let neighbouring meshes meet node to node, a generated element is not a valid quadrilateral, or a generated id is already used); <strong>314</strong> for an invalid <code>mesh</code> or line restraint value and <strong>302</strong> for a line restraint's unknown node.</span>
+        <span>Throws <strong>FeaError 326</strong> for invalid shell geometry (not 4 distinct corners, not convex, wrong order, or too warped); <strong>327</strong> for an invalid <code>section</code>; <strong>328</strong> for a translation nothing resists at a node connected only to shells; <strong>314</strong> for an invalid <code>type</code>, <code>angle</code> or modifier; <strong>303</strong> for an id used twice among null areas and shells; <strong>302</strong> for an unknown node; <strong>313</strong> for self-weight without <code>unitWeight</code>; <strong>329</strong> when the areas cannot be meshed (no division counts let neighbouring meshes meet node to node, a generated element is not a valid quadrilateral, or a generated id is already used); <strong>314</strong> for an invalid <code>mesh</code> or line restraint value and <strong>302</strong> for a line restraint's unknown node.</span>
       </div>
     </div>
 
@@ -958,12 +964,12 @@
         Each member end has six local DOFs: U1, U2, U3, R1, R2, R3. A member's
         <code>releases.start</code> and <code>releases.end</code> say how each one is tied to its node, independently
         for every DOF at either end. Releases are part of the <strong>model</strong>, set on each member in
-        <code>model.members[i].releases</code> — not an option of <code>analyzeFrame</code>:
+        <code>model.members[i].releases</code> — not an option of <code>analyze</code>:
       </p>
       <div class="code-block">
         <div class="code-block__label">TypeScript — where releases go</div>
         <pre>
-<span class="u">analyzeFrame</span>({
+<span class="u">analyze</span>({
   <span class="k">nodes</span>: [<span class="c">…</span>],
   <span class="k">members</span>: [
     {
@@ -1087,7 +1093,7 @@ s·Δ = member end force                  <span class="c">// at a spring</span><
         <div class="code-block__label">TypeScript</div>
         <pre>
 <span class="b">const</span> fixed = { <span class="k">ux</span>: <span class="b">true</span>, <span class="k">uy</span>: <span class="b">true</span>, <span class="k">uz</span>: <span class="b">true</span>, <span class="k">rx</span>: <span class="b">true</span>, <span class="k">ry</span>: <span class="b">true</span>, <span class="k">rz</span>: <span class="b">true</span> };
-<span class="b">const</span> result = <span class="u">analyzeFrame</span>({
+<span class="b">const</span> result = <span class="u">analyze</span>({
   <span class="k">nodes</span>: [{ <span class="k">id</span>: <span class="s">"A"</span>, <span class="k">x</span>: <span class="n">0</span>, <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">0</span> }, { <span class="k">id</span>: <span class="s">"B"</span>, <span class="k">x</span>: <span class="n">6000</span>, <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">0</span> }],  <span class="c">// mm</span>
   <span class="k">members</span>: [{
     <span class="k">id</span>: <span class="s">"B1"</span>, <span class="k">startNodeId</span>: <span class="s">"A"</span>, <span class="k">endNodeId</span>: <span class="s">"B"</span>,
@@ -1130,7 +1136,7 @@ s·Δ = member end force                  <span class="c">// at a spring</span><
       <p>
         When every member at a joint releases a rotation and no support resists it — every node of a pin-jointed truss —
         that joint rotation has no stiffness at all. The stiffness matrix would be singular (304) although the structure is
-        stable. <code>analyzeFrame</code> holds such rotations itself:
+        stable. <code>analyze</code> holds such rotations itself:
       </p>
       <div class="flow-steps">
         <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Sum each joint's rotational block</strong> <code>B</code> (3×3, global) from its members' condensed global stiffness, plus rotational springs on its free rotations; fixed rotations are left out.</div></div>
@@ -1160,7 +1166,7 @@ s·Δ = member end force                  <span class="c">// at a spring</span><
 
       <div class="alert alert--error">
         <span>⚠️</span>
-        <span>Throws <strong>FrameAnalysisError 314</strong> for a release value that is not <code>true</code>, <code>false</code> or a finite number ≥ 0 (<code>details.field</code> is e.g. <code>"releases.end.r3"</code>); <strong>307</strong> if the full releases leave the member a mechanism, e.g. <code>u1</code> or <code>r1</code> fully released at both ends; <strong>304</strong> if a load case has a moment about an automatically held joint rotation.</span>
+        <span>Throws <strong>FeaError 314</strong> for a release value that is not <code>true</code>, <code>false</code> or a finite number ≥ 0 (<code>details.field</code> is e.g. <code>"releases.end.r3"</code>); <strong>307</strong> if the full releases leave the member a mechanism, e.g. <code>u1</code> or <code>r1</code> fully released at both ends; <strong>304</strong> if a load case has a moment about an automatically held joint rotation.</span>
       </div>
     </div>
 
@@ -1231,22 +1237,22 @@ s·Δ = member end force                  <span class="c">// at a spring</span><
 
       <div class="flow-steps">
         <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Import</strong> from <code>@theerapat-s28/ts-structural-eng-tools/fea</code>. The package ships an ES-module build (<code>import</code>) for bundlers such as Vite, with <code>"sideEffects": false</code> so unused code is dropped, and a CommonJS build (<code>require</code>) for Node.js.</div></div>
-        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Validate while editing</strong> with <a href="#validate-frame-model" style="color:var(--accent)">validateFrameModel</a> and mark each issue's <code>details</code> (node, member, area and edge, load case, combination, field) in the UI.</div></div>
+        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Validate while editing</strong> with <a href="#validate-model" style="color:var(--accent)">validateModel</a> and mark each issue's <code>details</code> (node, member, area and edge, load case, combination, field) in the UI.</div></div>
         <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Analyse in a Web Worker</strong> so the page stays responsive: post the model in, post the result out (structured-clone copies plain data).</div></div>
-        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Keep results small</strong> for large models with <code>diagrams: "extremes"</code>, and keep the <a href="#create-frame-analysis" style="color:var(--accent)">createFrameAnalysis</a> object in the worker to answer "show this member's diagram" requests.</div></div>
-        <div class="flow-step"><div class="step-num">5</div><div class="step-body"><strong>Show errors in place:</strong> a thrown <code>FrameAnalysisError</code> has <code>code</code>, <code>details</code> and <code>issues</code>; a 304 (unstable) names a node and DOF of the mechanism.</div></div>
+        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Keep results small</strong> for large models with <code>diagrams: "extremes"</code>, and keep the <a href="#create-analysis" style="color:var(--accent)">createAnalysis</a> object in the worker to answer "show this member's diagram" requests.</div></div>
+        <div class="flow-step"><div class="step-num">5</div><div class="step-body"><strong>Show errors in place:</strong> a thrown <code>FeaError</code> has <code>code</code>, <code>details</code> and <code>issues</code>; a 304 (unstable) names a node and DOF of the mechanism.</div></div>
       </div>
 
       <div class="code-block">
         <div class="code-block__label">TypeScript — worker.ts</div>
         <pre>
-<span class="b">import</span> { <span class="u">createFrameAnalysis</span>, <span class="b">type</span> FrameAnalysis } <span class="b">from</span> <span class="s">"@theerapat-s28/ts-structural-eng-tools/fea"</span>;
+<span class="b">import</span> { <span class="u">createAnalysis</span>, <span class="b">type</span> Analysis } <span class="b">from</span> <span class="s">"@theerapat-s28/ts-structural-eng-tools/fea"</span>;
 
-<span class="b">let</span> analysis: FrameAnalysis | <span class="nl">undefined</span>;
+<span class="b">let</span> analysis: Analysis | <span class="nl">undefined</span>;
 self.onmessage = ({ data }) =&gt; {
   <span class="b">try</span> {
     <span class="b">if</span> (data.type === <span class="s">"analyse"</span>) {
-      analysis = <span class="u">createFrameAnalysis</span>(data.model, { <span class="k">diagrams</span>: <span class="s">"extremes"</span> });
+      analysis = <span class="u">createAnalysis</span>(data.model, { <span class="k">diagrams</span>: <span class="s">"extremes"</span> });
       self.postMessage({ <span class="k">type</span>: <span class="s">"result"</span>, <span class="k">result</span>: analysis.result });
     } <span class="b">else if</span> (data.type === <span class="s">"diagram"</span> &amp;&amp; analysis) {
       self.postMessage({ <span class="k">type</span>: <span class="s">"diagram"</span>, <span class="k">diagram</span>: analysis.<span class="u">memberDiagram</span>(data.resultId, data.memberId) });
@@ -1279,7 +1285,7 @@ self.onmessage = ({ data }) =&gt; {
     <div class="section" id="analysis-flow">
       <div class="section__title">Analysis flow</div>
       <div class="flow-steps">
-        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Validate</strong> the model, load cases, loads and combinations with <code>validateFrameModel</code> (errors 301–303, 305–317, 326, 327 and 329); every problem is collected, and the first is thrown with all of them in <code>issues</code>.</div></div>
+        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Validate</strong> the model, load cases, loads and combinations with <code>validateModel</code> (errors 301–303, 305–317, 326, 327 and 329); every problem is collected, and the first is thrown with all of them in <code>issues</code>.</div></div>
         <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Distribute area loads</strong>: each null area's edge profiles are built once for a unit load, then scaled for each area load and cut at the members along the edges, giving <code>trapezoidal</code> (and cantilever <code>torque</code>) member loads in their load cases — what <code>distributeAreaLoads</code> returns.</div></div>
         <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Build the system once:</strong> member local stiffness, condensation of end releases and partial-fixity springs, and transformation <code>T</code>; number the free DOFs with the nodes in reverse Cuthill–McKee order (which narrows the band), assemble the stiffness in skyline (variable-band) storage, add spring stiffnesses, hold joint rotations that no member resists (<a href="#auto-restraint" style="color:var(--accent)">automatic joint restraint</a>) and factorise by Cholesky once. A singular matrix throws 304, naming a node and DOF of the mechanism.</div></div>
         <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Solve each load case</strong> against that factorisation: group the loads by their <code>loadCase</code>, resolve member loads and self-weight into local fixed-end forces, form <code>F</code> = nodal loads − fixed-end forces, check that it has no moment about an automatically held rotation (304), and recover displacements, reactions <code>R = K·U − F</code> and member end forces.</div></div>
@@ -1288,27 +1294,27 @@ self.onmessage = ({ data }) =&gt; {
       </div>
     </div>
 
-    <!-- ══════════════ analyzeFrame ══════════════ -->
+    <!-- ══════════════ analyze ══════════════ -->
     <div class="section" id="section-analysis">
-      <div class="section__title">Analysis <code style="font-size:13px">analyze-frame.ts</code></div>
+      <div class="section__title">Analysis <code style="font-size:13px">analyze.ts</code></div>
 
-      <div class="export-card" id="analyze-frame">
+      <div class="export-card" id="analyze">
         <div class="export-card__header">
           <span class="kind m-fn">FN</span>
-          <span class="ex-sig">analyzeFrame(model, options?)</span>
+          <span class="ex-sig">analyze(model, options?)</span>
           <span class="scope-badge s-public">Public API</span>
           <span class="std-badge" title="Basis: linear-elastic matrix stiffness analysis — not an ACI 318-19 provision">Matrix analysis</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">Analyses a 3D frame for every load case, forms every load combination, and returns the results of each with an envelope over the combinations.</p>
+          <p class="ex-desc">Analyses a 3D structure of members, shells or both for every load case, forms every load combination, and returns the results of each with an envelope over the combinations.</p>
 
           <div class="sub-label">Parameters</div>
           <table class="param-table">
             <thead><tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>model</td><td>FrameModel</td><td>—</td><td><span class="req">Required</span></td><td>Nodes, members, restraints, at least one load case, and optional loads, null areas and combinations; see <a href="#frame-model" style="color:var(--accent)">FrameModel</a>. Member end releases and partial-fixity springs are set on each member, <code>members[i].releases</code>; see <a href="#end-releases" style="color:var(--accent)">End releases</a></td></tr>
-              <tr><td>options.stations</td><td>number</td><td>—</td><td><span class="opt">Optional</span></td><td>Evenly spaced stations per member diagram (default 21); load breakpoints and zero-shear points are added. See <a href="#analyze-frame-options" style="color:var(--accent)">AnalyzeFrameOptions</a></td></tr>
-              <tr><td>options.diagrams</td><td>"full" | "extremes"</td><td>—</td><td><span class="opt">Optional</span></td><td><code>"full"</code> (default) returns every member diagram with its <code>stations</code>. <code>"extremes"</code> keeps each diagram's <code>extremes</code> — so the envelope and <code>memberDemandEnvelope</code> still work — but leaves <code>stations</code> empty, about 4× smaller for large models. Get full diagrams on demand from <a href="#create-frame-analysis" style="color:var(--accent)">createFrameAnalysis</a></td></tr>
+              <tr><td>model</td><td>FeaModel</td><td>—</td><td><span class="req">Required</span></td><td>Nodes, restraints, at least one load case, and optional members, shells, loads, null areas and combinations; see <a href="#fea-model" style="color:var(--accent)">FeaModel</a>. Member end releases and partial-fixity springs are set on each member, <code>members[i].releases</code>; see <a href="#end-releases" style="color:var(--accent)">End releases</a></td></tr>
+              <tr><td>options.stations</td><td>number</td><td>—</td><td><span class="opt">Optional</span></td><td>Evenly spaced stations per member diagram (default 21); load breakpoints and zero-shear points are added. See <a href="#analyze-options" style="color:var(--accent)">AnalyzeOptions</a></td></tr>
+              <tr><td>options.diagrams</td><td>"full" | "extremes"</td><td>—</td><td><span class="opt">Optional</span></td><td><code>"full"</code> (default) returns every member diagram with its <code>stations</code>. <code>"extremes"</code> keeps each diagram's <code>extremes</code> — so the envelope and <code>memberDemandEnvelope</code> still work — but leaves <code>stations</code> empty, about 4× smaller for large models. Get full diagrams on demand from <a href="#create-analysis" style="color:var(--accent)">createAnalysis</a></td></tr>
             </tbody>
           </table>
 
@@ -1322,7 +1328,7 @@ self.onmessage = ({ data }) =&gt; {
 <span class="b">const</span> udl = (loadCase, memberId, w) =&gt;
   ({ loadCase, <span class="k">type</span>: <span class="s">"udl"</span>, memberId, <span class="k">direction</span>: <span class="s">"Z"</span>, w });  <span class="c">// w in kN/m</span>
 
-<span class="b">const</span> result = <span class="u">analyzeFrame</span>({
+<span class="b">const</span> result = <span class="u">analyze</span>({
   <span class="k">nodes</span>: [
     { <span class="k">id</span>: <span class="s">"A"</span>, <span class="k">x</span>: <span class="n">0</span>,     <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">0</span> },  <span class="c">// mm</span>
     { <span class="k">id</span>: <span class="s">"B"</span>, <span class="k">x</span>: <span class="n">5000</span>,  <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">0</span> },
@@ -1399,9 +1405,9 @@ self.onmessage = ({ data }) =&gt; {
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>cases</td><td>Record&lt;string, FrameCaseResult&gt;</td><td>—</td><td>Result of each load case, keyed by its id; see <a href="#frame-case-result" style="color:var(--accent)">FrameCaseResult</a></td></tr>
-              <tr><td>combinations</td><td>Record&lt;string, FrameCaseResult&gt;</td><td>—</td><td>Result of each load combination, keyed by its id; empty when none are defined</td></tr>
-              <tr><td>envelope</td><td>FrameEnvelope | undefined</td><td>—</td><td>Max/min over all combinations with the governing combination; absent when there are no combinations. See <a href="#frame-envelope" style="color:var(--accent)">FrameEnvelope</a></td></tr>
+              <tr><td>cases</td><td>Record&lt;string, FeaCaseResult&gt;</td><td>—</td><td>Result of each load case, keyed by its id; see <a href="#fea-case-result" style="color:var(--accent)">FeaCaseResult</a></td></tr>
+              <tr><td>combinations</td><td>Record&lt;string, FeaCaseResult&gt;</td><td>—</td><td>Result of each load combination, keyed by its id; empty when none are defined</td></tr>
+              <tr><td>envelope</td><td>FeaEnvelope | undefined</td><td>—</td><td>Max/min over all combinations with the governing combination; absent when there are no combinations. See <a href="#fea-envelope" style="color:var(--accent)">FeaEnvelope</a></td></tr>
               <tr><td>calculationDetails</td><td>object</td><td>—</td><td>Node, member, DOF, load case and combination counts, <code>profileSize</code> — the stored entries of the banded stiffness factor, a measure of memory and solve work — and <code>autoRestrainedDofs</code>, the joint rotations held because no member resists them (see <a href="#auto-restraint" style="color:var(--accent)">automatic joint restraint</a>)</td></tr>
               <tr><td>units</td><td>object</td><td>—</td><td>Units of every result field</td></tr>
               <tr><td>warnings</td><td>Warnings</td><td>—</td><td>Every case and combination warning, each message prefixed with its load case or combination id</td></tr>
@@ -1414,29 +1420,29 @@ self.onmessage = ({ data }) =&gt; {
           </div>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws <strong>FrameAnalysisError 301–317, 326–327, 329</strong> for an invalid model, load case or combination, <strong>328</strong> for a translation nothing resists at a node connected only to shells, or an unstable structure (304). The model is checked by <a href="#validate-frame-model" style="color:var(--accent)">validateFrameModel</a> first; the error is the first problem found, its <code>details</code> say where it is, and <code>issues</code> lists every problem. See <a href="#errors" style="color:var(--accent)">the error table</a>.</span>
+            <span>Throws <strong>FeaError 301–317, 326–327, 329</strong> for an invalid model, load case or combination, <strong>328</strong> for a translation nothing resists at a node connected only to shells, or an unstable structure (304). The model is checked by <a href="#validate-model" style="color:var(--accent)">validateModel</a> first; the error is the first problem found, its <code>details</code> say where it is, and <code>issues</code> lists every problem. See <a href="#errors" style="color:var(--accent)">the error table</a>.</span>
           </div>
         </div>
       </div>
 
-      <div class="export-card" id="create-frame-analysis">
+      <div class="export-card" id="create-analysis">
         <div class="export-card__header">
           <span class="kind m-fn">FN</span>
-          <span class="ex-sig">createFrameAnalysis(model, options?)</span>
+          <span class="ex-sig">createAnalysis(model, options?)</span>
           <span class="scope-badge s-public">Public API</span>
           <span class="std-badge" title="Basis: linear-elastic matrix stiffness analysis — not an ACI 318-19 provision">Matrix analysis</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">Runs the same analysis as <code>analyzeFrame</code> and keeps the solution, so a member's full diagram can be computed later on demand without re-analysing. Analyse with <code>diagrams: "extremes"</code> for a small result, then draw a member's diagram when the user selects it. Keep the returned object inside the Web Worker that ran the analysis and post plain results to the UI.</p>
+          <p class="ex-desc">Runs the same analysis as <code>analyze</code> and keeps the solution, so a member's full diagram can be computed later on demand without re-analysing. Analyse with <code>diagrams: "extremes"</code> for a small result, then draw a member's diagram when the user selects it. Keep the returned object inside the Web Worker that ran the analysis and post plain results to the UI.</p>
 
           <div class="sub-label">Parameters</div>
-          <p>Same as <a href="#analyze-frame" style="color:var(--accent)">analyzeFrame</a>.</p>
+          <p>Same as <a href="#analyze" style="color:var(--accent)">analyze</a>.</p>
 
           <div class="sub-label">Example</div>
           <div class="code-block">
             <div class="code-block__label">TypeScript</div>
             <pre>
-<span class="b">const</span> analysis = <span class="u">createFrameAnalysis</span>(model, { <span class="k">diagrams</span>: <span class="s">"extremes"</span> });
+<span class="b">const</span> analysis = <span class="u">createAnalysis</span>(model, { <span class="k">diagrams</span>: <span class="s">"extremes"</span> });
 analysis.result.cases.D.memberDiagrams[<span class="n">0</span>].stations;  <span class="c">// [] — extremes only</span>
 
 <span class="c">// the user clicks member "m" while viewing load case "D"</span>
@@ -1448,31 +1454,31 @@ analysis.result.cases.D.memberDiagrams[<span class="n">0</span>].stations;  <spa
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>result</td><td>FrameResult</td><td>—</td><td>What <code>analyzeFrame</code> returns for the same model and options</td></tr>
+              <tr><td>result</td><td>FeaResult</td><td>—</td><td>What <code>analyze</code> returns for the same model and options</td></tr>
               <tr><td>memberDiagram(resultId, memberId, stations?)</td><td>MemberDiagram</td><td>kN, kN·m, mm</td><td>The full diagram (stations and extremes) of one member for one load case or combination, identical to the one a <code>"full"</code> analysis returns</td></tr>
             </tbody>
           </table>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws like <code>analyzeFrame</code> (<strong>FrameAnalysisError 301–317, 326–329</strong>). <code>memberDiagram</code> throws a plain <code>Error</code> for an unknown load case, combination or member id.</span>
+            <span>Throws like <code>analyze</code> (<strong>FeaError 301–317, 326–329</strong>). <code>memberDiagram</code> throws a plain <code>Error</code> for an unknown load case, combination or member id.</span>
           </div>
         </div>
       </div>
 
-      <div class="export-card" id="validate-frame-model">
+      <div class="export-card" id="validate-model">
         <div class="export-card__header">
           <span class="kind m-fn">FN</span>
-          <span class="ex-sig">validateFrameModel(model)</span>
+          <span class="ex-sig">validateModel(model)</span>
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">Checks a model without analysing it and returns <strong>every</strong> problem, each with the node, member, area, load case, combination and field it concerns — for marking all invalid inputs in a form at once. An empty array means the model can be analysed; the only problem it cannot see is an unstable structure (304), which the solve detects. <code>analyzeFrame</code> runs it first.</p>
+          <p class="ex-desc">Checks a model without analysing it and returns <strong>every</strong> problem, each with the node, member, area, load case, combination and field it concerns — for marking all invalid inputs in a form at once. An empty array means the model can be analysed; the only problem it cannot see is an unstable structure (304), which the solve detects. <code>analyze</code> runs it first.</p>
 
           <div class="sub-label">Parameters</div>
           <table class="param-table">
             <thead><tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>model</td><td>FrameModel</td><td>—</td><td><span class="req">Required</span></td><td>The model to check, including untyped input from a UI</td></tr>
+              <tr><td>model</td><td>FeaModel</td><td>—</td><td><span class="req">Required</span></td><td>The model to check, including untyped input from a UI</td></tr>
             </tbody>
           </table>
 
@@ -1480,7 +1486,7 @@ analysis.result.cases.D.memberDiagrams[<span class="n">0</span>].stations;  <spa
           <div class="code-block">
             <div class="code-block__label">TypeScript</div>
             <pre>
-<span class="b">const</span> issues = <span class="u">validateFrameModel</span>({
+<span class="b">const</span> issues = <span class="u">validateModel</span>({
   <span class="c">…</span>
   <span class="k">loadCases</span>: [{ <span class="k">id</span>: <span class="s">"D"</span> }],
   <span class="k">nodalLoads</span>:  [{ <span class="k">loadCase</span>: <span class="s">"D"</span>, <span class="k">nodeId</span>: <span class="n">2</span>, <span class="k">fz</span>: NaN }],                              <span class="c">// empty input box</span>
@@ -1504,7 +1510,7 @@ analysis.result.cases.D.memberDiagrams[<span class="n">0</span>].stations;  <spa
             <tbody>
               <tr><td>code</td><td>number</td><td>—</td><td>The <a href="#errors" style="color:var(--accent)">error code</a></td></tr>
               <tr><td>message</td><td>string</td><td>—</td><td>The code's message followed by its location in brackets</td></tr>
-              <tr><td>details</td><td>FrameErrorDetails</td><td>—</td><td><code>{ nodeId?, memberId?, areaId?, shellId?, edge?, loadCaseId?, combinationId?, field?, dof? }</code> — only the fields that apply</td></tr>
+              <tr><td>details</td><td>FeaErrorDetails</td><td>—</td><td><code>{ nodeId?, memberId?, areaId?, shellId?, edge?, loadCaseId?, combinationId?, field?, dof? }</code> — only the fields that apply</td></tr>
             </tbody>
           </table>
           <div class="alert alert--info">
@@ -1522,13 +1528,13 @@ analysis.result.cases.D.memberDiagrams[<span class="n">0</span>].stations;  <spa
           <span class="std-badge" title="Basis: tributary load distribution (corner bisectors, one-way strips, cantilever) — not an ACI 318-19 provision">Tributary distribution</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">Returns the member loads that the model's null areas send to the members along their edges — exactly what <code>analyzeFrame</code> adds to <code>memberLoads</code> — so they can be checked by hand or previewed in a UI before analysing. Loads on shell areas are not included: they act on the shells themselves. See <a href="#null-areas" style="color:var(--accent)">Null areas</a> for the distribution rules.</p>
+          <p class="ex-desc">Returns the member loads that the model's null areas send to the members along their edges — exactly what <code>analyze</code> adds to <code>memberLoads</code> — so they can be checked by hand or previewed in a UI before analysing. Loads on shell areas are not included: they act on the shells themselves. See <a href="#null-areas" style="color:var(--accent)">Null areas</a> for the distribution rules.</p>
 
           <div class="sub-label">Parameters</div>
           <table class="param-table">
             <thead><tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>model</td><td>FrameModel</td><td>—</td><td><span class="req">Required</span></td><td>The model, with <code>areas</code> and <code>areaLoads</code>; it is validated first</td></tr>
+              <tr><td>model</td><td>FeaModel</td><td>—</td><td><span class="req">Required</span></td><td>The model, with <code>areas</code> and <code>areaLoads</code>; it is validated first</td></tr>
             </tbody>
           </table>
 
@@ -1564,11 +1570,11 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
 
           <div class="alert alert--warn">
             <span>⚠️</span>
-            <span>Warns when a one-way support edge runs parallel to the span — <strong>Null area, one-way distribution</strong>. <code>analyzeFrame</code> repeats these warnings in <code>result.warnings</code>.</span>
+            <span>Warns when a one-way support edge runs parallel to the span — <strong>Null area, one-way distribution</strong>. <code>analyze</code> repeats these warnings in <code>result.warnings</code>.</span>
           </div>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws like <code>analyzeFrame</code> (<strong>FrameAnalysisError 301–317, 326–327, 329</strong>, all problems in <code>issues</code>); the area errors are <strong>315</strong>–<strong>317</strong>, see <a href="#null-areas" style="color:var(--accent)">Null areas</a>.</span>
+            <span>Throws like <code>analyze</code> (<strong>FeaError 301–317, 326–327, 329</strong>, all problems in <code>issues</code>); the area errors are <strong>315</strong>–<strong>317</strong>, see <a href="#null-areas" style="color:var(--accent)">Null areas</a>.</span>
           </div>
         </div>
       </div>
@@ -1587,7 +1593,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>result</td><td>FrameResult</td><td>—</td><td><span class="req">Required</span></td><td>Output of <code>analyzeFrame</code></td></tr>
+              <tr><td>result</td><td>FeaResult</td><td>—</td><td><span class="req">Required</span></td><td>Output of <code>analyze</code></td></tr>
               <tr><td>memberId</td><td>string | number</td><td>—</td><td><span class="req">Required</span></td><td>Member to reduce</td></tr>
               <tr><td>options.combinations</td><td>string[]</td><td>—</td><td><span class="opt">Optional</span></td><td>Combination ids to envelope. Default: every combination, unless <code>cases</code> is given</td></tr>
               <tr><td>options.cases</td><td>string[]</td><td>—</td><td><span class="opt">Optional</span></td><td>Load case ids to envelope as well (or instead). Default: none</td></tr>
@@ -1662,7 +1668,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <p>A symmetric <code>number[][]</code>. Its nonzero terms are <code>±EA/L</code>, <code>±GJ/L</code>, <code>12EI/L³</code>, <code>±6EI/L²</code>, <code>4EI/L</code> and <code>2EI/L</code> as laid out in the reference; with <code>I22 = I33</code> it equals the reference's single-<code>EI</code> matrix.</p>
           <div class="alert alert--info">
             <span>ℹ️</span>
-            <span>The reference matrix measures the bending rotations R2 and R3 opposite to the right-hand rule, so it is free of force for rigid-body motion only with that sign. Use <a href="#beam-3d-local-stiffness-right-handed" style="color:var(--accent)">beam3dLocalStiffnessRightHanded</a> when combining with right-handed quantities. <code>analyzeFrame</code> does this internally.</span>
+            <span>The reference matrix measures the bending rotations R2 and R3 opposite to the right-hand rule, so it is free of force for rigid-body motion only with that sign. Use <a href="#beam-3d-local-stiffness-right-handed" style="color:var(--accent)">beam3dLocalStiffnessRightHanded</a> when combining with right-handed quantities. <code>analyze</code> does this internally.</span>
           </div>
         </div>
       </div>
@@ -1712,7 +1718,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           </div>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws <strong>FrameAnalysisError 301</strong> if the two nodes coincide.</span>
+            <span>Throws <strong>FeaError 301</strong> if the two nodes coincide.</span>
           </div>
         </div>
       </div>
@@ -1722,23 +1728,23 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
     <!-- ══════════════ Types ══════════════ -->
     <div class="section" id="section-types">
       <div class="section__title">Types <code style="font-size:13px">types/</code></div>
-      <p>Every type the <code>fea</code> entry point exports, plus the <code>core</code> types its functions take or return. All are plain data except <code>FrameAnalysis</code>.</p>
+      <p>Every type the <code>fea</code> entry point exports, plus the <code>core</code> types its functions take or return. All are plain data except <code>Analysis</code>.</p>
 
       <div class="sub-label">Model</div>
 
-      <div class="export-card" id="frame-model">
+      <div class="export-card" id="fea-model">
         <div class="export-card__header">
           <span class="kind m-type">TYPE</span>
-          <span class="ex-sig">FrameModel</span>
+          <span class="ex-sig">FeaModel</span>
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">Input of <code>analyzeFrame</code>. Node, member and area ids may be strings or numbers and must be unique within nodes, members and restraints; area ids must be unique across null areas and shells together.</p>
+          <p class="ex-desc">Input of <code>analyze</code>. Node, member and area ids may be strings or numbers and must be unique within nodes, members and restraints; area ids must be unique across null areas and shells together.</p>
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>nodes</td><td>FrameNode[]</td><td>mm</td><td><span class="req">Required</span></td><td><code>{ id, x, y, z }</code></td></tr>
-              <tr><td>members</td><td>Member[]</td><td>—</td><td><span class="req">Required</span></td><td><code>{ id, startNodeId, endNodeId, section, angle?, releases? }</code>. <code>angle</code> in rad. <code>releases: { start?, end? }</code> set each local end DOF <code>u1, u2, u3, r1, r2, r3</code> to <code>true</code> (released: hinge, roller) or a spring stiffness (partial fixity); see <a href="#member-end-release" style="color:var(--accent)">MemberEndRelease</a></td></tr>
+              <tr><td>nodes</td><td>FeaNode[]</td><td>mm</td><td><span class="req">Required</span></td><td><code>{ id, x, y, z }</code></td></tr>
+              <tr><td>members</td><td>Member[]</td><td>—</td><td><span class="opt">Optional</span></td><td>Omit for a model of shells only, e.g. a mat foundation. <code>{ id, startNodeId, endNodeId, section, angle?, releases? }</code>. <code>angle</code> in rad. <code>releases: { start?, end? }</code> set each local end DOF <code>u1, u2, u3, r1, r2, r3</code> to <code>true</code> (released: hinge, roller) or a spring stiffness (partial fixity); see <a href="#member-end-release" style="color:var(--accent)">MemberEndRelease</a></td></tr>
               <tr><td>restraints</td><td>Restraint[]</td><td>kN/mm, kN·m/rad</td><td><span class="req">Required</span></td><td><code>{ nodeId, ux, uy, uz, rx, ry, rz }</code> in global axes. <code>true</code> fixes the DOF, a positive number is a spring stiffness, omitted is free. At least one DOF must be restrained, here or in <code>lineRestraints</code></td></tr>
               <tr><td>lineRestraints</td><td>LineRestraint[]</td><td>—</td><td><span class="opt">Optional</span></td><td><code>{ nodeIds: [a, b], ux?…rz? }</code>: DOFs fixed at every node on the segment, generated mesh nodes included; see <a href="#line-restraint" style="color:var(--accent)">LineRestraint</a></td></tr>
               <tr><td>loadCases</td><td>LoadCase[]</td><td>—</td><td><span class="req">Required</span></td><td>At least one; see <a href="#load-case" style="color:var(--accent)">LoadCase</a></td></tr>
@@ -1753,10 +1759,10 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
         </div>
       </div>
 
-      <div class="export-card" id="frame-id">
+      <div class="export-card" id="fea-id">
         <div class="export-card__header">
           <span class="kind m-type">TYPE</span>
-          <span class="ex-sig">FrameId = string | number</span>
+          <span class="ex-sig">FeaId = string | number</span>
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
@@ -1764,10 +1770,10 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
         </div>
       </div>
 
-      <div class="export-card" id="frame-node">
+      <div class="export-card" id="fea-node">
         <div class="export-card__header">
           <span class="kind m-type">TYPE</span>
-          <span class="ex-sig">FrameNode</span>
+          <span class="ex-sig">FeaNode</span>
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
@@ -1775,7 +1781,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>id</td><td>FrameId</td><td>—</td><td><span class="req">Required</span></td><td>Unique among nodes</td></tr>
+              <tr><td>id</td><td>FeaId</td><td>—</td><td><span class="req">Required</span></td><td>Unique among nodes</td></tr>
               <tr><td>x, y, z</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Global coordinates, Z up; finite numbers</td></tr>
             </tbody>
           </table>
@@ -1793,8 +1799,8 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>id</td><td>FrameId</td><td>—</td><td><span class="req">Required</span></td><td>Unique among members</td></tr>
-              <tr><td>startNodeId, endNodeId</td><td>FrameId</td><td>—</td><td><span class="req">Required</span></td><td>End nodes; local 1 runs from start to end. They must not coincide (301)</td></tr>
+              <tr><td>id</td><td>FeaId</td><td>—</td><td><span class="req">Required</span></td><td>Unique among members</td></tr>
+              <tr><td>startNodeId, endNodeId</td><td>FeaId</td><td>—</td><td><span class="req">Required</span></td><td>End nodes; local 1 runs from start to end. They must not coincide (301)</td></tr>
               <tr><td>section</td><td>SectionProperties</td><td>MPa, mm², mm⁴</td><td><span class="req">Required</span></td><td>E, G, A, I22, I33, J and optional unitWeight; see <a href="#section-properties" style="color:var(--accent)">SectionProperties</a></td></tr>
               <tr><td>angle</td><td>number</td><td>rad</td><td><span class="opt">Optional</span></td><td>Rotates local 2 and 3 about local 1 by the right-hand rule (default 0)</td></tr>
               <tr><td>releases</td><td>{ start?, end? }</td><td>—</td><td><span class="opt">Optional</span></td><td>Released or partially fixed end DOFs, each end a <a href="#member-end-release" style="color:var(--accent)">MemberEndRelease</a>; see <a href="#end-releases" style="color:var(--accent)">End releases</a></td></tr>
@@ -1830,7 +1836,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           </div>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws <strong>FrameAnalysisError 314</strong> for a value that is not <code>true</code>, <code>false</code> or a finite number ≥ 0 (<code>details.field</code> e.g. <code>"releases.start.u1"</code>); <strong>307</strong> if the full releases leave the member a mechanism, e.g. <code>u1</code> or <code>r1</code> fully released at both ends. Springs never cause 307.</span>
+            <span>Throws <strong>FeaError 314</strong> for a value that is not <code>true</code>, <code>false</code> or a finite number ≥ 0 (<code>details.field</code> e.g. <code>"releases.start.u1"</code>); <strong>307</strong> if the full releases leave the member a mechanism, e.g. <code>u1</code> or <code>r1</code> fully released at both ends. Springs never cause 307.</span>
           </div>
         </div>
       </div>
@@ -1888,7 +1894,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>nodeId</td><td>FrameId</td><td>—</td><td><span class="req">Required</span></td><td>Supported node; at most one restraint per node (303)</td></tr>
+              <tr><td>nodeId</td><td>FeaId</td><td>—</td><td><span class="req">Required</span></td><td>Supported node; at most one restraint per node (303)</td></tr>
               <tr><td>ux, uy, uz</td><td>DofRestraint</td><td>kN/mm</td><td><span class="opt">Optional</span></td><td>Translation: <code>true</code> fixed, a number a spring stiffness, omitted or <code>false</code> free; see <a href="#dof-restraint" style="color:var(--accent)">DofRestraint</a></td></tr>
               <tr><td>rx, ry, rz</td><td>DofRestraint</td><td>kN·m/rad</td><td><span class="opt">Optional</span></td><td>Rotation, the same way</td></tr>
             </tbody>
@@ -1927,8 +1933,8 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>id</td><td>FrameId</td><td>—</td><td><span class="req">Required</span></td><td>Unique across null areas and shells; <code>AreaLoad.areaId</code> names it</td></tr>
-              <tr><td>nodeIds</td><td>FrameId[]</td><td>—</td><td><span class="req">Required</span></td><td>4 distinct corner nodes in order around a convex, nearly flat quadrilateral; local 3 follows the right-hand rule around them</td></tr>
+              <tr><td>id</td><td>FeaId</td><td>—</td><td><span class="req">Required</span></td><td>Unique across null areas and shells; <code>AreaLoad.areaId</code> names it</td></tr>
+              <tr><td>nodeIds</td><td>FeaId[]</td><td>—</td><td><span class="req">Required</span></td><td>4 distinct corner nodes in order around a convex, nearly flat quadrilateral; local 3 follows the right-hand rule around them</td></tr>
               <tr><td>type</td><td>ShellType</td><td>—</td><td><span class="opt">Optional</span></td><td><code>"shell"</code> (default), <code>"membrane"</code> or <code>"plate"</code></td></tr>
               <tr><td>section</td><td>ShellSection</td><td>—</td><td><span class="req">Required</span></td><td>Thickness and material; see <a href="#shell-section" style="color:var(--accent)">ShellSection</a></td></tr>
               <tr><td>angle</td><td>number</td><td>rad</td><td><span class="opt">Optional</span></td><td>Rotates local 1 and 2 about local 3 by the right-hand rule; default 0. Sets the directions of the reported forces (F11, M11 … along the new local 1), and changes the stiffness only with unequal 11 and 22 modifiers</td></tr>
@@ -1958,7 +1964,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           </table>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws <strong>FrameAnalysisError 327</strong> for a thickness or E that is not positive, ν outside [0, 0.5), or a negative <code>unitWeight</code>; <code>details.field</code> is e.g. <code>"section.nu"</code>.</span>
+            <span>Throws <strong>FeaError 327</strong> for a thickness or E that is not positive, ν outside [0, 0.5), or a negative <code>unitWeight</code>; <code>details.field</code> is e.g. <code>"section.nu"</code>.</span>
           </div>
         </div>
       </div>
@@ -2011,13 +2017,13 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>nodeIds</td><td>[FrameId, FrameId]</td><td>—</td><td><span class="req">Required</span></td><td>Two distinct nodes, the ends of the line (both included)</td></tr>
+              <tr><td>nodeIds</td><td>[FeaId, FeaId]</td><td>—</td><td><span class="req">Required</span></td><td>Two distinct nodes, the ends of the line (both included)</td></tr>
               <tr><td>ux, uy, uz, rx, ry, rz</td><td>boolean</td><td>—</td><td><span class="opt">Optional</span></td><td><code>true</code> fixes the DOF in global axes; there are no line springs</td></tr>
             </tbody>
           </table>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws <strong>FrameAnalysisError 314</strong> for nodeIds that are not two distinct nodes or a value that is not a boolean (<code>details.field</code> e.g. <code>"lineRestraints.uz"</code>), <strong>302</strong> for an unknown node.</span>
+            <span>Throws <strong>FeaError 314</strong> for nodeIds that are not two distinct nodes or a value that is not a boolean (<code>details.field</code> e.g. <code>"lineRestraints.uz"</code>), <strong>302</strong> for an unknown node.</span>
           </div>
         </div>
       </div>
@@ -2174,7 +2180,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
             <tbody>
               <tr><td>loadCase</td><td>string</td><td>—</td><td><span class="req">Required</span></td><td>Id of the load case this load belongs to</td></tr>
               <tr><td>type</td><td>"udl"</td><td>—</td><td><span class="req">Required</span></td><td>—</td></tr>
-              <tr><td>memberId</td><td>FrameId</td><td>—</td><td><span class="req">Required</span></td><td>Loaded member</td></tr>
+              <tr><td>memberId</td><td>FeaId</td><td>—</td><td><span class="req">Required</span></td><td>Loaded member</td></tr>
               <tr><td>direction</td><td>LoadDirection</td><td>—</td><td><span class="req">Required</span></td><td>Local <code>"1" | "2" | "3"</code> or global <code>"X" | "Y" | "Z"</code>; see <a href="#load-direction" style="color:var(--accent)">LoadDirection</a></td></tr>
               <tr><td>w</td><td>number</td><td>kN/m</td><td><span class="req">Required</span></td><td>Load per unit member length (per unit projected length if <code>projected</code>), positive along the direction axis</td></tr>
               <tr><td>start, end</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Loaded length from the member start for a partial load (default 0 and the member length); <code>0 ≤ start &lt; end ≤ L</code></td></tr>
@@ -2197,7 +2203,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
             <tbody>
               <tr><td>loadCase</td><td>string</td><td>—</td><td><span class="req">Required</span></td><td>Id of the load case this load belongs to</td></tr>
               <tr><td>type</td><td>"trapezoidal"</td><td>—</td><td><span class="req">Required</span></td><td>—</td></tr>
-              <tr><td>memberId</td><td>FrameId</td><td>—</td><td><span class="req">Required</span></td><td>Loaded member</td></tr>
+              <tr><td>memberId</td><td>FeaId</td><td>—</td><td><span class="req">Required</span></td><td>Loaded member</td></tr>
               <tr><td>direction</td><td>LoadDirection</td><td>—</td><td><span class="req">Required</span></td><td>Local <code>"1" | "2" | "3"</code> or global <code>"X" | "Y" | "Z"</code>; see <a href="#load-direction" style="color:var(--accent)">LoadDirection</a></td></tr>
               <tr><td>w1, w2</td><td>number</td><td>kN/m</td><td><span class="req">Required</span></td><td>Load per unit member length (per unit projected length if <code>projected</code>) at <code>start</code> and at <code>end</code></td></tr>
               <tr><td>start, end</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Loaded length from the member start for a partial load (default 0 and the member length); <code>0 ≤ start &lt; end ≤ L</code></td></tr>
@@ -2220,7 +2226,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
             <tbody>
               <tr><td>loadCase</td><td>string</td><td>—</td><td><span class="req">Required</span></td><td>Id of the load case this load belongs to</td></tr>
               <tr><td>type</td><td>"point"</td><td>—</td><td><span class="req">Required</span></td><td>—</td></tr>
-              <tr><td>memberId</td><td>FrameId</td><td>—</td><td><span class="req">Required</span></td><td>Loaded member</td></tr>
+              <tr><td>memberId</td><td>FeaId</td><td>—</td><td><span class="req">Required</span></td><td>Loaded member</td></tr>
               <tr><td>direction</td><td>LoadDirection</td><td>—</td><td><span class="req">Required</span></td><td>Local <code>"1" | "2" | "3"</code> or global <code>"X" | "Y" | "Z"</code>; see <a href="#load-direction" style="color:var(--accent)">LoadDirection</a></td></tr>
               <tr><td>P</td><td>number</td><td>kN</td><td><span class="req">Required</span></td><td>Force, positive along the direction axis</td></tr>
               <tr><td>a</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Distance from the member start, <code>0 ≤ a ≤ L</code></td></tr>
@@ -2242,7 +2248,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
             <tbody>
               <tr><td>loadCase</td><td>string</td><td>—</td><td><span class="req">Required</span></td><td>Id of the load case this load belongs to</td></tr>
               <tr><td>type</td><td>"torque"</td><td>—</td><td><span class="req">Required</span></td><td>—</td></tr>
-              <tr><td>memberId</td><td>FrameId</td><td>—</td><td><span class="req">Required</span></td><td>Loaded member</td></tr>
+              <tr><td>memberId</td><td>FeaId</td><td>—</td><td><span class="req">Required</span></td><td>Loaded member</td></tr>
               <tr><td>t</td><td>number</td><td>kN·m/m</td><td><span class="req">Required</span></td><td>Torque per unit member length, positive about +local 1 (right-hand rule)</td></tr>
               <tr><td>start, end</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Loaded length from the member start for a partial load (default 0 and the member length); <code>0 ≤ start &lt; end ≤ L</code></td></tr>
             </tbody>
@@ -2349,14 +2355,14 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
 
       <div class="sub-label" style="margin-top:28px">Options</div>
 
-      <div class="export-card" id="analyze-frame-options">
+      <div class="export-card" id="analyze-options">
         <div class="export-card__header">
           <span class="kind m-type">TYPE</span>
-          <span class="ex-sig">AnalyzeFrameOptions</span>
+          <span class="ex-sig">AnalyzeOptions</span>
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">Second argument of <code>analyzeFrame</code> and <code>createFrameAnalysis</code>.</p>
+          <p class="ex-desc">Second argument of <code>analyze</code> and <code>createAnalysis</code>.</p>
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
@@ -2388,21 +2394,21 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
 
       <div class="sub-label" style="margin-top:28px">Results</div>
 
-      <div class="export-card" id="frame-result">
+      <div class="export-card" id="fea-result">
         <div class="export-card__header">
           <span class="kind m-type">TYPE</span>
-          <span class="ex-sig">FrameResult</span>
+          <span class="ex-sig">FeaResult</span>
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">Output of <code>analyzeFrame</code> (and <code>createFrameAnalysis(...).result</code>). Plain JSON. See the example under <a href="#analyze-frame" style="color:var(--accent)">analyzeFrame</a>.</p>
+          <p class="ex-desc">Output of <code>analyze</code> (and <code>createAnalysis(...).result</code>). Plain JSON. See the example under <a href="#analyze" style="color:var(--accent)">analyze</a>.</p>
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>cases</td><td>Record&lt;string, FrameCaseResult&gt;</td><td>—</td><td>Result of each load case, keyed by its id; see <a href="#frame-case-result" style="color:var(--accent)">FrameCaseResult</a></td></tr>
-              <tr><td>combinations</td><td>Record&lt;string, FrameCaseResult&gt;</td><td>—</td><td>Result of each combination, keyed by its id; empty when none are defined</td></tr>
-              <tr><td>envelope</td><td>FrameEnvelope | undefined</td><td>—</td><td>Max/min over all combinations; absent when there are none. See <a href="#frame-envelope" style="color:var(--accent)">FrameEnvelope</a></td></tr>
-              <tr><td>mesh</td><td>FrameMesh | undefined</td><td>mm</td><td>The generated nodes and every shell element with its nodes, for drawing; absent without shells. See <a href="#frame-mesh" style="color:var(--accent)">FrameMesh</a></td></tr>
+              <tr><td>cases</td><td>Record&lt;string, FeaCaseResult&gt;</td><td>—</td><td>Result of each load case, keyed by its id; see <a href="#fea-case-result" style="color:var(--accent)">FeaCaseResult</a></td></tr>
+              <tr><td>combinations</td><td>Record&lt;string, FeaCaseResult&gt;</td><td>—</td><td>Result of each combination, keyed by its id; empty when none are defined</td></tr>
+              <tr><td>envelope</td><td>FeaEnvelope | undefined</td><td>—</td><td>Max/min over all combinations; absent when there are none. See <a href="#fea-envelope" style="color:var(--accent)">FeaEnvelope</a></td></tr>
+              <tr><td>mesh</td><td>FeaMesh | undefined</td><td>mm</td><td>The generated nodes and every shell element with its nodes, for drawing; absent without shells. See <a href="#fea-mesh" style="color:var(--accent)">FeaMesh</a></td></tr>
               <tr><td>calculationDetails.nodeCount, memberCount, shellCount</td><td>number</td><td>—</td><td>Model size: nodes including the generated mesh nodes, model members, and shell elements</td></tr>
               <tr><td>calculationDetails.dofCount, freeDofCount</td><td>number</td><td>—</td><td>All DOFs (6 per node) and the unrestrained ones solved for</td></tr>
               <tr><td>calculationDetails.profileSize</td><td>number</td><td>—</td><td>Stored entries of the banded stiffness factor: a measure of memory and solve work</td></tr>
@@ -2422,11 +2428,11 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">A rotation direction at a joint that no member, support or spring resists, held by <code>analyzeFrame</code> with a spring that carries no force; see <a href="#auto-restraint" style="color:var(--accent)">automatic joint restraint</a>. The node's reported rotation about this axis is 0.</p>
+          <p class="ex-desc">A rotation direction at a joint that no member, support or spring resists, held by <code>analyze</code> with a spring that carries no force; see <a href="#auto-restraint" style="color:var(--accent)">automatic joint restraint</a>. The node's reported rotation about this axis is 0.</p>
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>nodeId</td><td>FrameId</td><td>—</td><td>The joint</td></tr>
+              <tr><td>nodeId</td><td>FeaId</td><td>—</td><td>The joint</td></tr>
               <tr><td>axis</td><td>[number, number, number]</td><td>—</td><td>Unit vector of the held rotation axis in global X, Y, Z (9 decimals; largest component positive)</td></tr>
               <tr><td>dof</td><td>"rx" | "ry" | "rz" | undefined</td><td>—</td><td>The global rotation DOF when <code>axis</code> is a global axis; absent for an inclined axis</td></tr>
             </tbody>
@@ -2434,10 +2440,10 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
         </div>
       </div>
 
-      <div class="export-card" id="frame-case-result">
+      <div class="export-card" id="fea-case-result">
         <div class="export-card__header">
           <span class="kind m-type">TYPE</span>
-          <span class="ex-sig">FrameCaseResult</span>
+          <span class="ex-sig">FeaCaseResult</span>
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
@@ -2470,7 +2476,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>nodeId</td><td>FrameId</td><td>—</td><td>The node</td></tr>
+              <tr><td>nodeId</td><td>FeaId</td><td>—</td><td>The node</td></tr>
               <tr><td>ux, uy, uz</td><td>number</td><td>mm</td><td>Translations, 5 decimals</td></tr>
               <tr><td>rx, ry, rz</td><td>number</td><td>rad</td><td>Rotations, 8 decimals</td></tr>
             </tbody>
@@ -2489,7 +2495,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>nodeId</td><td>FrameId</td><td>—</td><td>The node</td></tr>
+              <tr><td>nodeId</td><td>FeaId</td><td>—</td><td>The node</td></tr>
               <tr><td>fx, fy, fz</td><td>number</td><td>kN</td><td>Reaction forces, 4 decimals</td></tr>
               <tr><td>mx, my, mz</td><td>number</td><td>kN·m</td><td>Reaction moments, right-hand rule. At a spring DOF: the force the spring exerts on the node</td></tr>
             </tbody>
@@ -2508,7 +2514,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>memberId</td><td>FrameId</td><td>—</td><td>The member</td></tr>
+              <tr><td>memberId</td><td>FeaId</td><td>—</td><td>The member</td></tr>
               <tr><td>start, end</td><td>MemberEndForce</td><td>kN, kN·m</td><td>Force the start / end node exerts on the member; see <a href="#member-end-force" style="color:var(--accent)">MemberEndForce</a></td></tr>
             </tbody>
           </table>
@@ -2546,7 +2552,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>memberId</td><td>FrameId</td><td>—</td><td>The member</td></tr>
+              <tr><td>memberId</td><td>FeaId</td><td>—</td><td>The member</td></tr>
               <tr><td>start, end</td><td>ReleaseDeformation</td><td>mm, rad</td><td>At the start / end; see <a href="#release-deformation" style="color:var(--accent)">ReleaseDeformation</a></td></tr>
             </tbody>
           </table>
@@ -2582,7 +2588,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>memberId</td><td>FrameId</td><td>—</td><td>The member</td></tr>
+              <tr><td>memberId</td><td>FeaId</td><td>—</td><td>The member</td></tr>
               <tr><td>length</td><td>number</td><td>mm</td><td>Member length</td></tr>
               <tr><td>stations</td><td>MemberStation[]</td><td>kN, kN·m, mm</td><td>Values at stations in order of <code>x</code>; at a point load two stations share <code>x</code> (just before, then just after). Empty with <code>diagrams: "extremes"</code>. See <a href="#member-station" style="color:var(--accent)">MemberStation</a></td></tr>
               <tr><td>extremes</td><td>Record&lt;StationComponent, Bound&lt;ExtremeValue&gt;&gt;</td><td>kN, kN·m, mm</td><td>For each of N, V2, V3, T, M2, M3, u1, u2, u3: <code>{ max, min }</code>, each <code>{ value, x }</code>. Exact, not limited to the stations. See <a href="#extreme-value" style="color:var(--accent)">ExtremeValue</a></td></tr>
@@ -2685,7 +2691,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>nodeId</td><td>FrameId</td><td>—</td><td>The corner's node</td></tr>
+              <tr><td>nodeId</td><td>FeaId</td><td>—</td><td>The corner's node</td></tr>
               <tr><td>F11, F22</td><td>number</td><td>kN/m</td><td>Membrane forces along local 1 and 2, positive in tension</td></tr>
               <tr><td>F12</td><td>number</td><td>kN/m</td><td>In-plane shear force</td></tr>
               <tr><td>M11, M22</td><td>number</td><td>kN·m/m</td><td>Moments stressing along local 1 and 2, positive with the −3 face in tension (sagging when local 3 points up)</td></tr>
@@ -2702,10 +2708,10 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
         </div>
       </div>
 
-      <div class="export-card" id="frame-mesh">
+      <div class="export-card" id="fea-mesh">
         <div class="export-card__header">
           <span class="kind m-type">TYPE</span>
-          <span class="ex-sig">FrameMesh</span>
+          <span class="ex-sig">FeaMesh</span>
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
@@ -2713,17 +2719,17 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>nodes</td><td>FrameNode[]</td><td>mm</td><td>The generated nodes with their coordinates; empty when no area was divided</td></tr>
+              <tr><td>nodes</td><td>FeaNode[]</td><td>mm</td><td>The generated nodes with their coordinates; empty when no area was divided</td></tr>
               <tr><td>shells</td><td>{ id, areaId, nodeIds }[]</td><td>—</td><td>Every shell element, area by area in model order, with its four nodes (model or generated)</td></tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <div class="export-card" id="frame-envelope">
+      <div class="export-card" id="fea-envelope">
         <div class="export-card__header">
           <span class="kind m-type">TYPE</span>
-          <span class="ex-sig">FrameEnvelope</span>
+          <span class="ex-sig">FeaEnvelope</span>
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
@@ -2788,14 +2794,14 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
         </div>
       </div>
 
-      <div class="export-card" id="frame-analysis-type">
+      <div class="export-card" id="analysis-type">
         <div class="export-card__header">
           <span class="kind m-type">TYPE</span>
-          <span class="ex-sig">FrameAnalysis</span>
+          <span class="ex-sig">Analysis</span>
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">Returned by <a href="#create-frame-analysis" style="color:var(--accent)">createFrameAnalysis</a>: <code>{ result: FrameResult; memberDiagram(resultId, memberId, stations?): MemberDiagram }</code> (see <a href="#member-diagram" style="color:var(--accent)">MemberDiagram</a>). Unlike the result it holds a function, so it stays in the thread (or worker) that created it.</p>
+          <p class="ex-desc">Returned by <a href="#create-analysis" style="color:var(--accent)">createAnalysis</a>: <code>{ result: FeaResult; memberDiagram(resultId, memberId, stations?): MemberDiagram }</code> (see <a href="#member-diagram" style="color:var(--accent)">MemberDiagram</a>). Unlike the result it holds a function, so it stays in the thread (or worker) that created it.</p>
         </div>
       </div>
 
@@ -2810,7 +2816,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>memberId</td><td>FrameId</td><td>—</td><td>The member</td></tr>
+              <tr><td>memberId</td><td>FeaId</td><td>—</td><td>The member</td></tr>
               <tr><td>MuPositive</td><td>number</td><td>kN·m</td><td>Largest M3 (sagging when local 2 points up); 0 if M3 is never positive</td></tr>
               <tr><td>MuNegative</td><td>number</td><td>kN·m</td><td>Magnitude of the most negative M3 (hogging); 0 if M3 is never negative</td></tr>
               <tr><td>Vu</td><td>number</td><td>kN</td><td>Largest |V2| over <code>VuRange</code></td></tr>
@@ -2824,37 +2830,37 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
 
       <div class="sub-label" style="margin-top:28px">Validation</div>
 
-      <div class="export-card" id="frame-model-issue">
+      <div class="export-card" id="fea-model-issue">
         <div class="export-card__header">
           <span class="kind m-type">TYPE</span>
-          <span class="ex-sig">FrameModelIssue</span>
+          <span class="ex-sig">FeaModelIssue</span>
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">One problem found by <a href="#validate-frame-model" style="color:var(--accent)">validateFrameModel</a>; a thrown <code>FrameAnalysisError</code> lists them all in <code>issues</code>. Exported from <code>core</code>.</p>
+          <p class="ex-desc">One problem found by <a href="#validate-model" style="color:var(--accent)">validateModel</a>; a thrown <code>FeaError</code> lists them all in <code>issues</code>. Exported from <code>core</code>.</p>
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
               <tr><td>code</td><td>number</td><td>—</td><td>Error code, 301–317, 326–327 or 329 (328 only from the analysis); see <a href="#errors" style="color:var(--accent)">the error table</a></td></tr>
               <tr><td>message</td><td>string</td><td>—</td><td>The code's message followed by the location in brackets</td></tr>
-              <tr><td>details</td><td>FrameErrorDetails</td><td>—</td><td>Where the problem is; see <a href="#frame-error-details" style="color:var(--accent)">FrameErrorDetails</a></td></tr>
+              <tr><td>details</td><td>FeaErrorDetails</td><td>—</td><td>Where the problem is; see <a href="#fea-error-details" style="color:var(--accent)">FeaErrorDetails</a></td></tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <div class="export-card" id="frame-error-details">
+      <div class="export-card" id="fea-error-details">
         <div class="export-card__header">
           <span class="kind m-type">TYPE</span>
-          <span class="ex-sig">FrameErrorDetails</span>
+          <span class="ex-sig">FeaErrorDetails</span>
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">Where a frame-analysis problem is, for highlighting it in a UI. Only the fields that apply are set. Exported from <code>core</code>.</p>
+          <p class="ex-desc">Where a problem in the model is, for highlighting it in a UI. Only the fields that apply are set. Exported from <code>core</code>.</p>
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>nodeId, memberId, areaId, shellId</td><td>FrameId</td><td>—</td><td>The node, member, null area or shell area concerned</td></tr>
+              <tr><td>nodeId, memberId, areaId, shellId</td><td>FeaId</td><td>—</td><td>The node, member, null area or shell area concerned</td></tr>
               <tr><td>edge</td><td>number</td><td>—</td><td>An area's edge index (edge <code>i</code> runs from <code>nodeIds[i]</code> to <code>nodeIds[i + 1]</code>)</td></tr>
               <tr><td>loadCaseId, combinationId</td><td>string</td><td>—</td><td>The load case or combination concerned</td></tr>
               <tr><td>field</td><td>string</td><td>—</td><td>The offending input field, e.g. <code>"x"</code>, <code>"w"</code>, <code>"direction"</code>, <code>"supportEdges"</code></td></tr>
@@ -2867,19 +2873,21 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
 
     <!-- ══════════════ Errors ══════════════ -->
     <div class="section" id="errors">
-      <div class="section__title">FrameAnalysisError Codes</div>
+      <div class="section__title">FeaError Codes</div>
       <p>
-        Thrown errors are instances of <code>FrameAnalysisError</code> (exported from
+        Thrown errors are instances of <code>FeaError</code> (exported from
         <code>@theerapat-s28/ts-structural-eng-tools/core</code>, with the coded entries in
-        <code>FrameErrors</code>). It mirrors <code>RCDesignError</code> and uses the 3XX range.
+        <code>FeaErrors</code>). It mirrors <code>RCDesignError</code> and uses the 3XX range.
+        <code>FrameAnalysisError</code> and <code>FrameErrors</code>, the names before 3.2.0, are deprecated
+        aliases of the same class and object, removed in 4.0.0.
       </p>
       <table class="param-table">
         <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
         <tbody>
           <tr><td>code</td><td>number</td><td>—</td><td>The code below</td></tr>
           <tr><td>message</td><td>string</td><td>—</td><td>Description, followed by the location in brackets when known, e.g. <code>[member "m", load case "L", field "w"]</code></td></tr>
-          <tr><td>details</td><td>FrameErrorDetails</td><td>—</td><td><code>{ nodeId?, memberId?, areaId?, shellId?, edge?, loadCaseId?, combinationId?, field?, dof? }</code> — where the problem is, for highlighting it</td></tr>
-          <tr><td>issues</td><td>FrameModelIssue[]</td><td>—</td><td>Every problem <code>validateFrameModel</code> found; the error itself is the first</td></tr>
+          <tr><td>details</td><td>FeaErrorDetails</td><td>—</td><td><code>{ nodeId?, memberId?, areaId?, shellId?, edge?, loadCaseId?, combinationId?, field?, dof? }</code> — where the problem is, for highlighting it</td></tr>
+          <tr><td>issues</td><td>FeaModelIssue[]</td><td>—</td><td>Every problem <code>validateModel</code> found; the error itself is the first</td></tr>
         </tbody>
       </table>
       <table class="summary-table">
@@ -2904,7 +2912,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td class="path-cell">317</td><td class="path-cell">INVALID_AREA_DISTRIBUTION</td><td><code>supportEdges</code> does not fit the distribution (two-way takes none; one-way needs its unsupported edges all parallel and at least one of them; cantilever takes exactly one), or a cantilever load acts along its support edge.</td></tr>
           <tr><td class="path-cell">326</td><td class="path-cell">INVALID_SHELL_GEOMETRY</td><td>A shell area does not have 4 distinct corners in order around a convex quadrilateral, or a corner is more than 0.1·√A off the mean plane.</td></tr>
           <tr><td class="path-cell">327</td><td class="path-cell">INVALID_SHELL_SECTION</td><td>A shell section's thickness or E is not positive, ν is outside [0, 0.5), or <code>unitWeight</code> is negative; <code>details.field</code> names it.</td></tr>
-          <tr><td class="path-cell">328</td><td class="path-cell">SHELL_DOF_UNSUPPORTED</td><td>A node connected only to shells has a translation nothing resists — a membrane's out-of-plane or a plate's in-plane direction. <code>details</code> names the node, a shell and the DOF; every such node is in <code>issues</code>. Restrain the DOF, connect a member, or use type <code>"shell"</code>. Found when the stiffness is assembled, not by <code>validateFrameModel</code>.</td></tr>
+          <tr><td class="path-cell">328</td><td class="path-cell">SHELL_DOF_UNSUPPORTED</td><td>A node connected only to shells has a translation nothing resists — a membrane's out-of-plane or a plate's in-plane direction. <code>details</code> names the node, a shell and the DOF; every such node is in <code>issues</code>. Restrain the DOF, connect a member, or use type <code>"shell"</code>. Found when the stiffness is assembled, not by <code>validateModel</code>.</td></tr>
           <tr><td class="path-cell">329</td><td class="path-cell">INVALID_SHELL_MESH</td><td>Shell areas cannot be meshed: no division counts make the meshes of areas sharing edges meet node to node, a generated element is not a valid quadrilateral, or a generated id is already used by a node or shell. <code>details.shellId</code> names the area. Divide the areas so they meet edge to edge, or change their mesh sizes.</td></tr>
         </tbody>
       </table>
@@ -2918,17 +2926,17 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><th>Kind</th><th>Export</th><th>Returns</th><th>Description</th></tr>
         </thead>
         <tbody>
-          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">analyzeFrame</td><td>FrameResult</td><td>3D frame analysis for every load case and combination</td></tr>
-          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">createFrameAnalysis</td><td>FrameAnalysis</td><td>Same analysis, keeping the solution for on-demand member diagrams</td></tr>
-          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">validateFrameModel</td><td>FrameModelIssue[]</td><td>Every problem in a model, with its location, without analysing</td></tr>
+          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">analyze</td><td>FeaResult</td><td>3D analysis of members and shells for every load case and combination</td></tr>
+          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">createAnalysis</td><td>Analysis</td><td>Same analysis, keeping the solution for on-demand member diagrams</td></tr>
+          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">validateModel</td><td>FeaModelIssue[]</td><td>Every problem in a model, with its location, without analysing</td></tr>
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">distributeAreaLoads</td><td>{ memberLoads, warnings }</td><td>The member loads that the null areas send to their edge members</td></tr>
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">memberDemandEnvelope</td><td>{ MuPositive, MuNegative, Vu, Nu, governing, … }</td><td>Design demands of a member over combinations, with the governing one</td></tr>
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">beam3dLocalStiffness</td><td>number[][]</td><td>Reference 12×12 local stiffness</td></tr>
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">beam3dLocalStiffnessRightHanded</td><td>number[][]</td><td>Same matrix with right-hand rotations</td></tr>
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">memberAxes</td><td>{ length, lambda }</td><td>ETABS-style local axes of a member</td></tr>
-          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameModel</td><td>—</td><td>Analysis input (nodes, members, restraints, null areas, load cases, loads, combinations)</td></tr>
-          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameId</td><td>—</td><td>Node, member or area id: string or number</td></tr>
-          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameNode</td><td>—</td><td>Node coordinates</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FeaModel</td><td>—</td><td>Analysis input (nodes, members, shells, restraints, null areas, load cases, loads, combinations)</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FeaId</td><td>—</td><td>Node, member or area id: string or number</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FeaNode</td><td>—</td><td>Node coordinates</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">Member</td><td>—</td><td>Member: end nodes, section, angle, releases</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberEndRelease</td><td>—</td><td>Released or partially fixed local end DOFs</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">DofRelease</td><td>—</td><td>Rigid, released or spring stiffness</td></tr>
@@ -2956,11 +2964,11 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">AreaDistribution</td><td>—</td><td>twoWay, oneWay or cantilever</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">AreaLoad</td><td>—</td><td>Area load in kN/m² on a null area</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">AreaLoadDirection</td><td>—</td><td>Area normal 3 or global X/Y/Z</td></tr>
-          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">AnalyzeFrameOptions</td><td>—</td><td>Station count and diagram detail</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">AnalyzeOptions</td><td>—</td><td>Station count and diagram detail</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">DemandEnvelopeOptions</td><td>—</td><td>Selection and shear critical distance</td></tr>
-          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameResult</td><td>—</td><td>Analysis output</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FeaResult</td><td>—</td><td>Analysis output</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">AutoRestrainedDof</td><td>—</td><td>Joint rotation held because no member resists it</td></tr>
-          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameCaseResult</td><td>—</td><td>Results of one load case or combination</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FeaCaseResult</td><td>—</td><td>Results of one load case or combination</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">NodalDisplacement</td><td>—</td><td>Node translations and rotations</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">NodalReaction</td><td>—</td><td>Support reactions of a node</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberEndForces</td><td>—</td><td>Start and end forces of a member</td></tr>
@@ -2970,19 +2978,20 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberDiagram</td><td>—</td><td>Stations and extremes along a member</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ShellElementForces</td><td>—</td><td>A shell's forces at its four corners</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ShellCornerForces, ShellForceComponent</td><td>—</td><td>Forces per unit width and face stresses at one corner, and their keys</td></tr>
-          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameMesh</td><td>—</td><td>Generated nodes and shell elements (<code>result.mesh</code>)</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FeaMesh</td><td>—</td><td>Generated nodes and shell elements (<code>result.mesh</code>)</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberStation</td><td>—</td><td>Forces and displacements at one point</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">StationComponent</td><td>—</td><td>Components that have extremes</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ExtremeValue</td><td>—</td><td>Extreme value and its position</td></tr>
-          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameEnvelope</td><td>—</td><td>Max/min over combinations with the governing combination</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FeaEnvelope</td><td>—</td><td>Max/min over combinations with the governing combination</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">GoverningValue</td><td>—</td><td>Envelope value with its combination</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">GoverningExtremeValue</td><td>—</td><td>Envelope member value with combination and position</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">Bound</td><td>—</td><td>{ max, min } pair</td></tr>
-          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameAnalysis</td><td>—</td><td>Result plus on-demand <code>memberDiagram</code></td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">Analysis</td><td>—</td><td>Result plus on-demand <code>memberDiagram</code></td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberDemandEnvelope</td><td>—</td><td>Mu⁺, Mu⁻, Vu, Nu with the governing combination</td></tr>
-          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameModelIssue</td><td>—</td><td>One validation problem (core)</td></tr>
-          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameErrorDetails</td><td>—</td><td>Location of a problem (core)</td></tr>
-          <tr><td><span class="kind m-error">ERR</span></td><td class="path-cell">FrameAnalysisError, FrameErrors</td><td>—</td><td>Error class (code, message, details, issues) and coded entries 301–317 and 326–329 (core)</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FeaModelIssue</td><td>—</td><td>One validation problem (core)</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FeaErrorDetails</td><td>—</td><td>Location of a problem (core)</td></tr>
+          <tr><td><span class="kind m-error">ERR</span></td><td class="path-cell">FeaError, FeaErrors</td><td>—</td><td>Error class (code, message, details, issues) and coded entries 301–317 and 326–329 (core)</td></tr>
+          <tr><td>—</td><td class="path-cell">analyzeFrame, createFrameAnalysis, validateFrameModel, AnalyzeFrameOptions, FrameAnalysis, FrameModel, FrameResult, FrameCaseResult, FrameEnvelope, FrameMesh, FrameNode, FrameId, FrameModelIssue, FrameErrorDetails, FrameAnalysisError, FrameErrors</td><td>—</td><td>Deprecated aliases of the names before 3.2.0, removed in 4.0.0; see <a href="#overview" style="color:var(--accent)">Overview</a></td></tr>
         </tbody>
       </table>
     </div>

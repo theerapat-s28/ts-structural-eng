@@ -12,11 +12,11 @@ export {
 } from "./rc";
 export type { SectionPropertiesOptions } from "./rc";
 
-// FEA — frame analysis
+// FEA — frame and shell analysis
 export {
-  analyzeFrame,
-  createFrameAnalysis,
-  validateFrameModel,
+  analyze,
+  createAnalysis,
+  validateModel,
   distributeAreaLoads,
   beam3dLocalStiffness,
   beam3dLocalStiffnessRightHanded,
@@ -24,10 +24,10 @@ export {
   memberDemandEnvelope,
 } from "./fea";
 export type {
-  AnalyzeFrameOptions,
-  FrameAnalysis,
-  FrameId,
-  FrameNode,
+  AnalyzeOptions,
+  Analysis,
+  FeaId,
+  FeaNode,
   DofRestraint,
   Restraint,
   LineRestraint,
@@ -54,7 +54,7 @@ export type {
   LoadCase,
   CombinationTerm,
   LoadCombination,
-  FrameModel,
+  FeaModel,
   NodalDisplacement,
   NodalReaction,
   MemberEndForce,
@@ -69,15 +69,28 @@ export type {
   ShellCornerForces,
   ShellForceComponent,
   ShellElementForces,
-  FrameMesh,
+  FeaMesh,
   GoverningValue,
   GoverningExtremeValue,
   Bound,
+  FeaCaseResult,
+  FeaEnvelope,
+  FeaResult,
+  MemberDemandEnvelope,
+  DemandEnvelopeOptions,
+} from "./fea";
+// Deprecated FEA names, removed in 4.0.0
+export { analyzeFrame, createFrameAnalysis, validateFrameModel } from "./fea";
+export type {
+  AnalyzeFrameOptions,
+  FrameAnalysis,
+  FrameId,
+  FrameNode,
+  FrameModel,
+  FrameMesh,
   FrameCaseResult,
   FrameEnvelope,
   FrameResult,
-  MemberDemandEnvelope,
-  DemandEnvelopeOptions,
 } from "./fea";
 
 // Strengthening
@@ -110,6 +123,8 @@ export type {
   SidePlateAnchorage,
   SidePlateShearProps,
   SectionProperties,
+  FeaErrorDetails,
+  FeaModelIssue,
   FrameErrorDetails,
   FrameModelIssue,
   Warnings,
@@ -141,6 +156,8 @@ export {
   SHELL_WARPING_LIMIT,
   RCDesignError,
   Errors,
+  FeaError,
+  FeaErrors,
   FrameAnalysisError,
   FrameErrors,
 } from "./core";

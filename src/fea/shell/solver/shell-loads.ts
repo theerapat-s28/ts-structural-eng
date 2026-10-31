@@ -1,4 +1,4 @@
-import type { AreaLoad, FrameId } from "@app-fea/shared/types/model.type";
+import type { AreaLoad, FeaId } from "@app-fea/shared/types/model.type";
 
 import type { SystemShell } from "./system-shell";
 
@@ -25,7 +25,7 @@ const GLOBAL_DIRECTIONS: Record<"X" | "Y" | "Z", [number, number, number]> = {
 export const addShellLoads = (
   F: number[],
   shells: SystemShell[],
-  shellsByArea: Map<FrameId, number[]>,
+  shellsByArea: Map<FeaId, number[]>,
   loads: AreaLoad[],
   selfWeight: number,
 ): void => {

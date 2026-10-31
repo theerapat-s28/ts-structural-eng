@@ -1,7 +1,7 @@
 // Shared by frame members, shells and the analysis
 export type {
-  FrameId,
-  FrameNode,
+  FeaId,
+  FeaNode,
   DofRestraint,
   Restraint,
   AreaLoadDirection,

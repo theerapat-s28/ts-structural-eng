@@ -1,5 +1,5 @@
 import type { SectionProperties } from "@app-core/types/section-properties.type";
-import type { FrameId } from "@app-fea/shared/types/model.type";
+import type { FeaId } from "@app-fea/shared/types/model.type";
 
 /**
  * How a member end DOF is tied to its node: `true` (or 0) is a full release that carries no
@@ -19,9 +19,9 @@ export interface MemberEndRelease {
 }
 
 export interface Member {
-  id: FrameId;
-  startNodeId: FrameId;
-  endNodeId: FrameId;
+  id: FeaId;
+  startNodeId: FeaId;
+  endNodeId: FeaId;
   section: SectionProperties;
   angle?: number; // rad, rotation of local 2 and 3 about local 1 (right-hand rule); default 0
   releases?: { start?: MemberEndRelease; end?: MemberEndRelease };
@@ -39,7 +39,7 @@ export type LoadDirection = "1" | "2" | "3" | "X" | "Y" | "Z";
 export interface UniformMemberLoad {
   loadCase: string; // id of the load case this load belongs to
   type: "udl";
-  memberId: FrameId;
+  memberId: FeaId;
   direction: LoadDirection;
   w: number; // kN/m, positive along the positive direction axis
   start?: number; // mm from the member start (default 0)
@@ -50,7 +50,7 @@ export interface UniformMemberLoad {
 export interface PointMemberLoad {
   loadCase: string; // id of the load case this load belongs to
   type: "point";
-  memberId: FrameId;
+  memberId: FeaId;
   direction: LoadDirection;
   P: number; // kN, positive along the positive direction axis
   a: number; // mm from the member start
@@ -64,7 +64,7 @@ export interface PointMemberLoad {
 export interface TrapezoidalMemberLoad {
   loadCase: string; // id of the load case this load belongs to
   type: "trapezoidal";
-  memberId: FrameId;
+  memberId: FeaId;
   direction: LoadDirection;
   w1: number; // kN/m at `start`, positive along the positive direction axis
   w2: number; // kN/m at `end`
@@ -80,7 +80,7 @@ export interface TrapezoidalMemberLoad {
 export interface TorqueMemberLoad {
   loadCase: string; // id of the load case this load belongs to
   type: "torque";
-  memberId: FrameId;
+  memberId: FeaId;
   t: number; // kN·m/m, positive about +local 1
   start?: number; // mm from the member start (default 0)
   end?: number; // mm from the member start (default member length)
@@ -107,8 +107,8 @@ export type AreaDistribution = "twoWay" | "oneWay" | "cantilever";
  * nodes, so nodes listed counter-clockwise seen from above give local 3 = +Z.
  */
 export interface NullArea {
-  id: FrameId;
-  nodeIds: FrameId[]; // 3 or 4 corner nodes, in order around the area
+  id: FeaId;
+  nodeIds: FeaId[]; // 3 or 4 corner nodes, in order around the area
   distribution: AreaDistribution;
   /** Edge indices that carry the load: one-way supports, or the one cantilever support. */
   supportEdges?: number[];

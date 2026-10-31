@@ -490,7 +490,7 @@
 
       <div class="alert alert--info">
         <span>ℹ️</span>
-        <span><strong>Implemented in 3.0.0</strong> (flat four-node shells, membrane and thin plate, engine meshing, forces): shell areas are part of <code>analyzeFrame</code> (<code>model.shells</code>, <code>shellForces</code>; see the <a href="fea/#shell-areas" style="color:var(--accent)">FEA reference</a>). Thick plates and triangular elements are still to come (Roadmap Phase 5). Numbers on this page come from the library's tests unless marked <em>prototype</em>, which were checked with a throwaway prototype before the code existed. The basis is the finite element method, not a code provision <span class="std-badge" title="Basis: linear-elastic finite element method — not an ACI 318-19 provision">FEM</span>.</span>
+        <span><strong>Implemented in 3.0.0</strong> (flat four-node shells, membrane and thin plate, engine meshing, forces): shell areas are part of <code>analyze</code> (<code>model.shells</code>, <code>shellForces</code>; see the <a href="fea/#shell-areas" style="color:var(--accent)">FEA reference</a>). Thick plates and triangular elements are still to come (Roadmap Phase 5). Numbers on this page come from the library's tests unless marked <em>prototype</em>, which were checked with a throwaway prototype before the code existed. The basis is the finite element method, not a code provision <span class="std-badge" title="Basis: linear-elastic finite element method — not an ACI 318-19 provision">FEM</span>.</span>
       </div>
 
       <div class="sub-label">Basis</div>
@@ -1107,10 +1107,10 @@
         <tbody>
           <tr><td>Element matrices</td><td><code>beam-3d-stiffness.ts</code>, closed-form 12×12</td><td>New membrane, DKQ and shell-assembly functions; 24×24, numerically integrated</td></tr>
           <tr><td>Transformation</td><td><code>transformationMatrix(λ)</code>, 12×12 from 4 blocks</td><td>Block-wise λ<sup>T</sup> k<sub>ab</sub> λ for any node count</td></tr>
-          <tr><td>Assembly</td><td><code>memberDofs</code> and the 12-DOF loops in <code>global-assembly.ts</code> and <code>frame-system.ts</code></td><td>Elements carry <code>nodeIndices[]</code> and 6n DOFs; RCM adjacency over every node pair of an element</td></tr>
+          <tr><td>Assembly</td><td><code>memberDofs</code> and the 12-DOF loops in <code>global-assembly.ts</code> and <code>analysis-system.ts</code></td><td>Elements carry <code>nodeIndices[]</code> and 6n DOFs; RCM adjacency over every node pair of an element</td></tr>
           <tr><td>Auto-restraint</td><td>Unresisted rotations at member joints</td><td>Include shell matrices; an unresisted translation at a membrane- or plate-only node throws 328 instead of being held</td></tr>
           <tr><td>Validation</td><td><code>validate-model.ts</code></td><td>t &gt; 0, E &gt; 0, 0 ≤ ν &lt; 0.5, 3–4 distinct nodes, convex, det <strong>J</strong> &gt; 0, warping and aspect-ratio limits; issues located by a new <code>details.shellId</code> (326 geometry, 327 section)</td></tr>
-          <tr><td>Errors</td><td><code>FrameErrors</code>, 3XX</td><td>326 <code>INVALID_SHELL_GEOMETRY</code>, 327 <code>INVALID_SHELL_SECTION</code>, 328 <code>SHELL_DOF_UNSUPPORTED</code></td></tr>
+          <tr><td>Errors</td><td><code>FeaErrors</code>, 3XX</td><td>326 <code>INVALID_SHELL_GEOMETRY</code>, 327 <code>INVALID_SHELL_SECTION</code>, 328 <code>SHELL_DOF_UNSUPPORTED</code></td></tr>
           <tr><td>Loads</td><td>Fixed-end forces per member</td><td>Equivalent nodal loads per element, per load case</td></tr>
           <tr><td>Results</td><td><code>RawState</code> → <code>present-state.ts</code></td><td>Element corner forces from raw displacements, rounded on presentation; envelope per element corner</td></tr>
           <tr><td>Solver</td><td>Skyline Cholesky, RCM ordering</td><td>Unchanged; no dense global matrix</td></tr>

@@ -1,10 +1,10 @@
-import { FrameAnalysisError } from "@app-core/errors/frame-analysis.error";
+import { FeaError } from "@app-core/errors/fea.error";
 import { distributeAreaLoads } from "@app-fea/analysis/solver/distribute-area-loads";
-import { analyzeFrame } from "@app-fea/analysis/solver/analyze-frame";
-import type { FrameModel } from "@app-fea/analysis/types/model.type";
-import type { FrameNode, Restraint } from "@app-fea/shared/types/model.type";
+import { analyze } from "@app-fea/analysis/solver/analyze";
+import type { FeaModel } from "@app-fea/analysis/types/model.type";
+import type { FeaNode, Restraint } from "@app-fea/shared/types/model.type";
 import type { ShellArea, ShellSection, ShellType } from "@app-fea/shell/types/model.type";
-import { validateFrameModel } from "@app-fea/analysis/validation/validate-model";
+import { validateModel } from "@app-fea/analysis/validation/validate-model";
 
 const concrete: ShellSection = { thickness: 200, E: 30000, nu: 0.2, unitWeight: 24 };
 const fixed = { ux: true, uy: true, uz: true, rx: true, ry: true, rz: true };
@@ -18,7 +18,7 @@ const grid = (
   type?: ShellType,
 ) => {
   const id = (i: number, j: number) => `n${i}_${j}`;
-  const nodes: FrameNode[] = [];
+  const nodes: FeaNode[] = [];
   for (let j = 0; j <= n2; j++) {
     for (let i = 0; i <= n1; i++) {
       const [x, y, z] = at(i, j);
@@ -40,7 +40,7 @@ const grid = (
 };
 
 /** A single 4 × 3 m shell, inclined: rises 2 m over its 3 m width. */
-const inclined = (): FrameModel => ({
+const inclined = (): FeaModel => ({
   nodes: [
     { id: 1, x: 0, y: 0, z: 0 },
     { id: 2, x: 4000, y: 0, z: 0 },
@@ -53,27 +53,27 @@ const inclined = (): FrameModel => ({
   loadCases: [{ id: "L" }],
 });
 
-const issuesOf = (model: FrameModel) =>
-  validateFrameModel(model).map((i) => ({ code: i.code, ...i.details }));
+const issuesOf = (model: FeaModel) =>
+  validateModel(model).map((i) => ({ code: i.code, ...i.details }));
 
-const thrown = (model: FrameModel): FrameAnalysisError => {
+const thrown = (model: FeaModel): FeaError => {
   try {
-    analyzeFrame(model);
+    analyze(model);
   } catch (e) {
-    expect(e).toBeInstanceOf(FrameAnalysisError);
-    return e as FrameAnalysisError;
+    expect(e).toBeInstanceOf(FeaError);
+    return e as FeaError;
   }
-  throw new Error("expected a FrameAnalysisError");
+  throw new Error("expected a FeaError");
 };
 
-const sumReactions = (r: ReturnType<typeof analyzeFrame>, id: string, key: "fx" | "fy" | "fz") =>
+const sumReactions = (r: ReturnType<typeof analyze>, id: string, key: "fx" | "fy" | "fz") =>
   r.cases[id].reactions.reduce((s, x) => s + x[key], 0);
 
 describe("shell validation", () => {
   it("accepts a valid shell and an area load on it", () => {
     const model = inclined();
     model.areaLoads = [{ loadCase: "L", areaId: "roof", direction: "Z", q: -2 }];
-    expect(validateFrameModel(model)).toEqual([]);
+    expect(validateModel(model)).toEqual([]);
   });
 
   it("326 for a shell that is not 4 distinct nodes in a convex, nearly flat quadrilateral", () => {
@@ -157,14 +157,14 @@ describe("shell validation", () => {
   it("names the shell in the message", () => {
     const model = inclined();
     model.shells = [{ ...model.shells![0], section: { ...concrete, thickness: -1 } }];
-    expect(validateFrameModel(model)[0].message).toContain('shell "roof"');
+    expect(validateModel(model)[0].message).toContain('shell "roof"');
   });
 });
 
 describe("328: translations that nothing resists at nodes connected only to shells", () => {
   const wall = (type: ShellType, restraints: Restraint[] = []) => {
     const { id, nodes, shells } = grid(2, 2, (i, j) => [1000 * i, 0, 1000 * j], concrete, type);
-    const model: FrameModel = {
+    const model: FeaModel = {
       nodes,
       members: [],
       restraints: [0, 1, 2].map((i) => ({ nodeId: id(i, 0), ...fixed })).concat(restraints),
@@ -197,8 +197,8 @@ describe("328: translations that nothing resists at nodes connected only to shel
     model.restraints.push(
       ...model.nodes.filter((n) => n.z > 0).map((n) => ({ nodeId: n.id, uy: true })),
     );
-    const membrane = analyzeFrame(model).cases.L.nodalDisplacements;
-    const shell = analyzeFrame(wall("shell").model).cases.L.nodalDisplacements;
+    const membrane = analyze(model).cases.L.nodalDisplacements;
+    const shell = analyze(wall("shell").model).cases.L.nodalDisplacements;
     const top = (d: typeof membrane) => d.find((x) => x.nodeId === id(2, 2))!.ux;
     expect(top(membrane)).toBeGreaterThan(0);
     expect(top(membrane)).toBe(top(shell));
@@ -207,7 +207,7 @@ describe("328: translations that nothing resists at nodes connected only to shel
   it("a plate slab without in-plane restraints: ux and uy", () => {
     const { id, nodes, shells } = grid(2, 2, (i, j) => [1000 * i, 1000 * j, 0], concrete, "plate");
     const edge = (i: number, j: number) => i === 0 || i === 2 || j === 0 || j === 2;
-    const model: FrameModel = {
+    const model: FeaModel = {
       nodes,
       members: [],
       restraints: nodes
@@ -224,7 +224,7 @@ describe("328: translations that nothing resists at nodes connected only to shel
 
   it("not where two membranes meet at an angle: they resist each other's normal direction", () => {
     // two 1-element membrane walls meeting along the Z axis, bases fixed
-    const model: FrameModel = {
+    const model: FeaModel = {
       nodes: [
         { id: "o0", x: 0, y: 0, z: 0 },
         { id: "o1", x: 0, y: 0, z: 3000 },
@@ -260,7 +260,7 @@ describe("loads on shells", () => {
       { loadCase: "L", areaId: "roof", direction: "Z", q: -2, projected: true }, // per plan area
       { loadCase: "L", areaId: "roof", direction: "3", q: -1 }, // along −normal
     ];
-    const r = analyzeFrame(model);
+    const r = analyze(model);
     expect(sumReactions(r, "D", "fz")).toBeCloseTo(24 * 0.2 * trueArea, 3);
     expect(sumReactions(r, "L", "fz")).toBeCloseTo(2 * 12 + 12, 3);
     expect(sumReactions(r, "L", "fy")).toBeCloseTo(-8, 3);
@@ -271,7 +271,7 @@ describe("loads on shells", () => {
     const model = inclined();
     model.loadCases = [{ id: "D", selfWeight: 1 }];
     model.shells = [{ ...model.shells![0], modifiers: { weight: 0.5 } }];
-    expect(sumReactions(analyzeFrame(model), "D", "fz")).toBeCloseTo(0.5 * 24 * 0.2 * trueArea, 3);
+    expect(sumReactions(analyze(model), "D", "fz")).toBeCloseTo(0.5 * 24 * 0.2 * trueArea, 3);
   });
 
   it("combines shell loads by superposition", () => {
@@ -287,9 +287,20 @@ describe("loads on shells", () => {
         ],
       },
     ];
-    const r = analyzeFrame(model);
+    const r = analyze(model);
     const expected = 1.2 * sumReactions(r, "D", "fz") + 1.6 * sumReactions(r, "L", "fz");
     expect(r.combinations.U.reactions.reduce((s, x) => s + x.fz, 0)).toBeCloseTo(expected, 3);
+  });
+
+  it("analyse a model of shells only, without a members list", () => {
+    const model = inclined();
+    model.loadCases = [{ id: "D", selfWeight: 1 }];
+    const { members: _members, ...shellsOnly } = model;
+    expect(validateModel(shellsOnly)).toEqual([]);
+    const r = analyze(shellsOnly);
+    expect(r).toEqual(analyze(model));
+    expect(r.calculationDetails.memberCount).toBe(0);
+    expect(sumReactions(r, "D", "fz")).toBeCloseTo(24 * 0.2 * trueArea, 3);
   });
 
   it("are not sent to members by distributeAreaLoads", () => {
@@ -299,7 +310,7 @@ describe("loads on shells", () => {
   });
 });
 
-describe("shell benchmarks through analyzeFrame", () => {
+describe("shell benchmarks through analyze", () => {
   it("Scordelis–Lo roof: midspan free-edge deflection converges from above to 0.3024", () => {
     // R = 25, L = 50, t = 0.25, E = 4.32·10⁸, ν = 0, gravity 90 per unit area (ft and lb taken
     // as mm and N, so q = 90 N/mm² = 90 000 kN/m²); rigid diaphragms at both ends
@@ -318,7 +329,7 @@ describe("shell benchmarks through analyzeFrame", () => {
           restraints.push({ nodeId: id(i, j), uy: true, uz: true, rx: true, ...axial });
         }
       }
-      const r = analyzeFrame({
+      const r = analyze({
         nodes,
         members: [],
         restraints,
@@ -358,7 +369,7 @@ describe("shell benchmarks through analyzeFrame", () => {
         if (Object.keys(r).length > 1) restraints.push(r);
       }
     }
-    const r = analyzeFrame({
+    const r = analyze({
       nodes,
       members: [],
       restraints,
@@ -373,7 +384,7 @@ describe("shell benchmarks through analyzeFrame", () => {
   it("cantilever wall 2 × 6 m: within 1 % of beam theory with shear deformation", () => {
     // δ = PH³/(3EI) + PH/(κGA) = 1.800 + 0.144 = 1.944 mm for P = 100 kN
     const { id, nodes, shells } = grid(8, 24, (i, j) => [250 * i, 0, 250 * j]);
-    const r = analyzeFrame({
+    const r = analyze({
       nodes,
       members: [],
       restraints: Array.from({ length: 9 }, (_, i) => ({ nodeId: id(i, 0), ...fixed })),
@@ -399,7 +410,7 @@ describe("shell benchmarks through analyzeFrame", () => {
       });
       nodes.push({ id: "tip", x: 5000, y: 0, z: 1500 });
       const section = { E: 30000, G: 12500, A: 1.8e5, I22: 1.35e9, I33: 5.4e9, J: 3.7e9 };
-      return analyzeFrame({
+      return analyze({
         nodes,
         members: [{ id: "b", startNodeId: id(6, 3), endNodeId: "tip", section }],
         restraints: Array.from({ length: 7 }, (_, i) => ({ nodeId: id(i, 0), ...fixed })),
@@ -431,7 +442,7 @@ describe("shell benchmarks through analyzeFrame", () => {
           ...(j === 0 || j === 8 ? { uz: true, ry: true } : {}),
         };
       });
-      const r = analyzeFrame({
+      const r = analyze({
         nodes,
         members: [],
         restraints,

@@ -12,9 +12,9 @@ import { presentShellForces } from "@app-fea/shell/post/shell-forces";
 import { roundToDecimalPlaces } from "@app-utils/math";
 import { matVec } from "@app-utils/matrix";
 
-import type { FrameSystem } from "../solver/frame-system";
+import type { AnalysisSystem } from "../solver/analysis-system";
 import type { RawState } from "../solver/load-case-solver";
-import type { FrameCaseResult } from "../types/results.type";
+import type { FeaCaseResult } from "../types/results.type";
 
 const FORCE_DECIMALS = 4;
 const DISPLACEMENT_DECIMALS = 5;
@@ -49,7 +49,7 @@ const releaseDeformation = (d: number[]): ReleaseDeformation => ({
  * The 12 local displacements of member `m`'s end nodes and the member's own end displacements
  * (which differ across released or spring DOFs), mm and rad.
  */
-const memberEnd = (system: FrameSystem, state: RawState, m: number) => {
+const memberEnd = (system: AnalysisSystem, state: RawState, m: number) => {
   const member = system.members[m];
   const node = matVec(
     member.T,
@@ -62,7 +62,7 @@ const memberEnd = (system: FrameSystem, state: RawState, m: number) => {
 };
 
 /** Global force and moment residual of applied loads plus reactions, in kN and kN·m. */
-const equilibrium = (system: FrameSystem, state: RawState) => {
+const equilibrium = (system: AnalysisSystem, state: RawState) => {
   const { F, R } = state;
   const total = { fx: 0, fy: 0, fz: 0, mx: 0, my: 0, mz: 0 };
   let loadScale = 0;
@@ -99,7 +99,7 @@ const equilibrium = (system: FrameSystem, state: RawState) => {
  * @param withStations - false keeps only the extremes (empty `stations`)
  */
 export const presentMemberDiagram = (
-  system: FrameSystem,
+  system: AnalysisSystem,
   state: RawState,
   g: number,
   stations?: number,
@@ -138,11 +138,11 @@ export const presentMemberDiagram = (
  * @param diagram - Evenly spaced station count, and whether to return stations or only extremes
  */
 export const presentState = (
-  system: FrameSystem,
+  system: AnalysisSystem,
   state: RawState,
-  meta: Pick<FrameCaseResult, "id" | "kind" | "name" | "type">,
+  meta: Pick<FeaCaseResult, "id" | "kind" | "name" | "type">,
   diagram: { stations?: number; withStations?: boolean } = {},
-): FrameCaseResult => {
+): FeaCaseResult => {
   const { U, R } = state;
   const warnings: Warnings = [];
 

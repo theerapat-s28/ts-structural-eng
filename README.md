@@ -12,7 +12,7 @@ The library does the structural engineering and nothing else. A front-end applic
 | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | Model validation with located errors (`details` name the node, member, shell, field…) | Input forms, drawing tools, highlighting the reported problems     |
 | Analysis: load cases, combinations, envelopes, member diagrams, shell forces       | Rendering the model, the mesh, deformed shapes, diagrams and contours |
-| Design checks with code-clause warnings and `RCDesignError` / `FrameAnalysisError` | Display of results, member colours, view and display options       |
+| Design checks with code-clause warnings and `RCDesignError` / `FeaError` | Display of results, member colours, view and display options       |
 | Typed inputs and results in SI units                                               | Unit display, project files, undo history, other UI state          |
 
 What this means in practice:
@@ -31,7 +31,7 @@ pnpm add @theerapat-s28/ts-structural-eng-tools
 
 Import from a module's subpath — `/fea`, `/rc`, `/strengthening`, `/core` or `/utils` — so a front end loads only what it uses, or from the package root, which re-exports every function, type and constant of every module.
 
-**Upgrading from 2.x?** Nothing was removed or renamed, and frame-only models give the same results. Results gain a few fields, and models with shells bring new error codes and generated mesh nodes; [Upgrading from 2.x](CHANGELOG.md#upgrading-from-2x) in the changelog lists what a front end may need to handle.
+**Upgrading from 2.x?** Nothing was removed, frame-only models give the same results, and the exports renamed in 3.2.0 keep their old names as deprecated aliases. Results gain a few fields, and models with shells bring new error codes and generated mesh nodes; [Upgrading from 2.x](CHANGELOG.md#upgrading-from-2x) in the changelog lists what a front end may need to handle.
 
 ## Documentation
 
@@ -54,8 +54,8 @@ Two models, one with members only and one that adds a slab as shell elements. Th
 Analyse a simply supported RC beam under self-weight and live load, envelope the design demands, and check them against the section's flexural capacity:
 
 ```ts
-import { analyzeFrame, memberDemandEnvelope } from "@theerapat-s28/ts-structural-eng-tools/fea";
-import type { FrameModel } from "@theerapat-s28/ts-structural-eng-tools/fea";
+import { analyze, memberDemandEnvelope } from "@theerapat-s28/ts-structural-eng-tools/fea";
+import type { FeaModel } from "@theerapat-s28/ts-structural-eng-tools/fea";
 import {
   rectBeamMomentCapacity,
   rectBeamToSectionProperties,
@@ -65,7 +65,7 @@ import {
 const beam = { Es: 200_000, fc_: 28, fy: 420, As: 1800, b: 300, h: 600, d: 540 };
 const { sectionProperties } = rectBeamToSectionProperties(beam, { member: "beam" });
 
-const model: FrameModel = {
+const model: FeaModel = {
   nodes: [
     { id: "A", x: 0, y: 0, z: 0 },
     { id: "B", x: 6000, y: 0, z: 0 }, // mm
@@ -91,7 +91,7 @@ const model: FrameModel = {
   ],
 };
 
-const result = analyzeFrame(model);
+const result = analyze(model);
 
 // Diagrams along every member, ready for plotting
 const { stations } = result.combinations["1.2D+1.6L"].memberDiagrams[0];
@@ -112,8 +112,8 @@ const { phiMn, warnings } = rectBeamMomentCapacity(beam);
 A 6 × 5 m, 200 mm slab on four edge beams and four columns. The slab is one shell area; the engine meshes it, splits the edge beams at the mesh nodes so they share them with the slab, and reports the slab's forces per element:
 
 ```ts
-import { analyzeFrame, memberDemandEnvelope } from "@theerapat-s28/ts-structural-eng-tools/fea";
-import type { FrameModel } from "@theerapat-s28/ts-structural-eng-tools/fea";
+import { analyze, memberDemandEnvelope } from "@theerapat-s28/ts-structural-eng-tools/fea";
+import type { FeaModel } from "@theerapat-s28/ts-structural-eng-tools/fea";
 import {
   concreteElasticModulus,
   rectBeamToSectionProperties,
@@ -124,7 +124,7 @@ const beam = rectBeamToSectionProperties({ fc_, b: 300, h: 600 }, { member: "bea
 const column = rectBeamToSectionProperties({ fc_, b: 400, h: 400 }, { member: "column" });
 const fixed = { ux: true, uy: true, uz: true, rx: true, ry: true, rz: true };
 
-const model: FrameModel = {
+const model: FeaModel = {
   nodes: [
     { id: "A", x: 0, y: 0, z: 3500 }, // slab corners, mm
     { id: "B", x: 6000, y: 0, z: 3500 },
@@ -172,7 +172,7 @@ const model: FrameModel = {
   ],
 };
 
-const result = analyzeFrame(model);
+const result = analyze(model);
 const mesh = result.mesh!; // present whenever the model has shells
 
 // Draw the mesh: 120 elements, each with its four corner nodes
@@ -204,7 +204,7 @@ What changes for the front end when a model has shells:
 
 ### Running in a Web Worker
 
-Model and result are plain JSON, so post the model to a worker, run `analyzeFrame` there, and post the result back; the page stays responsive on large models. For big results, analyse with `{ diagrams: "extremes" }`, which keeps every diagram's extremes (so envelopes and `memberDemandEnvelope` still work) but drops the stations, and draw a member's full diagram on demand with `createFrameAnalysis(model).memberDiagram(resultId, memberId)`. The reference has a [worker example](https://theerapat-s28.github.io/ts-structural-eng/fea/#frontend).
+Model and result are plain JSON, so post the model to a worker, run `analyze` there, and post the result back; the page stays responsive on large models. For big results, analyse with `{ diagrams: "extremes" }`, which keeps every diagram's extremes (so envelopes and `memberDemandEnvelope` still work) but drops the stations, and draw a member's full diagram on demand with `createAnalysis(model).memberDiagram(resultId, memberId)`. The reference has a [worker example](https://theerapat-s28.github.io/ts-structural-eng/fea/#frontend).
 
 On a desktop PC (Intel Core i5-13500, Node.js 24):
 
@@ -221,25 +221,27 @@ Summarised below; see the [full API reference](https://theerapat-s28.github.io/t
 
 Linear-elastic 3D analysis by the direct stiffness method, from `@theerapat-s28/ts-structural-eng-tools/fea`. Global axes X, Y, Z (Z up); members and shells use ETABS-style local axes 1, 2, 3. Inputs are in mm, MPa, kN, kN·m and kN/m²; results are in kN, kN·m, mm and rad, and shell forces in kN/m, kN·m/m and MPa, as listed in `result.units`.
 
+**Renamed in 3.2.0.** A model may have no frame members at all, e.g. a mat foundation, so the exports that apply to the whole model no longer say "frame": `analyzeFrame` → `analyze`, `createFrameAnalysis` → `createAnalysis`, `validateFrameModel` → `validateModel`, `AnalyzeFrameOptions` → `AnalyzeOptions`, `FrameAnalysis` → `Analysis`, and `Frame` → `Fea` in `FeaModel`, `FeaResult`, `FeaCaseResult`, `FeaEnvelope`, `FeaMesh`, `FeaNode`, `FeaId`, `FeaModelIssue`, `FeaErrorDetails`, `FeaError` and `FeaErrors`. The old names still work as deprecated aliases and are removed in 4.0.0.
+
 #### Functions
 
-- **`analyzeFrame(model, options?)`** — Validates the model, analyses every load case and forms every combination by superposition. The stiffness is factorised once for all cases, and combination diagrams are rebuilt from the combined forces, so their extremes are exact rather than sums of case extremes. `options.stations` sets the stations per member diagram (default 21); `options.diagrams: "extremes"` keeps only each diagram's extremes. Returns a `FrameResult`.
-- **`createFrameAnalysis(model, options?)`** — The same analysis, keeping the solution: returns `{ result, memberDiagram(resultId, memberId, stations?) }` to compute a member's full diagram on demand.
-- **`validateFrameModel(model)`** — Checks a model without analysing it and returns every problem, each with `details` (`nodeId`, `memberId`, `areaId`, `shellId`, `edge`, `loadCaseId`, `combinationId`, `field`, `dof`) for highlighting in a UI. `analyzeFrame` runs it first and throws the first problem as a `FrameAnalysisError` whose `issues` lists all of them.
-- **`distributeAreaLoads(model)`** — Returns `{ memberLoads, warnings }`: the member loads that the model's null areas send to their edge members, exactly what `analyzeFrame` adds, for checking or previewing. Loads on shells act on the shells and are not included.
+- **`analyze(model, options?)`** — Validates the model, analyses every load case and forms every combination by superposition. The stiffness is factorised once for all cases, and combination diagrams are rebuilt from the combined forces, so their extremes are exact rather than sums of case extremes. `options.stations` sets the stations per member diagram (default 21); `options.diagrams: "extremes"` keeps only each diagram's extremes. Returns a `FeaResult`.
+- **`createAnalysis(model, options?)`** — The same analysis, keeping the solution: returns `{ result, memberDiagram(resultId, memberId, stations?) }` to compute a member's full diagram on demand.
+- **`validateModel(model)`** — Checks a model without analysing it and returns every problem, each with `details` (`nodeId`, `memberId`, `areaId`, `shellId`, `edge`, `loadCaseId`, `combinationId`, `field`, `dof`) for highlighting in a UI. `analyze` runs it first and throws the first problem as a `FeaError` whose `issues` lists all of them.
+- **`distributeAreaLoads(model)`** — Returns `{ memberLoads, warnings }`: the member loads that the model's null areas send to their edge members, exactly what `analyze` adds, for checking or previewing. Loads on shells act on the shells and are not included.
 - **`memberDemandEnvelope(result, memberId, options?)`** — Reduces a member's diagrams to `MuPositive`, `MuNegative`, `Vu` (optionally from distance `d` off the supports) and `Nu`, enveloped over all combinations (or the `combinations` / `cases` you select), with the `governing` combination of each, for the RC capacity functions.
 - **`rectBeamToSectionProperties(section, options?)`** (from `rc`) — Converts a rectangular RC section into `SectionProperties` (`E`, `G`, `A`, `I22`, `I33`, `J`, `unitWeight`) with the ACI 318-19 6.6.3.1.1 inertia modifiers (0.35 beams, 0.70 columns) and a unit weight for self-weight (default 24 kN/m³, common practice rather than an ACI value).
-- **`beam3dLocalStiffness(E, G, A, I22, I33, J, L)`** — The 12×12 local stiffness matrix exactly as in the reference "Complete Beam Stiffness Matrix". Its bending rotations R2 and R3 follow the opposite sign to the right-hand rule; **`beam3dLocalStiffnessRightHanded`** returns the right-handed form that `analyzeFrame` uses.
+- **`beam3dLocalStiffness(E, G, A, I22, I33, J, L)`** — The 12×12 local stiffness matrix exactly as in the reference "Complete Beam Stiffness Matrix". Its bending rotations R2 and R3 follow the opposite sign to the right-hand rule; **`beam3dLocalStiffnessRightHanded`** returns the right-handed form that `analyze` uses.
 - **`memberAxes(start, end, angle?)`** — The ETABS-style local axes of a member as a direction-cosine matrix.
 
 #### The model
 
-A `FrameModel` is plain data. Every load names its `loadCase`, so loads are flat top-level lists:
+A `FeaModel` is plain data. Every load names its `loadCase`, so loads are flat top-level lists:
 
 | Field | What it holds |
 | --- | --- |
 | `nodes` | `{ id, x, y, z }` in mm; ids are strings or numbers |
-| `members` | `{ id, startNodeId, endNodeId, section, angle?, releases? }`, with `section` a `SectionProperties` |
+| `members` | `{ id, startNodeId, endNodeId, section, angle?, releases? }`, with `section` a `SectionProperties`; omit for a model of shells only |
 | `restraints` | Per node, each DOF `ux` … `rz` fixed (`true`) or a spring (kN/mm, kN·m/rad) |
 | `lineRestraints` | `{ nodeIds: [a, b], ux? … rz? }`: fixes those DOFs at every node on the line from `a` to `b`, generated mesh nodes included, e.g. a wall base |
 | `loadCases` | `{ id, name?, type?, selfWeight? }`; `selfWeight: 1` applies the full self-weight of members and shells |
@@ -272,7 +274,7 @@ Both are areas that take `areaLoads`, and they share one id namespace.
 | `calculationDetails` | Node (generated included), member, shell-element, DOF, load case and combination counts, `profileSize` and `autoRestrainedDofs` |
 | `units`, `warnings` | The unit of each kind of result, and the warnings of every case and combination |
 
-Invalid models and unstable structures throw `FrameAnalysisError`, described under [Errors and warnings](#errors-and-warnings-from-core).
+Invalid models and unstable structures throw `FeaError`, described under [Errors and warnings](#errors-and-warnings-from-core).
 
 ### RC Beam Design
 
@@ -310,7 +312,7 @@ ACI 440.2R-17 11.4.2 (spacing, which defers to the ACI 318 limits) and 11.4.3 (`
 A design that is valid but breaks a code provision returns normally with an entry in `warnings`, citing the clause (e.g. `"ACI318-19, 9.6.1.2"`). A calculation whose assumptions break down throws instead, never returning a silently wrong result:
 
 - **`RCDesignError`** — `code` and `message` from `Errors`: 1XX for RC beam design (e.g. 102, tensile steel not yielding; 105, `Vs` above the 22.5.1.2 limit), 2XX for strengthening and plate connections (201–206).
-- **`FrameAnalysisError`** — `code` and `message` from `FrameErrors`, `details` locating the problem, and `issues` listing every problem `validateFrameModel` found. Codes 301–317 cover the model, members, loads, null areas and combinations (304 is an unstable structure); 326–329 cover shells: 326 invalid geometry, 327 invalid section, 328 a translation that nothing resists at a node connected only to membranes or plates, 329 an area that cannot be meshed. Match on `code`, not on `message`.
+- **`FeaError`** — `code` and `message` from `FeaErrors`, `details` locating the problem, and `issues` listing every problem `validateModel` found. Codes 301–317 cover the model, members, loads, null areas and combinations (304 is an unstable structure); 326–329 cover shells: 326 invalid geometry, 327 invalid section, 328 a translation that nothing resists at a node connected only to membranes or plates, 329 an area that cannot be meshed. Match on `code`, not on `message`.
 
 `core` also exports the shared input types, the type guards `isSinglyReinforced`, `hasTopPlate`, `hasBottomPlate` and `hasSidePlate`, and the engineering constants (φ factors, ultimate concrete strain, inertia modifiers, frame-analysis tolerances, `SHELL_WARPING_LIMIT`).
 
@@ -357,6 +359,7 @@ src/
 │   └── rc-beam-side-plate-shear.ts       # Shear capacity before/after bolted side plates (two models)
 ├── fea/                  # Finite-element analysis
 │   ├── index.ts
+│   ├── deprecated.ts     # Names before 3.2.0 (analyzeFrame, FrameModel, …), aliases until 4.0.0
 │   ├── shared/           # The base every part builds on
 │   │   ├── index.ts
 │   │   ├── types/            # Nodes, restraints, area loads
@@ -382,14 +385,14 @@ src/
 │   └── analysis/         # The whole model, members and shells together (direct stiffness method)
 │       ├── index.ts
 │       ├── mesh/             # The analysed model: shell mesh, line restraints, member splitting at mesh nodes
-│       ├── solver/           # System build + skyline factorisation, per-case solve, combinations, analyzeFrame, distributeAreaLoads
-│       ├── validation/       # validateFrameModel: every input problem, with its location
+│       ├── solver/           # System build + skyline factorisation, per-case solve, combinations, analyze, distributeAreaLoads
+│       ├── validation/       # validateModel: every input problem, with its location
 │       ├── post/             # Result presentation, envelopes, design demands
-│       └── types/            # FrameModel (load cases, combinations, nodal loads, line restraints) and FrameResult
+│       └── types/            # FeaModel (load cases, combinations, nodal loads, line restraints) and FeaResult
 ├── core/                 # Shared infrastructure
 │   ├── index.ts
 │   ├── constants/        # RC design constants (ACI 318) and frame-analysis tolerances
-│   ├── errors/           # RCDesignError and FrameAnalysisError with their coded entries
+│   ├── errors/           # RCDesignError and FeaError with their coded entries
 │   └── types/            # Shared types: RC sections, plate jacketing, section properties, warnings, units
 └── utils/                # Helper utilities
     ├── index.ts
@@ -405,7 +408,7 @@ tests/
 ├── fea/frame/            # Tests for members and null areas
 ├── fea/shell/            # Tests for shell elements, meshing and shell results
 ├── fea/shared/           # Tests for element assembly and automatic restraint
-├── fea/analysis/         # Tests for analyzeFrame, combinations, validation, errors and RC integration
+├── fea/analysis/         # Tests for analyze, combinations, validation, errors and RC integration
 └── utils/                # Tests for utilities
 html-docs/                # HTML API reference, deployed to GitHub Pages
 ├── DESIGN.md             # Style guide for the doc pages

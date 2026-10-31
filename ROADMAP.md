@@ -17,7 +17,7 @@ Every feature added must conform to the following core principles:
    - Modal, buckling and response-spectrum results are separate result kinds, not load cases; response-spectrum peaks enter combinations only through envelope-type combinations.
    - Still excluded: anything whose stiffness depends on the case being solved (tension-only members, gaps, plasticity).
 2. **Validated with location**: Every new input field must be validated in [`src/fea/analysis/validation/validate-model.ts`](src/fea/analysis/validation/validate-model.ts) (member and null-area fields in [`src/fea/frame/validation/`](src/fea/frame/validation/), shell fields in [`src/fea/shell/validation/validate-shells.ts`](src/fea/shell/validation/validate-shells.ts), both called from it) and report errors with `details` pinpointing the exact `nodeId`, `memberId`, `loadCase`, or `field`.
-3. **No dense global matrix**: The stiffness (and mass) stays in skyline form ([`src/fea/frame/utils/skyline.ts`](src/fea/frame/utils/skyline.ts)) with nodes in reverse Cuthill–McKee order ([`solver/frame-system.ts`](src/fea/analysis/solver/frame-system.ts)). Any DOF coupling (constraints, diaphragm masters) must enter the RCM adjacency so the profile stays narrow.
+3. **No dense global matrix**: The stiffness (and mass) stays in skyline form ([`src/fea/frame/utils/skyline.ts`](src/fea/frame/utils/skyline.ts)) with nodes in reverse Cuthill–McKee order ([`solver/analysis-system.ts`](src/fea/analysis/solver/analysis-system.ts)). Any DOF coupling (constraints, diaphragm masters) must enter the RCM adjacency so the profile stays narrow.
 4. **Standard SI units**: Coordinates and geometry in mm, elastic moduli and stresses in MPa, forces in kN, moments in kN·m, distributed loads in kN/m, rotations in rad; thermal coefficients in 1/°C, temperatures in °C, unit weights in kN/m³, periods in s.
 5. **Verified**: Validated against textbook / hand-calculated benchmarks and independent oracles (e.g. subdivided-member tests), and added to the verification suite (1.8).
 6. **Synchronous Documentation**: Every change must be documented in [html-docs/fea/index.html](html-docs/fea/index.html), landing docs, [CHANGELOG.md](CHANGELOG.md), and [README.md](README.md).
@@ -156,7 +156,7 @@ Section geometry is needed by `fea` (stiffness) and by `rc/` and future steel de
   - [ ] `steelMaterial(options?)`: $E = 200\,000\text{ MPa}$, $\nu = 0.3$, $\gamma = 78.5\text{ kN/m}^3$, $\alpha = 1.2 \times 10^{-5}/^\circ\text{C}$.
   - [ ] Custom overrides for every property.
 - [ ] **Referencing from the frame model (additive)**:
-  - [ ] `FrameModel.materials?: { id, ...FrameMaterial }[]` and `FrameModel.sections?: { id, materialId, shape } | { id, materialId, properties }[]` (shape-based or explicit properties).
+  - [ ] `FeaModel.materials?: { id, ...FrameMaterial }[]` and `FeaModel.sections?: { id, materialId, shape } | { id, materialId, properties }[]` (shape-based or explicit properties).
   - [ ] `Member.sectionId?` as an alternative to the inline `Member.section`; exactly one of the two must be given.
   - [ ] Self-weight reads `unitWeight` from the referenced material.
   - [ ] Error 322 `UNKNOWN_PROPERTY_REFERENCE` for an unknown `sectionId` / `materialId`; 303 for duplicate ids.
@@ -182,7 +182,7 @@ Replaces the earlier "envelope sets" item: an envelope combination does that job
   - `linear`: the current factored sum.
   - `envelope`: max/min of its terms (each factored), e.g. `WIND = Env(Wx+, Wx−, Wy+, Wy−)`.
 - [ ] A linear combination may reference an envelope combination, e.g. `1.2D + 1.0L + 1.0·WIND`. The result is then a max/min pair, not one state (ETABS behaviour): track `{ max, min }` raw states per result quantity and combine them term by term (positive factors keep max/min, negative factors swap them).
-- [ ] `FrameCaseResult.kind` gains `"envelope"`; envelope results carry `max` / `min` instead of a single state, and no displaced shape.
+- [ ] `FeaCaseResult.kind` gains `"envelope"`; envelope results carry `max` / `min` instead of a single state, and no displaced shape.
 - [ ] Keep the default `result.envelope` over all combinations unchanged.
 - [ ] `memberDemandEnvelope(result, memberId, { combination?: string })` reads any combination, including envelope-type ones.
 - [ ] Validation: existing 303 / 309 / 310 / 311 rules apply to the new type.
@@ -219,7 +219,7 @@ Replaces the earlier "envelope sets" item: an envelope combination does that job
 
 ### 2.2 Shear Deformation (Timoshenko Beam Element)
 - [ ] `SectionProperties` gains optional shear areas $A_{s2}$, $A_{s3}$ (from 1.1 or user-given).
-- [ ] `AnalyzeFrameOptions.shearDeformation?: boolean` (default `false`, Euler–Bernoulli).
+- [ ] `AnalyzeOptions.shearDeformation?: boolean` (default `false`, Euler–Bernoulli).
 - [ ] Timoshenko 12×12 element stiffness with
   $$\Phi_2 = \frac{12 E I_{33}}{G A_{s2} L^2}, \quad \Phi_3 = \frac{12 E I_{22}}{G A_{s3} L^2}$$
 - [ ] Fixed-end actions and deflection integration include shear distortion.
@@ -244,7 +244,7 @@ Replaces the earlier "envelope sets" item: an envelope combination does that job
 - [ ] Tests: fixed-fixed uniform torque $\phi_{max} = tL^2 / (8GJ)$; cantilever tip $\phi = tL^2 / (2GJ)$.
 
 ### 2.7 Support Settlement (Prescribed Displacements)
-- [ ] `FrameModel.supportDisplacements?: { loadCase, nodeId, ux?, uy?, uz?, rx?, ry?, rz? }[]`.
+- [ ] `FeaModel.supportDisplacements?: { loadCase, nodeId, ux?, uy?, uz?, rx?, ry?, rz? }[]`.
 - [ ] Partition free and prescribed DOFs: $\mathbf{F}_{free} \leftarrow \mathbf{F}_{free} - \mathbf{K}_{fr} \mathbf{u}_r$, assembled member by member without a dense $\mathbf{K}$.
 - [ ] Reconstitute the full displacement vector for end forces and reactions.
 - [ ] Error 319 `SETTLEMENT_ON_FREE_DOF` for a displacement on a free or spring DOF.
@@ -284,18 +284,18 @@ Generates load cases (not code combinations), so it fits the "user-specified fac
 ### 3.1 General Nodal Constraints
 The shared transformation mechanism behind diaphragms (3.2), and usable on its own for equal-DOF ties and rigid links.
 
-- [ ] `FrameModel.constraints?: ({ id, type: "equalDof", nodeIds, dofs } | { id, type: "rigidBody", nodeIds, dofs? })[]`.
+- [ ] `FeaModel.constraints?: ({ id, type: "equalDof", nodeIds, dofs } | { id, type: "rigidBody", nodeIds, dofs? })[]`.
 - [ ] Master–slave elimination: slave DOFs expressed through master DOFs by a transformation $\mathbf{T}$, applied element by element so no dense matrix is formed.
 - [ ] Master DOFs enter the RCM adjacency next to their slaves so the profile stays narrow.
 - [ ] Error 321 `INVALID_CONSTRAINT`: node in two conflicting constraints, constrained DOF that is also fixed, or a cycle.
 - [ ] Tests: equal-DOF tie vs very stiff link; rigid body vs stiff member cage.
 
 ### 3.2 Rigid Floor Diaphragms & Story Results
-- [ ] `FrameModel.diaphragms?: { id, nodeIds }[]` (all nodes at one elevation), implemented as a 3.1 constraint:
+- [ ] `FeaModel.diaphragms?: { id, nodeIds }[]` (all nodes at one elevation), implemented as a 3.1 constraint:
   - Master at the diaphragm centroid $(x_m, y_m)$ with DOFs $(U_X, U_Y, R_Z)$.
   - Slave $(x_i, y_i)$: $u_{xi} = U_X - (y_i - y_m) R_Z$, $u_{yi} = U_Y + (x_i - x_m) R_Z$, $r_{zi} = R_Z$.
   - Out-of-plane DOFs $(u_z, r_x, r_y)$ stay independent.
-- [ ] Diaphragm loads: `FrameModel.diaphragmLoads?: { loadCase, diaphragmId, fx?, fy?, mz?, eccentricity? }[]`. Story forces from the user's ELF or wind calculation, with an optional accidental eccentricity offset (e.g. ASCE 7-22 12.8.4.2 ±5 %) turned into $m_z$.
+- [ ] Diaphragm loads: `FeaModel.diaphragmLoads?: { loadCase, diaphragmId, fx?, fy?, mz?, eccentricity? }[]`. Story forces from the user's ELF or wind calculation, with an optional accidental eccentricity offset (e.g. ASCE 7-22 12.8.4.2 ±5 %) turned into $m_z$.
 - [ ] Results:
   - [ ] Diaphragm master displacements per case/combination.
   - [ ] Story drift and drift ratio between consecutive diaphragms; maximum vs average drift at the extreme corners (torsional irregularity check input, ASCE 7-22 Table 12.3-1).
@@ -304,7 +304,7 @@ The shared transformation mechanism behind diaphragms (3.2), and usable on its o
 - [ ] Tests: multistory frame lateral load vs stiff-truss bracing oracle; eccentric floor torsion; story shear equals applied lateral load.
 
 ### 3.3 Linearized P-Δ
-- [ ] `AnalyzeFrameOptions.pDelta?: { terms: CombinationTerm[], iterate?: boolean }`: the gravity load set that sets member axial forces (e.g. $1.2D + 0.5L$ as in ETABS practice).
+- [ ] `AnalyzeOptions.pDelta?: { terms: CombinationTerm[], iterate?: boolean }`: the gravity load set that sets member axial forces (e.g. $1.2D + 0.5L$ as in ETABS practice).
 - [ ] Solve that set first (optionally iterating until the axial forces converge), build the member geometric stiffness $\mathbf{K}_g$ (consistent 12×12, P-Δ only), then factorise $\mathbf{K} + \mathbf{K}_g$ once and solve every case against it. Results stay linear, so combinations stay exact.
 - [ ] Member P-δ is not captured inside one element: document that members should be subdivided where P-δ matters, and warn for slender compression members.
 - [ ] `calculationDetails.pDelta`: axial forces used, iteration count, and per-story amplification (second-order / first-order drift) when diaphragms exist.
@@ -317,14 +317,14 @@ The shared transformation mechanism behind diaphragms (3.2), and usable on its o
 ## Phase 4: Dynamics & Stability
 
 ### 4.1 Mass Source & Mass Matrix
-- [ ] `FrameModel.massSource?: { selfWeight?: boolean, loadCases?: { case, factor }[], nodalMasses?: { nodeId, mx, my, mz, mrx?, mry?, mrz? }[] }`. Gravity loads (kN) are converted to mass by $g$.
+- [ ] `FeaModel.massSource?: { selfWeight?: boolean, loadCases?: { case, factor }[], nodalMasses?: { nodeId, mx, my, mz, mrx?, mry?, mrz? }[] }`. Gravity loads (kN) are converted to mass by $g$.
 - [ ] Lumped mass matrix (diagonal, translational) built from member self-weight (honouring `modifiers.weight`) and the mass-source loads, distributed to member ends.
 - [ ] Diaphragm masters get translational mass plus rotational inertia $\sum m_i r_i^2$ about the master.
 - [ ] Mass units stated explicitly (kN·s²/mm internally; reported in tonnes).
 - [ ] Error 324 `NO_MASS` when a modal analysis finds no mass on any free DOF.
 
 ### 4.2 Eigensolver & Modal Analysis
-- [ ] `analyzeModal(model, { modes, options? })` (or a method on `createFrameAnalysis`), reusing the skyline $\mathbf{L}\mathbf{D}\mathbf{L}^T$ factorisation.
+- [ ] `analyzeModal(model, { modes, options? })` (or a method on `createAnalysis`), reusing the skyline $\mathbf{L}\mathbf{D}\mathbf{L}^T$ factorisation.
 - [ ] Subspace iteration (or shifted block Lanczos) for the lowest $n$ modes, with a Sturm-sequence check (count of negative pivots in $\mathbf{K} - \sigma \mathbf{M}$) to confirm no mode was missed.
 - [ ] Results: periods, frequencies, mode shapes (normalised to unit modal mass), participation factors and modal participating mass ratios in UX, UY, RZ with cumulative sums (ASCE 7-22 12.9.1.1 90 % mass check input).
 - [ ] Optional: modal analysis on the P-Δ stiffness $\mathbf{K} + \mathbf{K}_g$.
@@ -337,7 +337,7 @@ The shared transformation mechanism behind diaphragms (3.2), and usable on its o
 - [ ] Tests: Euler column cases ($K = 0.5, 0.7, 1, 2$), portal frame sway buckling.
 
 ### 4.4 Response Spectrum Analysis
-- [ ] `FrameModel.responseSpectra?: { id, direction: "X" | "Y" | "Z", function: { T, Sa }[], scale?, damping?, modalCombination: "CQC" | "SRSS", directionalCombination?: "SRSS" | "100-30" }[]`. The spectrum is user-given T–Sa pairs, so the engine stays code-agnostic.
+- [ ] `FeaModel.responseSpectra?: { id, direction: "X" | "Y" | "Z", function: { T, Sa }[], scale?, damping?, modalCombination: "CQC" | "SRSS", directionalCombination?: "SRSS" | "100-30" }[]`. The spectrum is user-given T–Sa pairs, so the engine stays code-agnostic.
 - [ ] Peak modal responses combined per mode, then across directions; results are unsigned peaks.
 - [ ] Spectrum cases are usable as terms of envelope combinations (1.6), entering as $\pm$ the peak.
 - [ ] Results include base shear per spectrum for the user's scaling to ELF (ASCE 7-22 12.9.1.4); the scale factor is an input.
@@ -351,7 +351,7 @@ Flat four-node shell elements with membrane, plate and shell behaviour, so walls
 
 **API decisions**
 - **Behaviour on the area**: `ShellArea.type?: "shell" | "membrane" | "plate"` (default `"shell"`).
-- **Section inline on each area**: `ShellArea.section: { thickness, E, nu, unitWeight? }`, like `Member.section`. When 1.1 lands, `ShellArea.sectionId` references a shell entry (thickness and material) in `FrameModel.sections`, and exactly one of the two is given.
+- **Section inline on each area**: `ShellArea.section: { thickness, E, nu, unitWeight? }`, like `Member.section`. When 1.1 lands, `ShellArea.sectionId` references a shell entry (thickness and material) in `FeaModel.sections`, and exactly one of the two is given.
 - **Loads through `AreaLoad`**: `areaId` may name a null area or a shell area (one id namespace across `areas` and `shells`). Loads are routed by the kind of area: null-area loads go to the edge members through `distributeAreaLoads` as today; shell loads become equivalent nodal loads on the shell elements. `distributeAreaLoads` ignores loads on shells.
 - **Unsupported DOFs are errors, not auto-fixed**: a translation that nothing resists at a node connected only to membrane (or only to plate) shells throws 328, naming the node, a shell and the DOF, with a message that explains the behaviour (a membrane has no out-of-plane stiffness; a plate has no in-plane stiffness). Unresisted rotations there are held as at truss joints and reported in `autoRestrainedDofs`.
 
@@ -380,9 +380,9 @@ Flat four-node shell elements with membrane, plate and shell behaviour, so walls
 - [x] Tests in [`tests/fea/shell/`](tests/fea/shell/) (`shell-axes`, `flat-shell`, 6-DOF dense harness): axes for horizontal, wall, inclined and warped elements; part placement and `type` switch; symmetry; exactly 6 rigid-body modes for flat and warped elements (and a warped element without the links fails); $\mathbf{k}(R\mathbf{x}) = R\,\mathbf{k}(\mathbf{x})\,R^T$; `angle` irrelevant without modifiers, and a 90° `angle` swaps the 11 and 22 modifiers; $\mathbf{SDS}$ values; the straight cantilever as a 3D shell equals the 2D elements and is unchanged by a 3D rotation; MacNeal–Harder twisted beam within 1 % for both thicknesses and load directions.
 
 ### 5.4 Shells in the Model
-- [x] Types `ShellArea`, `ShellSection`, `ShellModifiers` (`f11, f22, f12, m11, m22, m12, weight`), `ShellType`, `FrameModel.shells` ([`shell/types/model.type.ts`](src/fea/shell/types/model.type.ts)); one shell area is one element until 5.6.
+- [x] Types `ShellArea`, `ShellSection`, `ShellModifiers` (`f11, f22, f12, m11, m22, m12, weight`), `ShellType`, `FeaModel.shells` ([`shell/types/model.type.ts`](src/fea/shell/types/model.type.ts)); one shell area is one element until 5.6.
 - [x] Validation in [`validate-model.ts`](src/fea/analysis/validation/validate-model.ts): geometry (4 distinct nodes, convex in order: $\det \mathbf{J} > 0$ at every corner, warping $\le$ `SHELL_WARPING_LIMIT` $= 0.1\sqrt{A}$) → 326; section → 327; `type`, `angle`, modifiers → 314; duplicate ids across `areas` and `shells` → 303; self-weight without `unitWeight` → 313; `details.shellId`.
-- [x] System ([`frame-system.ts`](src/fea/analysis/solver/frame-system.ts)): `SystemShell`s assembled with the members (shell adjacency added once per pair, so member-only models are bit-identical); 328 from `findUnresistedTranslations` (eigen-check of the translational block at nodes connected only to shells, before factorisation). Unresisted rotations stay with auto-restraint.
+- [x] System ([`analysis-system.ts`](src/fea/analysis/solver/analysis-system.ts)): `SystemShell`s assembled with the members (shell adjacency added once per pair, so member-only models are bit-identical); 328 from `findUnresistedTranslations` (eigen-check of the translational block at nodes connected only to shells, before factorisation). Unresisted rotations stay with auto-restraint.
 - [x] Loads ([`load-case-solver.ts`](src/fea/analysis/solver/load-case-solver.ts)): `AreaLoad`s routed by id (shell loads to the shells; `areaMemberLoads` and `distributeAreaLoads` skip them), self-weight `selfWeight · unitWeight · thickness · weight`, all as corner forces $q \int N_i\,dA$ without offset moments; shells' $\mathbf{k u}$ added into the reactions.
 - [x] Tests in [`tests/fea/shell/shell-model.test.ts`](tests/fea/shell/shell-model.test.ts): every validation error with its location; 328 for membrane walls and plate slabs, not where two membranes meet at an angle; equilibrium of self-weight, projected and normal loads; `weight` modifier; superposition; Scordelis–Lo roof (from above, 16 × 16 within 1 % of 0.3024); pinched cylinder (16 × 16 octant within 2 %); 2 × 6 m wall within 1 % of beam theory with shear; beam framing into a near-rigid wall equals $PL^3/3EI$ (moment through the drilling DOF); simply supported plate slab within 0.2 % of Timoshenko, 4× softer with $m = 0.25$.
 - [x] Docs: FEA reference (shell section, types, conventions, errors), README, CHANGELOG, theory page status.
@@ -390,7 +390,7 @@ Flat four-node shell elements with membrane, plate and shell behaviour, so walls
 ### 5.5 Shell Results & First Release
 - [x] [`shell/post/shell-forces.ts`](src/fea/shell/post/shell-forces.ts): per element, corner values of F11, F22, F12 (kN/m), M11, M22, M12 (kN·m/m, positive with the −3 face in tension) and V13, V23 (kN/m, $V_{13} = -(\partial M_{11}/\partial x_1 + \partial M_{12}/\partial x_2)$ on the bilinear field through the Gauss-point moments), from the 2×2 Gauss points extrapolated to the corners; face stresses $F/t \mp 6M/t^2$ (MPa). Modified rigidity, so cracked forces are consistent.
 - [x] Unrounded `RawState.shellForces` (8 per corner), superposed in combinations; rounding only in [`post/present-state.ts`](src/fea/analysis/post/present-state.ts).
-- [x] `FrameCaseResult.shellForces`; envelope `shells` with max/min per corner and governing combination; `calculationDetails.shellCount`; `units.forcePerLength`, `momentPerLength`, `stress`. Types `ShellElementForces`, `ShellCornerForces`, `ShellForceComponent`.
+- [x] `FeaCaseResult.shellForces`; envelope `shells` with max/min per corner and governing combination; `calculationDetails.shellCount`; `units.forcePerLength`, `momentPerLength`, `stress`. Types `ShellElementForces`, `ShellCornerForces`, `ShellForceComponent`.
 - [x] Tests in [`tests/fea/shell/shell-forces.test.ts`](tests/fea/shell/shell-forces.test.ts): cantilever strip (M11 linear and V13 constant exactly, sign of moments, shears and face stresses, uniform end moment, axial force), local axes via `angle`, determinate forces unchanged by modifiers, membrane/plate parts zero, square plate 16 × 16 (centre 0.0480 / 0.0233 qa², clamped edge −0.0512 qa² against 0.0479 / 0.0231 / −0.0513), superposition, envelope, counts and units.
 - [x] Docs: FEA reference (results, types, example with real outputs), theory page, README, CHANGELOG.
 - [x] Released together with 5.4 and 5.6 as **3.0.0** (a major version to mark shell element analysis; no breaking changes).
@@ -400,10 +400,10 @@ API decisions: supports along meshed edges by line restraints; members along mes
 
 - [x] 5.6a [`shell/mesh/mesh-shells.ts`](src/fea/shell/mesh/mesh-shells.ts): `ShellArea.mesh?: { maxSize?, divisions? }`; area edges cut into segments at model nodes lying on them (hard points, T-junctions); per-segment division counts raised until opposite edges of every area add up equally (the chord rule generalised to multi-segment edges), extra divisions where elements are longest; even segment spacing and transfinite interpolation inside; ids `"<a>~<b>:<k>"`, `"<areaId>:<i>,<j>"`; an area that stays 1 × 1 keeps its id; 329 for no balance, a bad generated element or an id clash.
 - [x] [`analysis/mesh/expand-model.ts`](src/fea/analysis/mesh/expand-model.ts): the analysed model (generated nodes, elements with `areaId`, `lineRestraints` spread to every node on the line, members marked with the generated nodes inside them); warning for a member node inside an area but not on its mesh. `AreaLoad` on an area loads all its elements.
-- [x] Results: displacements and reactions include generated nodes; `ShellElementForces.areaId`; `result.mesh: FrameMesh`; `calculationDetails.nodeCount` counts generated nodes, `memberCount` model members, `shellCount` elements.
-- [x] 5.6b members along meshed edges: `MemberGroup`s of pieces in [`frame-system.ts`](src/fea/analysis/solver/frame-system.ts) (releases only at real ends), member loads resolved on the whole member then clipped to pieces, end forces from the first/last piece, `chainDiagram` stitches the pieces' diagrams; unsplit members take the old code path (frame-only raw results bit-for-bit identical).
+- [x] Results: displacements and reactions include generated nodes; `ShellElementForces.areaId`; `result.mesh: FeaMesh`; `calculationDetails.nodeCount` counts generated nodes, `memberCount` model members, `shellCount` elements.
+- [x] 5.6b members along meshed edges: `MemberGroup`s of pieces in [`analysis-system.ts`](src/fea/analysis/solver/analysis-system.ts) (releases only at real ends), member loads resolved on the whole member then clipped to pieces, end forces from the first/last piece, `chainDiagram` stitches the pieces' diagrams; unsplit members take the old code path (frame-only raw results bit-for-bit identical).
 - [x] Tests in [`tests/fea/shell/shell-mesh.test.ts`](tests/fea/shell/shell-mesh.test.ts): counts and ids, generated nodes in results, equality with the same mesh entered element by element, `divisions` as a minimum, conforming T-junction with different mesh sizes, edge beams split vs split by hand (identical displacements, end forces, diagram extremes, releases), stitched and on-demand diagrams, validation (314, 302, 329), the disconnected-node warning. A 4 × 4-bay slab on beams (1 600 elements, 10 236 DOFs) analyses in about 1.1 s.
-- [x] Docs: FEA reference (meshing rules, example, `ShellMesh`, `LineRestraint`, `FrameMesh`, 329), theory page, README, CHANGELOG.
+- [x] Docs: FEA reference (meshing rules, example, `ShellMesh`, `LineRestraint`, `FeaMesh`, 329), theory page, README, CHANGELOG.
 
 ### 5.7 Thick Plates
 - [ ] `ShellArea.plateTheory?: "thin" | "thick"` (default `"thin"`), using DKMQ (reuses the DKQ code) or MITC4, chosen after 5.2.
@@ -434,7 +434,7 @@ API decisions: supports along meshed edges by line restraints; members along mes
 
 ## Error Codes (3XX Series)
 
-Codes 301–314 are the existing validation and solver errors in [`frame-analysis.error.ts`](src/core/errors/frame-analysis.error.ts).
+Codes 301–314 are the existing validation and solver errors in [`fea.error.ts`](src/core/errors/fea.error.ts).
 
 | Code | Error Name | Target Feature | Trigger Condition |
 |:---:|:---|:---|:---|
@@ -463,32 +463,32 @@ Codes 301–314 are the existing validation and solver errors in [`frame-analysi
 | `FN` | `frameSection` *(sections)* | `SectionResult` | Section properties from standard shapes and a material |
 | `FN` | `concreteMaterial`, `steelMaterial` *(sections)* | `FrameMaterial` | Material presets |
 | `TYPE` | `SectionShape`, `FrameMaterial` *(sections)* | — | Shape and material inputs |
-| `TYPE` | `FrameModel.sections`, `FrameModel.materials`, `Member.sectionId` | — | Properties defined once and referenced by id |
+| `TYPE` | `FeaModel.sections`, `FeaModel.materials`, `Member.sectionId` | — | Properties defined once and referenced by id |
 | `TYPE` | `Member.modifiers` | `PropertyModifiers` | Cracked-section and other stiffness modifiers |
 | `TYPE` | `MomentMemberLoad` | `MemberLoad` | Concentrated moment on a member |
 | `TYPE` | `LoadCombination.type` | `"linear" \| "envelope"` | Envelope combinations, nestable in linear ones |
 | `CONST` | `AREA_LENGTH_TOLERANCE`, `AREA_ANGLE_TOLERANCE` | `number` | Null-area geometry tolerances |
 | `TYPE` | `Member.endOffsets` | `MemberEndOffsets` | Rigid joint zones and face moments |
-| `TYPE` | `AnalyzeFrameOptions.shearDeformation` | `boolean` | Timoshenko beam formulation |
+| `TYPE` | `AnalyzeOptions.shearDeformation` | `boolean` | Timoshenko beam formulation |
 | `TYPE` | `Member.localAxis` | `MemberLocalAxis` | Local axes from a reference vector or point |
 | `TYPE` | `DistributedMomentMemberLoad` | `MemberLoad` | Moment per unit length about local 2 or 3 |
 | `TYPE` | `MemberStation.r1` | `number` | Twist along the member |
-| `TYPE` | `FrameModel.supportDisplacements` | `SupportDisplacement[]` | Prescribed support settlements per load case |
+| `TYPE` | `FeaModel.supportDisplacements` | `SupportDisplacement[]` | Prescribed support settlements per load case |
 | `TYPE` | `TemperatureMemberLoad` | `MemberLoad` | Uniform $\Delta T$ and thermal gradients |
 | `TYPE` | `Restraint.axes` | — | Skewed supports |
-| `FN` | `patternLiveLoads` | `FrameModel` | ACI 318-19 6.4.3 live-load arrangements |
-| `TYPE` | `FrameModel.constraints` | `NodalConstraint[]` | Equal-DOF and rigid-body constraints |
-| `TYPE` | `FrameModel.diaphragms`, `FrameModel.diaphragmLoads` | — | Rigid diaphragms and story forces with eccentricity |
-| `TYPE` | `AnalyzeFrameOptions.pDelta` | — | Linearized P-Δ load set |
-| `TYPE` | `FrameModel.massSource` | `MassSource` | Mass from self-weight, load cases and nodal masses |
+| `FN` | `patternLiveLoads` | `FeaModel` | ACI 318-19 6.4.3 live-load arrangements |
+| `TYPE` | `FeaModel.constraints` | `NodalConstraint[]` | Equal-DOF and rigid-body constraints |
+| `TYPE` | `FeaModel.diaphragms`, `FeaModel.diaphragmLoads` | — | Rigid diaphragms and story forces with eccentricity |
+| `TYPE` | `AnalyzeOptions.pDelta` | — | Linearized P-Δ load set |
+| `TYPE` | `FeaModel.massSource` | `MassSource` | Mass from self-weight, load cases and nodal masses |
 | `FN` | `analyzeModal` | `ModalResult` | Periods, mode shapes, participating mass ratios |
 | `FN` | `analyzeBuckling` | `BucklingResult` | Critical load factors and buckling modes |
-| `TYPE` | `FrameModel.responseSpectra` | `ResponseSpectrum[]` | Response spectrum cases (CQC/SRSS) |
-| `TYPE` | `FrameModel.shells`, `ShellArea`, `ShellSection`, `ShellModifiers` | — | Shell areas with membrane, plate or shell behaviour |
-| `TYPE` | `FrameCaseResult.shellForces` *(3.0.0)* | `ShellElementForces[]` | Corner membrane forces, moments, shears and face stresses |
+| `TYPE` | `FeaModel.responseSpectra` | `ResponseSpectrum[]` | Response spectrum cases (CQC/SRSS) |
+| `TYPE` | `FeaModel.shells`, `ShellArea`, `ShellSection`, `ShellModifiers` | — | Shell areas with membrane, plate or shell behaviour |
+| `TYPE` | `FeaCaseResult.shellForces` *(3.0.0)* | `ShellElementForces[]` | Corner membrane forces, moments, shears and face stresses |
 | `TYPE` | `ShellArea.mesh`, `ShellMesh` *(3.0.0)* | — | Engine meshing of shell areas |
-| `TYPE` | `FrameModel.lineRestraints`, `LineRestraint` *(3.0.0)* | — | Fixed DOFs along a line, generated nodes included |
-| `TYPE` | `FrameResult.mesh`, `FrameMesh` *(3.0.0)* | — | Generated nodes and shell elements |
+| `TYPE` | `FeaModel.lineRestraints`, `LineRestraint` *(3.0.0)* | — | Fixed DOFs along a line, generated nodes included |
+| `TYPE` | `FeaResult.mesh`, `FeaMesh` *(3.0.0)* | — | Generated nodes and shell elements |
 | `TYPE` | `ShellArea.plateTheory` | `"thin" \| "thick"` | Thick-plate formulation |
 
 ---

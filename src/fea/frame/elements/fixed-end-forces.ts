@@ -1,4 +1,4 @@
-import { FrameAnalysisError, FrameErrors } from "@app-core/errors/frame-analysis.error";
+import { FeaError, FeaErrors } from "@app-core/errors/fea.error";
 
 /**
  * A member load resolved into local axes, in N and mm. A distributed load varies linearly
@@ -63,7 +63,7 @@ const unitEquivalentLoad = (axis: 1 | 2 | 3, x: number, L: number): number[] => 
  *
  * @param loads - Loads in local axes, N and mm
  * @param L - Member length in mm
- * @throws {FrameAnalysisError} 308 if a load lies outside the member
+ * @throws {FeaError} 308 if a load lies outside the member
  */
 export const fixedEndForces = (loads: LocalMemberLoad[], L: number): number[] => {
   const equivalent = new Array<number>(12).fill(0);
@@ -74,7 +74,7 @@ export const fixedEndForces = (loads: LocalMemberLoad[], L: number): number[] =>
   for (const load of loads) {
     if (load.type === "torque") {
       if (!(load.start >= 0 && load.end <= L && load.start < load.end)) {
-        throw new FrameAnalysisError(FrameErrors.LOAD_OUTSIDE_MEMBER);
+        throw new FeaError(FeaErrors.LOAD_OUTSIDE_MEMBER);
       }
       // linear torsion shape functions 1 − ξ and ξ, integrated over [start, end]
       const resultant = load.t * (load.end - load.start);
@@ -82,12 +82,11 @@ export const fixedEndForces = (loads: LocalMemberLoad[], L: number): number[] =>
       equivalent[3] += resultant * (1 - centroid / L);
       equivalent[9] += (resultant * centroid) / L;
     } else if (load.type === "point") {
-      if (!(load.a >= 0 && load.a <= L))
-        throw new FrameAnalysisError(FrameErrors.LOAD_OUTSIDE_MEMBER);
+      if (!(load.a >= 0 && load.a <= L)) throw new FeaError(FeaErrors.LOAD_OUTSIDE_MEMBER);
       add(unitEquivalentLoad(load.axis, load.a, L), load.P);
     } else {
       if (!(load.start >= 0 && load.end <= L && load.start < load.end)) {
-        throw new FrameAnalysisError(FrameErrors.LOAD_OUTSIDE_MEMBER);
+        throw new FeaError(FeaErrors.LOAD_OUTSIDE_MEMBER);
       }
       const half = (load.end - load.start) / 2;
       const mid = (load.end + load.start) / 2;

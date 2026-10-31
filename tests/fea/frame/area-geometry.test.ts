@@ -8,7 +8,7 @@ import {
 } from "@app-fea/frame/area/area-geometry";
 import { edgeMemberChain, memberAdjacency } from "@app-fea/frame/area/edge-members";
 import type { Member } from "@app-fea/frame/types/model.type";
-import type { FrameId } from "@app-fea/shared/types/model.type";
+import type { FeaId } from "@app-fea/shared/types/model.type";
 
 const plane = (points: Vec3[]): AreaPlane => {
   const result = areaPlane(points);
@@ -222,7 +222,7 @@ describe("edgeMemberChain", () => {
     B: [6000, 0, 0],
     S: [2500, 3000, 0], // far end of the secondary beam
   };
-  const position = (id: FrameId) => coordinates[id as string];
+  const position = (id: FeaId) => coordinates[id as string];
   const member = (id: string, startNodeId: string, endNodeId: string): Member => ({
     id,
     startNodeId,

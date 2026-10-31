@@ -1,7 +1,7 @@
 /**
- * Where a frame-analysis problem is, so a UI can highlight it. Only the fields that apply are set.
+ * Where a problem in an FEA model is, so a UI can highlight it. Only the fields that apply are set.
  */
-export interface FrameErrorDetails {
+export interface FeaErrorDetails {
   nodeId?: string | number;
   memberId?: string | number;
   areaId?: string | number;
@@ -16,41 +16,41 @@ export interface FrameErrorDetails {
   dof?: "ux" | "uy" | "uz" | "rx" | "ry" | "rz";
 }
 
-export class FrameAnalysisError extends Error {
+export class FeaError extends Error {
   code: number; // Error code for identification
   message: string;
-  details: FrameErrorDetails;
+  details: FeaErrorDetails;
   /** Every problem found when the model was validated; this error is the first of them. */
-  issues: FrameModelIssue[];
+  issues: FeaModelIssue[];
 
   constructor(
-    std: FrameAnalysisErrorType = { code: 0, message: "Unknown error" },
-    details: FrameErrorDetails = {},
-    issues?: FrameModelIssue[],
+    std: FeaErrorType = { code: 0, message: "Unknown error" },
+    details: FeaErrorDetails = {},
+    issues?: FeaModelIssue[],
   ) {
     super(std.message);
     this.code = std.code;
     this.message = std.message;
     this.details = details;
     this.issues = issues ?? [{ code: std.code, message: std.message, details }];
-    Object.setPrototypeOf(this, FrameAnalysisError.prototype);
+    Object.setPrototypeOf(this, FeaError.prototype);
   }
 }
 
-/** One problem found in a frame model, as returned by `validateFrameModel`. */
-export interface FrameModelIssue {
+/** One problem found in an FEA model, as returned by `validateModel`. */
+export interface FeaModelIssue {
   code: number;
   message: string;
-  details: FrameErrorDetails;
+  details: FeaErrorDetails;
 }
 
-type FrameAnalysisErrorType = {
+type FeaErrorType = {
   code: number;
   message: string;
 };
 
-export const FrameErrors: Record<string, FrameAnalysisErrorType> = {
-  // 3XX : Frame analysis errors
+export const FeaErrors: Record<string, FeaErrorType> = {
+  // 3XX : FEA errors
   ZERO_LENGTH_MEMBER: {
     code: 301,
     message: "A member's start and end nodes coincide; the member has zero length.",
@@ -152,3 +152,16 @@ export const FrameErrors: Record<string, FrameAnalysisErrorType> = {
       "Shell areas cannot be meshed: no division counts make the meshes of areas sharing edges meet node to node, a generated element is not a valid quadrilateral, or a generated id is already in use. Divide the areas so they meet edge to edge, or change their mesh sizes.",
   },
 };
+
+// ---- Names before 3.2.0, kept as deprecated aliases until 4.0.0 ------------------------
+
+/** @deprecated Renamed `FeaError`; this alias is removed in 4.0.0. */
+export const FrameAnalysisError = FeaError;
+/** @deprecated Renamed `FeaError`; this alias is removed in 4.0.0. */
+export type FrameAnalysisError = FeaError;
+/** @deprecated Renamed `FeaErrors`; this alias is removed in 4.0.0. */
+export const FrameErrors = FeaErrors;
+/** @deprecated Renamed `FeaErrorDetails`; this alias is removed in 4.0.0. */
+export type FrameErrorDetails = FeaErrorDetails;
+/** @deprecated Renamed `FeaModelIssue`; this alias is removed in 4.0.0. */
+export type FrameModelIssue = FeaModelIssue;

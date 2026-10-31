@@ -1,7 +1,7 @@
-import { analyzeFrame, type AnalyzeFrameOptions } from "@app-fea/analysis/solver/analyze-frame";
+import { analyze, type AnalyzeOptions } from "@app-fea/analysis/solver/analyze";
 import type { MemberLoad } from "@app-fea/frame/types/model.type";
-import type { FrameModel, LoadCase, NodalLoad } from "@app-fea/analysis/types/model.type";
-import type { FrameCaseResult } from "@app-fea/analysis/types/results.type";
+import type { FeaModel, LoadCase, NodalLoad } from "@app-fea/analysis/types/model.type";
+import type { FeaCaseResult } from "@app-fea/analysis/types/results.type";
 
 type Untagged<T> = T extends unknown ? Omit<T, "loadCase"> : never;
 export type UntaggedNodalLoad = Untagged<NodalLoad>;
@@ -16,7 +16,7 @@ export type CaseWithLoads = LoadCase & {
 /** Moves inline loads to the model's top-level load lists, tagged with their load case. */
 export const flattenCases = (
   cases: CaseWithLoads[],
-): Pick<FrameModel, "loadCases" | "nodalLoads" | "memberLoads"> => ({
+): Pick<FeaModel, "loadCases" | "nodalLoads" | "memberLoads"> => ({
   loadCases: cases.map(({ nodalLoads: _n, memberLoads: _m, ...loadCase }) => loadCase),
   nodalLoads: cases.flatMap((c) =>
     (c.nodalLoads ?? []).map((l) => ({ ...l, loadCase: c.id }) as NodalLoad),
@@ -28,7 +28,7 @@ export const flattenCases = (
 
 /** A model with the loads of a single load case written inline, for compact tests. */
 export type SingleCaseModel = Omit<
-  FrameModel,
+  FeaModel,
   "loadCases" | "combinations" | "nodalLoads" | "memberLoads"
 > &
   Pick<CaseWithLoads, "nodalLoads" | "memberLoads" | "selfWeight">;
@@ -36,7 +36,7 @@ export type SingleCaseModel = Omit<
 export const SINGLE_CASE_ID = "LC";
 
 /** Wraps the inline loads in one load case. */
-export const toLoadCaseModel = (model: SingleCaseModel): FrameModel => {
+export const toLoadCaseModel = (model: SingleCaseModel): FeaModel => {
   const { nodalLoads, memberLoads, selfWeight, ...rest } = model;
   return {
     ...rest,
@@ -47,5 +47,5 @@ export const toLoadCaseModel = (model: SingleCaseModel): FrameModel => {
 /** Analyses a single-case model and returns that case's result. */
 export const analyzeSingleCase = (
   model: SingleCaseModel,
-  options?: AnalyzeFrameOptions,
-): FrameCaseResult => analyzeFrame(toLoadCaseModel(model), options).cases[SINGLE_CASE_ID];
+  options?: AnalyzeOptions,
+): FeaCaseResult => analyze(toLoadCaseModel(model), options).cases[SINGLE_CASE_ID];

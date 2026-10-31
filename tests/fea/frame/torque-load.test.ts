@@ -1,6 +1,6 @@
 import type { SectionProperties } from "@app-core/types/section-properties.type";
 import type { MemberStation } from "@app-fea/frame/types/results.type";
-import type { FrameCaseResult } from "@app-fea/analysis/types/results.type";
+import type { FeaCaseResult } from "@app-fea/analysis/types/results.type";
 import { analyzeSingleCase, type SingleCaseModel } from "../analysis/single-case";
 
 const section: SectionProperties = { E: 200000, G: 80000, A: 5000, I22: 2e7, I33: 8e7, J: 1e7 };
@@ -11,7 +11,7 @@ const at = (stations: MemberStation[], x: number) => {
   if (!s) throw new Error(`no station at x = ${x}`);
   return s;
 };
-const reaction = (r: FrameCaseResult, nodeId: number) =>
+const reaction = (r: FeaCaseResult, nodeId: number) =>
   r.reactions.find((x) => x.nodeId === nodeId)!;
 
 /** Single member from (0,0,0) to `end`, both ends fixed unless `restraints` is given. */

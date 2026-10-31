@@ -2,36 +2,36 @@ import type { Warnings } from "@app-core/types/output-message.type";
 import { areaMemberLoads } from "@app-fea/frame/area/area-member-loads";
 import type { MemberLoad } from "@app-fea/frame/types/model.type";
 import type { MemberDiagram } from "@app-fea/frame/types/results.type";
-import type { AreaLoad, FrameId } from "@app-fea/shared/types/model.type";
+import type { AreaLoad, FeaId } from "@app-fea/shared/types/model.type";
 import { throwIssues } from "@app-fea/shared/validation/issues";
 import { roundToDecimalPlaces } from "@app-utils/math";
 
 import { buildEnvelope } from "../post/envelope";
 import { presentMemberDiagram, presentState } from "../post/present-state";
-import type { FrameModel, NodalLoad } from "../types/model.type";
+import type { FeaModel, NodalLoad } from "../types/model.type";
 import { expandModel } from "../mesh/expand-model";
-import type { AutoRestrainedDof, FrameCaseResult, FrameResult } from "../types/results.type";
-import { validateFrameModel } from "../validation/validate-model";
+import type { AutoRestrainedDof, FeaCaseResult, FeaResult } from "../types/results.type";
+import { validateModel } from "../validation/validate-model";
 import { resolveCombinations } from "./combinations";
-import { prepareFrameSystem, type FrameSystem } from "./frame-system";
+import { prepareAnalysisSystem, type AnalysisSystem } from "./analysis-system";
 import { combineStates, solveLoadCase, type RawState } from "./load-case-solver";
 
-export interface AnalyzeFrameOptions {
+export interface AnalyzeOptions {
   /** Number of evenly spaced stations per member diagram (default 21). */
   stations?: number;
   /**
    * `"full"` (default) returns every member diagram with its `stations`; `"extremes"` keeps
    * each diagram's `extremes` (so the envelope and `memberDemandEnvelope` still work) but leaves
    * `stations` empty, which makes large results far smaller. Full diagrams are then available on
-   * demand from `createFrameAnalysis(...).memberDiagram`.
+   * demand from `createAnalysis(...).memberDiagram`.
    */
   diagrams?: "full" | "extremes";
 }
 
 /** An analysed model whose member diagrams can be computed on demand. */
-export interface FrameAnalysis {
-  /** The same result `analyzeFrame` returns. */
-  result: FrameResult;
+export interface Analysis {
+  /** The same result `analyze` returns. */
+  result: FeaResult;
   /**
    * The full diagram (stations and extremes) of one member for one load case or combination,
    * computed from the stored solution without re-analysing.
@@ -41,13 +41,13 @@ export interface FrameAnalysis {
    * @param stations - Evenly spaced stations (default: the analysis option, else 21)
    * @throws {Error} if either id is not in the model
    */
-  memberDiagram: (resultId: string, memberId: FrameId, stations?: number) => MemberDiagram;
+  memberDiagram: (resultId: string, memberId: FeaId, stations?: number) => MemberDiagram;
 }
 
 const ROTATION_DOFS = ["rx", "ry", "rz"] as const;
 
 /** The presented form of the joint rotations held by the solver. */
-const autoRestrainedDofs = (system: FrameSystem): AutoRestrainedDof[] =>
+const autoRestrainedDofs = (system: AnalysisSystem): AutoRestrainedDof[] =>
   system.autoRestraints.map(({ node, axis }) => {
     const rounded = axis.map((c) => roundToDecimalPlaces(c, 9) + 0) as [number, number, number];
     const aligned = rounded.findIndex((c) => Math.abs(c) === 1);
@@ -70,34 +70,31 @@ const groupByCase = <T extends { loadCase: string }>(loads: T[] = []): Map<strin
 };
 
 /**
- * Analyses a 3D frame like `analyzeFrame` and keeps the solution, so that full member diagrams
+ * Analyses a model like `analyze` and keeps the solution, so that full member diagrams
  * can be requested later one member at a time — e.g. analyse with `diagrams: "extremes"` and
  * draw a member's diagram when the user selects it. Run it in a Web Worker for large models.
  *
- * @param model - Nodes, members, restraints, load cases, loads tagged with their load case,
- *   null areas, and combinations
+ * @param model - Nodes, members, shells, restraints, load cases, loads tagged with their load
+ *   case, null areas, and combinations
  * @param options - Diagram station count and detail
  * @returns `{ result, memberDiagram }`
- * @throws {FrameAnalysisError} 301–317, 326 and 327 for an invalid model (with `details` and
+ * @throws {FeaError} 301–317, 326 and 327 for an invalid model (with `details` and
  *   every problem in `issues`), 328 for a translation nothing resists at a node connected only
  *   to shells, 304 for an unstable structure
  */
-export const createFrameAnalysis = (
-  model: FrameModel,
-  options: AnalyzeFrameOptions = {},
-): FrameAnalysis => {
-  const issues = validateFrameModel(model);
+export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): Analysis => {
+  const issues = validateModel(model);
   if (issues.length > 0) throwIssues(issues);
 
   const expanded = expandModel(model);
-  const system = prepareFrameSystem(expanded.model);
+  const system = prepareAnalysisSystem(expanded.model);
   const combinations = model.combinations ?? [];
   const resolved = resolveCombinations(combinations, new Set(model.loadCases.map((c) => c.id)));
   const withStations = (options.diagrams ?? "full") === "full";
   const fromAreas = areaMemberLoads(model);
 
   const states = new Map<string, RawState>();
-  const cases: Record<string, FrameCaseResult> = {};
+  const cases: Record<string, FeaCaseResult> = {};
   const nodalByCase = groupByCase<NodalLoad>(model.nodalLoads);
   const memberByCase = groupByCase<MemberLoad>([
     ...(model.memberLoads ?? []),
@@ -123,7 +120,7 @@ export const createFrameAnalysis = (
   }
 
   const combinationStates = new Map<string, RawState>();
-  const combinationResults: Record<string, FrameCaseResult> = {};
+  const combinationResults: Record<string, FeaCaseResult> = {};
   for (const combination of combinations) {
     // Non-empty: validation rejects combinations without terms
     const terms = [...(resolved.get(combination.id) as Map<string, number>)].map(
@@ -151,7 +148,7 @@ export const createFrameAnalysis = (
   ];
 
   const combinationList = combinations.map((c) => combinationResults[c.id]);
-  const result: FrameResult = {
+  const result: FeaResult = {
     cases,
     combinations: combinationResults,
     envelope: combinationList.length > 0 ? buildEnvelope(combinationList) : undefined,
@@ -192,10 +189,11 @@ export const createFrameAnalysis = (
 };
 
 /**
- * Analyses a 3D frame by the direct stiffness method (linear elastic, small displacements)
- * for every load case, then forms every load combination by superposition.
+ * Analyses a 3D structure of frame members, shell areas or both by the direct stiffness method
+ * (linear elastic, small displacements) for every load case, then forms every load combination
+ * by superposition.
  *
- * The model is validated first (`validateFrameModel`). The stiffness matrix is assembled once
+ * The model is validated first (`validateModel`). The stiffness matrix is assembled once
  * in skyline storage with the nodes in reverse Cuthill–McKee order and factorised once; each
  * load case is a separate solve. A combination is the factored sum of its load cases (nested
  * combinations are expanded), and its member diagrams are rebuilt from the combined end forces
@@ -213,14 +211,14 @@ export const createFrameAnalysis = (
  *
  * Model and result are plain data (JSON-serialisable), so the analysis can run in a Web Worker.
  *
- * @param model - Nodes, members, restraints, load cases, loads tagged with their load case,
- *   null areas, and combinations
+ * @param model - Nodes, members, shells, restraints, load cases, loads tagged with their load
+ *   case, null areas, and combinations
  * @param options - Diagram station count and detail
  * @returns `cases` and `combinations` keyed by id, `envelope` over the combinations,
  *   `calculationDetails`, `units` and `warnings`
- * @throws {FrameAnalysisError} 301–317, 326 and 327 for an invalid model (with `details` and
+ * @throws {FeaError} 301–317, 326 and 327 for an invalid model (with `details` and
  *   every problem in `issues`), 328 for a translation nothing resists at a node connected only
  *   to shells, 304 for an unstable structure
  */
-export const analyzeFrame = (model: FrameModel, options: AnalyzeFrameOptions = {}): FrameResult =>
-  createFrameAnalysis(model, options).result;
+export const analyze = (model: FeaModel, options: AnalyzeOptions = {}): FeaResult =>
+  createAnalysis(model, options).result;

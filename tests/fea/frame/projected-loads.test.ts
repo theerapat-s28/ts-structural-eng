@@ -1,11 +1,11 @@
-import { FrameAnalysisError } from "@app-core/errors/frame-analysis.error";
+import { FeaError } from "@app-core/errors/fea.error";
 import { distributeAreaLoads } from "@app-fea/analysis/solver/distribute-area-loads";
-import { analyzeFrame } from "@app-fea/analysis/solver/analyze-frame";
+import { analyze } from "@app-fea/analysis/solver/analyze";
 import type { NullArea, TrapezoidalMemberLoad } from "@app-fea/frame/types/model.type";
-import type { FrameModel } from "@app-fea/analysis/types/model.type";
+import type { FeaModel } from "@app-fea/analysis/types/model.type";
 import type { AreaLoad } from "@app-fea/shared/types/model.type";
-import type { FrameCaseResult } from "@app-fea/analysis/types/results.type";
-import { validateFrameModel } from "@app-fea/analysis/validation/validate-model";
+import type { FeaCaseResult } from "@app-fea/analysis/types/results.type";
+import { validateModel } from "@app-fea/analysis/validation/validate-model";
 
 import { analyzeSingleCase, type UntaggedMemberLoad } from "../analysis/single-case";
 
@@ -31,11 +31,11 @@ const strut = (end: V3, memberLoads: UntaggedMemberLoad[]) =>
     memberLoads,
   });
 
-const total = (r: FrameCaseResult, key: "fx" | "fy" | "fz") =>
+const total = (r: FeaCaseResult, key: "fx" | "fy" | "fz") =>
   r.reactions.reduce((s, x) => s + x[key], 0);
 
 /** Every reaction component of `a` matches `b`. */
-const expectSameReactions = (a: FrameCaseResult, b: FrameCaseResult) => {
+const expectSameReactions = (a: FeaCaseResult, b: FeaCaseResult) => {
   a.reactions.forEach((ra, i) => {
     const rb = b.reactions[i];
     for (const key of ["fx", "fy", "fz", "mx", "my", "mz"] as const) {
@@ -108,7 +108,7 @@ describe("projected member loads", () => {
   });
 
   it("superposes in combinations", () => {
-    const model: FrameModel = {
+    const model: FeaModel = {
       nodes: [
         { id: "A", x: 0, y: 0, z: 0 },
         { id: "B", x: rafter[0], y: rafter[1], z: rafter[2] },
@@ -124,7 +124,7 @@ describe("projected member loads", () => {
       ],
       combinations: [{ id: "U", terms: [{ case: "S", factor: 1.6 }] }],
     };
-    const result = analyzeFrame(model);
+    const result = analyze(model);
     expect(total(result.combinations.U, "fz")).toBeCloseTo(1.6 * -w * 6, 3);
   });
 });
@@ -144,7 +144,7 @@ describe("projected area loads", () => {
     corners: V3[],
     loads: Omit<AreaLoad, "loadCase" | "areaId">[],
     area: Partial<NullArea> = {},
-  ): FrameModel => ({
+  ): FeaModel => ({
     nodes: corners.map(([x, y, z], i) => ({ id: i, x, y, z })),
     members: corners.map((_, i) => ({
       id: `e${i}`,
@@ -167,7 +167,7 @@ describe("projected area loads", () => {
     (_, area) => {
       const projected = slab(ramp, [{ direction: "Z", q, projected: true }], area);
       const manual = slab(ramp, [{ direction: "Z", q: q * 0.8 }], area);
-      const loads = (m: FrameModel) => distributeAreaLoads(m).memberLoads;
+      const loads = (m: FeaModel) => distributeAreaLoads(m).memberLoads;
       const [p, m] = [loads(projected), loads(manual)];
       expect(p).toHaveLength(m.length);
       p.forEach((load, i) => {
@@ -187,13 +187,13 @@ describe("projected area loads", () => {
           expect(a).not.toHaveProperty("projected");
         }
       });
-      expect(total(analyzeFrame(projected).cases.D, "fz")).toBeCloseTo(-q * 6 * 4, 2); // 120 kN
+      expect(total(analyze(projected).cases.D, "fz")).toBeCloseTo(-q * 6 * 4, 2); // 120 kN
     },
   );
 
   it("projects onto the plane normal to a horizontal direction too", () => {
     // |n · Y| = 0.6: the ramp's projection onto XZ is 6 m × 3 m
-    const result = analyzeFrame(slab(ramp, [{ direction: "Y", q: 2, projected: true }])).cases.D;
+    const result = analyze(slab(ramp, [{ direction: "Y", q: 2, projected: true }])).cases.D;
     expect(total(result, "fy")).toBeCloseTo(-2 * 6 * 3, 2);
   });
 
@@ -214,7 +214,7 @@ describe("projected area loads", () => {
 });
 
 describe("projected load validation", () => {
-  const model = (over: Partial<FrameModel>): FrameModel => ({
+  const model = (over: Partial<FeaModel>): FeaModel => ({
     nodes: [
       { id: 1, x: 0, y: 0, z: 0 },
       { id: 2, x: 6000, y: 0, z: 0 },
@@ -232,7 +232,7 @@ describe("projected load validation", () => {
     areas: [{ id: "S1", nodeIds: [1, 2, 3, 4], distribution: "twoWay" }],
     ...over,
   });
-  const issues = (m: FrameModel) => validateFrameModel(m).map((i) => [i.code, i.details]);
+  const issues = (m: FeaModel) => validateModel(m).map((i) => [i.code, i.details]);
   const member = { loadCaseId: "D", memberId: "12", field: "projected" };
   const area = { loadCaseId: "D", areaId: "S1", field: "projected" };
 
@@ -327,6 +327,6 @@ describe("projected load validation", () => {
       [314, member],
       [314, area],
     ]);
-    expect(() => analyzeFrame(m)).toThrow(FrameAnalysisError);
+    expect(() => analyze(m)).toThrow(FeaError);
   });
 });

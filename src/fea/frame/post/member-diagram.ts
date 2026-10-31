@@ -1,5 +1,5 @@
 import type { SectionProperties } from "@app-core/types/section-properties.type";
-import type { FrameId } from "@app-fea/shared/types/model.type";
+import type { FeaId } from "@app-fea/shared/types/model.type";
 import { roundToDecimalPlaces } from "@app-utils/math";
 import type { Matrix } from "@app-utils/matrix";
 
@@ -34,7 +34,7 @@ type Side = "left" | "right";
 
 /** The member data a diagram needs. */
 export interface DiagramMember {
-  id: FrameId;
+  id: FeaId;
   length: number; // mm
   section: Pick<SectionProperties, "E" | "A" | "I22" | "I33">;
   lambda: Matrix; // 3×3 direction cosines, rows = local 1, 2, 3
@@ -420,7 +420,7 @@ export interface DiagramPiece {
  * @param length - The member's length (mm)
  */
 export const chainDiagram = (
-  id: FrameId,
+  id: FeaId,
   length: number,
   pieces: DiagramPiece[],
   stationCount = 21,

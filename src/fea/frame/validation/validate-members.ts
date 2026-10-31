@@ -1,10 +1,6 @@
-import {
-  FrameErrors,
-  type FrameErrorDetails,
-  type FrameModelIssue,
-} from "@app-core/errors/frame-analysis.error";
-import type { FrameId, FrameNode } from "@app-fea/shared/types/model.type";
-import { frameIssue, isFiniteNumber } from "@app-fea/shared/validation/issues";
+import { FeaErrors, type FeaErrorDetails, type FeaModelIssue } from "@app-core/errors/fea.error";
+import type { FeaId, FeaNode } from "@app-fea/shared/types/model.type";
+import { modelIssue, isFiniteNumber } from "@app-fea/shared/validation/issues";
 
 import { beam3dLocalStiffnessRightHanded } from "../elements/beam-3d-stiffness";
 import { memberEndReleases, RELEASE_KEYS } from "../elements/end-releases";
@@ -28,19 +24,19 @@ const GLOBAL_DIRECTIONS = new Set(["X", "Y", "Z"]);
  */
 export const validateMembers = (
   members: Member[],
-  nodeById: Map<FrameId, FrameNode>,
-  validNode: Set<FrameId>,
-): { issues: FrameModelIssue[]; memberLength: Map<FrameId, number> } => {
-  const issues: FrameModelIssue[] = [];
-  const add = (std: { code: number; message: string }, details: FrameErrorDetails = {}) =>
-    issues.push(frameIssue(std, details));
-  const memberLength = new Map<FrameId, number>(); // only for members whose geometry is valid
+  nodeById: Map<FeaId, FeaNode>,
+  validNode: Set<FeaId>,
+): { issues: FeaModelIssue[]; memberLength: Map<FeaId, number> } => {
+  const issues: FeaModelIssue[] = [];
+  const add = (std: { code: number; message: string }, details: FeaErrorDetails = {}) =>
+    issues.push(modelIssue(std, details));
+  const memberLength = new Map<FeaId, number>(); // only for members whose geometry is valid
   for (const member of members) {
     const at = { memberId: member.id };
     let geometryOk = true;
     for (const field of ["startNodeId", "endNodeId"] as const) {
       if (!nodeById.has(member[field])) {
-        add(FrameErrors.UNKNOWN_NODE_REFERENCE, { ...at, field });
+        add(FeaErrors.UNKNOWN_NODE_REFERENCE, { ...at, field });
         geometryOk = false;
       } else if (!validNode.has(member[field])) {
         geometryOk = false; // reported on the node
@@ -52,7 +48,7 @@ export const validateMembers = (
     for (const field of SECTION_KEYS) {
       const v = section[field];
       if (!isFiniteNumber(v) || v <= 0) {
-        add(FrameErrors.INVALID_SECTION_PROPERTIES, { ...at, field });
+        add(FeaErrors.INVALID_SECTION_PROPERTIES, { ...at, field });
         sectionOk = false;
       }
     }
@@ -60,11 +56,11 @@ export const validateMembers = (
       section.unitWeight !== undefined &&
       (!isFiniteNumber(section.unitWeight) || section.unitWeight < 0)
     ) {
-      add(FrameErrors.INVALID_SECTION_PROPERTIES, { ...at, field: "unitWeight" });
+      add(FeaErrors.INVALID_SECTION_PROPERTIES, { ...at, field: "unitWeight" });
     }
 
     if (member.angle !== undefined && !isFiniteNumber(member.angle)) {
-      add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "angle" });
+      add(FeaErrors.INVALID_INPUT_VALUE, { ...at, field: "angle" });
     }
 
     // each release value: true/false, or a spring stiffness ≥ 0 (0 = full release)
@@ -75,7 +71,7 @@ export const validateMembers = (
       for (const key of RELEASE_KEYS) {
         const v: unknown = release[key];
         if (v === undefined || typeof v === "boolean" || (isFiniteNumber(v) && v >= 0)) continue;
-        add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: `releases.${end}.${key}` });
+        add(FeaErrors.INVALID_INPUT_VALUE, { ...at, field: `releases.${end}.${key}` });
         releasesOk = false;
       }
     }
@@ -85,7 +81,7 @@ export const validateMembers = (
     const b = nodeById.get(member.endNodeId)!;
     const L = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
     if (!(L > 0)) {
-      add(FrameErrors.ZERO_LENGTH_MEMBER, at);
+      add(FeaErrors.ZERO_LENGTH_MEMBER, at);
       continue;
     }
     memberLength.set(member.id, L);
@@ -96,7 +92,7 @@ export const validateMembers = (
       try {
         condenseMember(beam3dLocalStiffnessRightHanded(E, G, A, I22, I33, J, L), releases);
       } catch {
-        add(FrameErrors.INVALID_RELEASE, at);
+        add(FeaErrors.INVALID_RELEASE, at);
       }
     }
   }
@@ -118,20 +114,19 @@ export const validateMembers = (
 export const validateMemberLoads = (
   loads: MemberLoad[],
   members: Member[],
-  memberLength: Map<FrameId, number>,
+  memberLength: Map<FeaId, number>,
   caseIds: Set<string>,
-): FrameModelIssue[] => {
-  const issues: FrameModelIssue[] = [];
-  const add = (std: { code: number; message: string }, details: FrameErrorDetails = {}) =>
-    issues.push(frameIssue(std, details));
+): FeaModelIssue[] => {
+  const issues: FeaModelIssue[] = [];
+  const add = (std: { code: number; message: string }, details: FeaErrorDetails = {}) =>
+    issues.push(modelIssue(std, details));
   for (const load of loads) {
     const at = { loadCaseId: load.loadCase, memberId: load.memberId };
-    if (!caseIds.has(load.loadCase))
-      add(FrameErrors.UNKNOWN_LOAD_CASE, { ...at, field: "loadCase" });
+    if (!caseIds.has(load.loadCase)) add(FeaErrors.UNKNOWN_LOAD_CASE, { ...at, field: "loadCase" });
     const memberKnown = members.some((m) => m.id === load.memberId);
-    if (!memberKnown) add(FrameErrors.UNKNOWN_NODE_REFERENCE, { ...at, field: "memberId" });
+    if (!memberKnown) add(FeaErrors.UNKNOWN_NODE_REFERENCE, { ...at, field: "memberId" });
     if (load.type !== "torque" && !DIRECTIONS.has(load.direction))
-      add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "direction" });
+      add(FeaErrors.INVALID_INPUT_VALUE, { ...at, field: "direction" });
     // a projected length needs a distributed load in a global direction
     const projected = (load as { projected?: unknown }).projected;
     if (
@@ -140,7 +135,7 @@ export const validateMemberLoads = (
         ((load.type !== "udl" && load.type !== "trapezoidal") ||
           !GLOBAL_DIRECTIONS.has(load.direction)))
     ) {
-      add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "projected" });
+      add(FeaErrors.INVALID_INPUT_VALUE, { ...at, field: "projected" });
     }
 
     const L = memberLength.get(load.memberId);
@@ -155,28 +150,28 @@ export const validateMemberLoads = (
       let ok = true;
       for (const [field, v] of [...Object.entries(intensities), ...Object.entries(extent)]) {
         if ((field in intensities || v !== undefined) && !isFiniteNumber(v)) {
-          add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field });
+          add(FeaErrors.INVALID_INPUT_VALUE, { ...at, field });
           ok = false;
         }
       }
       if (ok && L !== undefined) {
         const start = load.start ?? 0;
         const end = load.end ?? L;
-        if (!(start >= 0 && end <= L && start < end)) add(FrameErrors.LOAD_OUTSIDE_MEMBER, at);
+        if (!(start >= 0 && end <= L && start < end)) add(FeaErrors.LOAD_OUTSIDE_MEMBER, at);
       }
     } else if (load.type === "point") {
       let ok = true;
       for (const field of ["P", "a"] as const) {
         if (!isFiniteNumber(load[field])) {
-          add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field });
+          add(FeaErrors.INVALID_INPUT_VALUE, { ...at, field });
           ok = false;
         }
       }
       if (ok && L !== undefined && !(load.a >= 0 && load.a <= L)) {
-        add(FrameErrors.LOAD_OUTSIDE_MEMBER, at);
+        add(FeaErrors.LOAD_OUTSIDE_MEMBER, at);
       }
     } else {
-      add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "type" });
+      add(FeaErrors.INVALID_INPUT_VALUE, { ...at, field: "type" });
     }
   }
 

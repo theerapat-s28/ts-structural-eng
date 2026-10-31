@@ -1,4 +1,4 @@
-import type { FrameId } from "@app-fea/shared/types/model.type";
+import type { FeaId } from "@app-fea/shared/types/model.type";
 
 /**
  * How a shell area carries load: in its plane and in bending (`"shell"`), in its plane only
@@ -52,8 +52,8 @@ export interface ShellMesh {
  * `AreaLoad` can load it.
  */
 export interface ShellArea {
-  id: FrameId;
-  nodeIds: FrameId[]; // 4 corner nodes, in order around the area
+  id: FeaId;
+  nodeIds: FeaId[]; // 4 corner nodes, in order around the area
   type?: ShellType; // default "shell"
   section: ShellSection;
   angle?: number; // rad, rotation of local 1 and 2 about local 3 (right-hand rule); default 0

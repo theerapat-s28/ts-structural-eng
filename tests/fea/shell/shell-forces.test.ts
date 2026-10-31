@@ -1,8 +1,8 @@
-import { analyzeFrame } from "@app-fea/analysis/solver/analyze-frame";
-import type { FrameModel } from "@app-fea/analysis/types/model.type";
-import type { FrameNode, Restraint } from "@app-fea/shared/types/model.type";
+import { analyze } from "@app-fea/analysis/solver/analyze";
+import type { FeaModel } from "@app-fea/analysis/types/model.type";
+import type { FeaNode, Restraint } from "@app-fea/shared/types/model.type";
 import type { ShellArea, ShellSection } from "@app-fea/shell/types/model.type";
-import type { FrameResult } from "@app-fea/analysis/types/results.type";
+import type { FeaResult } from "@app-fea/analysis/types/results.type";
 import type { ShellCornerForces } from "@app-fea/shell/types/results.type";
 
 const fixed = { ux: true, uy: true, uz: true, rx: true, ry: true, rz: true };
@@ -16,7 +16,7 @@ const grid = (
   extra: Partial<ShellArea> = {},
 ) => {
   const id = (i: number, j: number) => `n${i}_${j}`;
-  const nodes: FrameNode[] = [];
+  const nodes: FeaNode[] = [];
   for (let j = 0; j <= n2; j++) {
     for (let i = 0; i <= n1; i++) {
       const [x, y, z] = at(i, j);
@@ -42,7 +42,7 @@ const grid = (
  * 1 m elements, ν = 0 so it bends like a beam. Loads at the tip: "P" −10 kN along Z, "M" +10
  * kN·m about +Y, "T" +100 kN along X.
  */
-const strip = (extra: Partial<ShellArea> = {}): FrameModel => {
+const strip = (extra: Partial<ShellArea> = {}): FeaModel => {
   const { id, nodes, shells } = grid(
     6,
     1,
@@ -65,12 +65,12 @@ const strip = (extra: Partial<ShellArea> = {}): FrameModel => {
   };
 };
 
-const cornersOf = (r: FrameResult, id: string): ShellCornerForces[] =>
+const cornersOf = (r: FeaResult, id: string): ShellCornerForces[] =>
   r.cases[id].shellForces.flatMap((s) => s.corners);
 const xOf = (nodeId: unknown) => Number(String(nodeId).slice(1).split("_")[0]) * 1000;
 
 describe("shell forces: cantilever strip (statically determinate)", () => {
-  const r = analyzeFrame(strip());
+  const r = analyze(strip());
 
   it("tip load: M11 = −P(L − x)/b (hogging), V13 = −P/b, top face in tension", () => {
     for (const c of cornersOf(r, "P")) {
@@ -102,7 +102,7 @@ describe("shell forces: cantilever strip (statically determinate)", () => {
   });
 
   it("reports forces in local axes: angle 90° turns M11 into M22", () => {
-    const turned = analyzeFrame(strip({ angle: Math.PI / 2 }));
+    const turned = analyze(strip({ angle: Math.PI / 2 }));
     cornersOf(turned, "P").forEach((c, k) => {
       expect(c.M22).toBeCloseTo(cornersOf(r, "P")[k].M11, 6);
       expect(c.M11).toBeCloseTo(0, 6);
@@ -110,7 +110,7 @@ describe("shell forces: cantilever strip (statically determinate)", () => {
   });
 
   it("keeps the forces of a determinate structure under cracked modifiers", () => {
-    const cracked = analyzeFrame(strip({ modifiers: { m11: 0.25, m22: 0.25, m12: 0.25 } }));
+    const cracked = analyze(strip({ modifiers: { m11: 0.25, m22: 0.25, m12: 0.25 } }));
     cornersOf(cracked, "P").forEach((c, k) => {
       expect(c.M11).toBeCloseTo(cornersOf(r, "P")[k].M11, 6);
     });
@@ -122,9 +122,9 @@ describe("shell forces: cantilever strip (statically determinate)", () => {
     membrane.loadCases = [{ id: "T" }];
     membrane.nodalLoads = membrane.nodalLoads!.filter((l) => l.loadCase === "T");
     // hold the free nodes out of plane (the root is already clamped)
-    const free = (m: FrameModel) => m.nodes.filter((n) => n.x > 0);
+    const free = (m: FeaModel) => m.nodes.filter((n) => n.x > 0);
     membrane.restraints.push(...free(membrane).map((n): Restraint => ({ nodeId: n.id, uz: true })));
-    for (const c of cornersOf(analyzeFrame(membrane), "T")) {
+    for (const c of cornersOf(analyze(membrane), "T")) {
       expect(c.F11).toBeCloseTo(100, 6);
       expect([c.M11, c.M22, c.M12, c.V13, c.V23]).toEqual([0, 0, 0, 0, 0]);
     }
@@ -132,7 +132,7 @@ describe("shell forces: cantilever strip (statically determinate)", () => {
     plate.restraints.push(
       ...free(plate).map((n): Restraint => ({ nodeId: n.id, ux: true, uy: true })),
     );
-    for (const c of cornersOf(analyzeFrame(plate), "P")) {
+    for (const c of cornersOf(analyze(plate), "P")) {
       expect([c.F11, c.F22, c.F12]).toEqual([0, 0, 0]);
     }
   });
@@ -161,7 +161,7 @@ describe("shell forces: square plate 6 × 6 m, ν = 0.3, 16 × 16 (Timoshenko & 
         ...(yEdge || (clamped && xEdge) ? { ry: true } : {}),
       };
     });
-    const r = analyzeFrame({
+    const r = analyze({
       nodes,
       members: [],
       restraints,
@@ -209,7 +209,7 @@ describe("shell forces in combinations and the envelope", () => {
       ],
     },
   ];
-  const r = analyzeFrame(model);
+  const r = analyze(model);
 
   it("superposes the cases", () => {
     const c1 = r.combinations.C1.shellForces.flatMap((s) => s.corners);

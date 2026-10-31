@@ -1,19 +1,19 @@
 import { SINGULARITY_TOLERANCE } from "@app-core/constants/frame.constant";
-import { FrameErrors } from "@app-core/errors/frame-analysis.error";
+import { FeaErrors } from "@app-core/errors/fea.error";
 import { fixedEndForces, type LocalMemberLoad } from "@app-fea/frame/elements/fixed-end-forces";
 import { memberDofs, scatterMemberForces } from "@app-fea/frame/solver/member-assembly";
 import { memberPieceLoads, scaleMemberLoad } from "@app-fea/frame/solver/member-loads";
 import type { MemberLoad } from "@app-fea/frame/types/model.type";
 import { elementDofs } from "@app-fea/shared/solver/global-assembly";
 import type { AreaLoad } from "@app-fea/shared/types/model.type";
-import { frameIssue, throwIssues } from "@app-fea/shared/validation/issues";
+import { modelIssue, throwIssues } from "@app-fea/shared/validation/issues";
 import { shellRawForces } from "@app-fea/shell/post/shell-forces";
 import { addShellLoads } from "@app-fea/shell/solver/shell-loads";
 import { matVec } from "@app-utils/matrix";
 import { skylineSolve } from "@app-utils/skyline";
 
 import type { LoadCase, NodalLoad } from "../types/model.type";
-import type { FrameSystem } from "./frame-system";
+import type { AnalysisSystem } from "./analysis-system";
 
 /**
  * Unrounded result of one load case or combination, in N and mm. Every field is linear in the
@@ -38,12 +38,12 @@ export interface RawState {
  * @param loads - The nodal and member loads tagged with this load case, and its area loads on
  *   shell areas
  *
- * @throws {FrameAnalysisError} 304 if a load has a moment about a joint rotation that nothing
+ * @throws {FeaError} 304 if a load has a moment about a joint rotation that nothing
  *   resists (an auto-restrained axis), 308 for a load outside its member, 313 if self-weight is
  *   requested for a member without `unitWeight`
  */
 export const solveLoadCase = (
-  system: FrameSystem,
+  system: AnalysisSystem,
   loadCase: LoadCase,
   loads: { nodalLoads: NodalLoad[]; memberLoads: MemberLoad[]; shellLoads?: AreaLoad[] },
 ): RawState => {
@@ -84,7 +84,7 @@ export const solveLoadCase = (
     if (Math.abs(moment) > SINGULARITY_TOLERANCE * momentScale) {
       const lead = axis.reduce((best, a, i) => (Math.abs(a) > Math.abs(axis[best]) ? i : best), 0);
       throwIssues([
-        frameIssue(FrameErrors.STRUCTURE_UNSTABLE, {
+        modelIssue(FeaErrors.STRUCTURE_UNSTABLE, {
           nodeId: system.nodes[node].id,
           dof: (["rx", "ry", "rz"] as const)[lead],
           loadCaseId: loadCase.id,

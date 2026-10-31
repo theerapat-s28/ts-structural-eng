@@ -1,5 +1,5 @@
 import { VERTICAL_MEMBER_TOLERANCE } from "@app-core/constants/frame.constant";
-import { FrameAnalysisError, FrameErrors } from "@app-core/errors/frame-analysis.error";
+import { FeaError, FeaErrors } from "@app-core/errors/fea.error";
 import { zeros, type Matrix } from "@app-utils/matrix";
 
 type Vec3 = [number, number, number];
@@ -24,7 +24,7 @@ const scale = (a: Vec3, s: number): Vec3 => [a[0] * s, a[1] * s, a[2] * s];
  * @param end - End node coordinates in mm
  * @param angle - Member angle in rad (default 0)
  * @returns `{ length, lambda }` with `lambda` rows = local 1, 2, 3 in global components
- * @throws {FrameAnalysisError} 301 if the nodes coincide
+ * @throws {FeaError} 301 if the nodes coincide
  */
 export const memberAxes = (
   start: [number, number, number],
@@ -33,7 +33,7 @@ export const memberAxes = (
 ): { length: number; lambda: Matrix } => {
   const d: Vec3 = [end[0] - start[0], end[1] - start[1], end[2] - start[2]];
   const length = norm(d);
-  if (!(length > 0)) throw new FrameAnalysisError(FrameErrors.ZERO_LENGTH_MEMBER);
+  if (!(length > 0)) throw new FeaError(FeaErrors.ZERO_LENGTH_MEMBER);
 
   const e1 = scale(d, 1 / length);
   let e2: Vec3;

@@ -1,4 +1,4 @@
-import { FrameAnalysisError, FrameErrors } from "@app-core/errors/frame-analysis.error";
+import { FeaError, FeaErrors } from "@app-core/errors/fea.error";
 import { solveLinearSystem, type Matrix } from "@app-utils/matrix";
 
 import type { EndReleaseDof } from "./end-releases";
@@ -37,7 +37,7 @@ export interface CondensedMember {
  *
  * @param k - 12×12 local stiffness (right-hand), N and mm
  * @param releases - Released local DOFs (0–11) with their springs, N/mm or N·mm/rad
- * @throws {FrameAnalysisError} 307 if the full releases make the member a mechanism
+ * @throws {FeaError} 307 if the full releases make the member a mechanism
  */
 export const condenseMember = (k: Matrix, releases: EndReleaseDof[]): CondensedMember => {
   if (releases.length === 0) {
@@ -65,7 +65,7 @@ export const condenseMember = (k: Matrix, releases: EndReleaseDof[]): CondensedM
     [...krc[i], ...krr[i], ...released.map((__, j) => (i === j ? 1 : 0))].map((v) => d[i] * v),
   );
   const scaledSolution = solveLinearSystem(scaledA, rhs);
-  if (!scaledSolution) throw new FrameAnalysisError(FrameErrors.INVALID_RELEASE);
+  if (!scaledSolution) throw new FeaError(FeaErrors.INVALID_RELEASE);
   const solved = scaledSolution.map((row, i) => row.map((v) => d[i] * v));
   const AinvKrc = solved.map((row) => row.slice(0, nc));
   const AinvKrr = solved.map((row) => row.slice(nc, nc + nr));

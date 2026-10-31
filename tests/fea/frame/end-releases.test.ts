@@ -1,11 +1,11 @@
 import type { SectionProperties } from "@app-core/types/section-properties.type";
 import { beam3dLocalStiffnessRightHanded } from "@app-fea/frame/elements/beam-3d-stiffness";
 import { condenseMember } from "@app-fea/frame/elements/static-condensation";
-import { analyzeFrame } from "@app-fea/analysis/solver/analyze-frame";
-import { validateFrameModel } from "@app-fea/analysis/validation/validate-model";
+import { analyze } from "@app-fea/analysis/solver/analyze";
+import { validateModel } from "@app-fea/analysis/validation/validate-model";
 import type { MemberEndRelease } from "@app-fea/frame/types/model.type";
 import type { Restraint } from "@app-fea/shared/types/model.type";
-import type { FrameCaseResult } from "@app-fea/analysis/types/results.type";
+import type { FeaCaseResult } from "@app-fea/analysis/types/results.type";
 import { analyzeSingleCase, toLoadCaseModel, type SingleCaseModel } from "../analysis/single-case";
 
 const E = 200000; // MPa
@@ -43,7 +43,7 @@ const udl = (w: number) => ({
   memberLoads: [{ type: "udl" as const, memberId: "m", direction: "Z" as const, w: -w }],
 });
 
-const expectSameMember = (a: FrameCaseResult, b: FrameCaseResult) => {
+const expectSameMember = (a: FeaCaseResult, b: FeaCaseResult) => {
   for (const end of ["start", "end"] as const) {
     for (const [key, value] of Object.entries(a.memberEndForces[0][end])) {
       expect(value).toBeCloseTo(b.memberEndForces[0][end][key as "f1"], 3);
@@ -109,7 +109,7 @@ describe("condenseMember — springs in series with the member end", () => {
   });
 });
 
-describe("analyzeFrame — partial fixity (semi-rigid end)", () => {
+describe("analyze — partial fixity (semi-rigid end)", () => {
   const w = 20; // kN/m
   const s = (3 * k) / 1e6; // kN·m/rad: fixity factor γ = 1 / (1 + 3EI/(s·L)) = 0.5
   const wL2 = (w * (L / 1000) ** 2) / 12; // fixed-end moment wL²/12 = 60 kN·m
@@ -197,7 +197,7 @@ describe("analyzeFrame — partial fixity (semi-rigid end)", () => {
 
   it("superposes: a combination's release deformations are the factored sum", () => {
     const model = toLoadCaseModel(fixedBeam({ r3: s }));
-    const result = analyzeFrame({
+    const result = analyze({
       ...model,
       loadCases: [{ id: "D" }, { id: "L" }],
       memberLoads: [
@@ -214,7 +214,7 @@ describe("analyzeFrame — partial fixity (semi-rigid end)", () => {
         },
       ],
     });
-    const r3 = (r: FrameCaseResult) => r.releaseDeformations[0].end.r3;
+    const r3 = (r: FeaCaseResult) => r.releaseDeformations[0].end.r3;
     expect(r3(result.combinations.U)).toBeCloseTo(
       1.2 * r3(result.cases.D) + 1.6 * r3(result.cases.L),
       7, // each presented rotation is rounded to 8 decimals
@@ -222,7 +222,7 @@ describe("analyzeFrame — partial fixity (semi-rigid end)", () => {
   });
 });
 
-describe("analyzeFrame — release deformations at hinges", () => {
+describe("analyze — release deformations at hinges", () => {
   it("propped-cantilever hinge: the member rotates wL³/48EI past the fixed node", () => {
     const w = 10; // kN/m = N/mm
     const r = analyzeSingleCase(fixedBeam({ r3: true }, udl(w)));
@@ -240,9 +240,9 @@ describe("analyzeFrame — release deformations at hinges", () => {
   });
 });
 
-describe("validateFrameModel — release values", () => {
+describe("validateModel — release values", () => {
   const issuesOf = (end: Record<string, unknown>) =>
-    validateFrameModel(toLoadCaseModel(fixedBeam(end as MemberEndRelease, udl(1))));
+    validateModel(toLoadCaseModel(fixedBeam(end as MemberEndRelease, udl(1))));
 
   it("accepts true, false, 0 and positive springs", () => {
     expect(issuesOf({ u1: false, u2: 5, r1: true, r3: 0 })).toEqual([]);
@@ -260,7 +260,7 @@ describe("validateFrameModel — release values", () => {
 
   it("springs never make a member a mechanism, full releases still do (307)", () => {
     const both = (value: boolean | number) =>
-      validateFrameModel(
+      validateModel(
         toLoadCaseModel({
           ...fixedBeam({ r1: value }, udl(1)),
           members: [

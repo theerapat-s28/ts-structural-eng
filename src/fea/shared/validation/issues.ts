@@ -1,13 +1,9 @@
-import {
-  FrameAnalysisError,
-  type FrameErrorDetails,
-  type FrameModelIssue,
-} from "@app-core/errors/frame-analysis.error";
+import { FeaError, type FeaErrorDetails, type FeaModelIssue } from "@app-core/errors/fea.error";
 
 export const isFiniteNumber = (v: unknown): v is number =>
   typeof v === "number" && Number.isFinite(v);
 
-const describe = (d: FrameErrorDetails): string => {
+const describe = (d: FeaErrorDetails): string => {
   const parts: string[] = [];
   if (d.nodeId !== undefined) parts.push(`node "${String(d.nodeId)}"`);
   if (d.memberId !== undefined) parts.push(`member "${String(d.memberId)}"`);
@@ -22,13 +18,13 @@ const describe = (d: FrameErrorDetails): string => {
 };
 
 /** Builds an issue whose message names where the problem is. */
-export const frameIssue = (
+export const modelIssue = (
   std: { code: number; message: string },
-  details: FrameErrorDetails = {},
-): FrameModelIssue => ({ code: std.code, message: std.message + describe(details), details });
+  details: FeaErrorDetails = {},
+): FeaModelIssue => ({ code: std.code, message: std.message + describe(details), details });
 
-/** Throws the first issue as a `FrameAnalysisError` carrying all of them. */
-export const throwIssues = (issues: FrameModelIssue[]): never => {
+/** Throws the first issue as a `FeaError` carrying all of them. */
+export const throwIssues = (issues: FeaModelIssue[]): never => {
   const first = issues[0];
-  throw new FrameAnalysisError({ code: first.code, message: first.message }, first.details, issues);
+  throw new FeaError({ code: first.code, message: first.message }, first.details, issues);
 };

@@ -1,19 +1,19 @@
 import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/frame.constant";
 import type { Warnings } from "@app-core/types/output-message.type";
 import type { Member } from "@app-fea/frame/types/model.type";
-import type { FrameId, FrameNode, Restraint } from "@app-fea/shared/types/model.type";
+import type { FeaId, FeaNode, Restraint } from "@app-fea/shared/types/model.type";
 import { shellAxes, type Vec3 } from "@app-fea/shell/elements/shell-axes";
 import { meshShells, pointOnSegment, type ShellElement } from "@app-fea/shell/mesh/mesh-shells";
-import type { FrameMesh } from "@app-fea/shell/types/results.type";
+import type { FeaMesh } from "@app-fea/shell/types/results.type";
 
-import type { FrameModel } from "../types/model.type";
+import type { FeaModel } from "../types/model.type";
 
 const DOF_KEYS = ["ux", "uy", "uz", "rx", "ry", "rz"] as const;
 
 /** A member with the generated mesh nodes lying inside it, where the solver splits it. */
 export interface SplitMember extends Member {
   /** Generated node ids strictly between its ends, in order from the start. */
-  through?: FrameId[];
+  through?: FeaId[];
 }
 
 /** The model the solver analyses: shells meshed, line restraints spread to their nodes. */
@@ -22,9 +22,9 @@ export interface ExpandedModel {
    * Nodes include the generated ones; `shells` are the elements; members list the generated
    * nodes they pass through; restraints include the lines.
    */
-  model: FrameModel & { shells: ShellElement[]; members: SplitMember[] };
+  model: FeaModel & { shells: ShellElement[]; members: SplitMember[] };
   /** The shell mesh for the result; undefined without shells. */
-  mesh: FrameMesh | undefined;
+  mesh: FeaMesh | undefined;
   warnings: Warnings;
 }
 
@@ -32,11 +32,11 @@ export interface ExpandedModel {
  * Restraints of every node on each line restraint's segment (ends included), merged with the
  * point restraints: a DOF fixed by either is fixed.
  */
-const spreadLineRestraints = (model: FrameModel, nodes: FrameModel["nodes"]): Restraint[] => {
+const spreadLineRestraints = (model: FeaModel, nodes: FeaModel["nodes"]): Restraint[] => {
   const lines = model.lineRestraints ?? [];
   if (lines.length === 0) return model.restraints;
-  const position = new Map<FrameId, Vec3>(nodes.map((n) => [n.id, [n.x, n.y, n.z]]));
-  const merged = new Map<FrameId, Restraint>(model.restraints.map((r) => [r.nodeId, { ...r }]));
+  const position = new Map<FeaId, Vec3>(nodes.map((n) => [n.id, [n.x, n.y, n.z]]));
+  const merged = new Map<FeaId, Restraint>(model.restraints.map((r) => [r.nodeId, { ...r }]));
   for (const line of lines) {
     const [P, Q] = line.nodeIds.map((id) => position.get(id)!);
     for (const node of nodes) {
@@ -56,11 +56,11 @@ const spreadLineRestraints = (model: FrameModel, nodes: FrameModel["nodes"]): Re
  * Warnings for member nodes lying inside a shell area but not on its mesh: such a node is not
  * connected to the shell.
  */
-const disconnectedNodes = (model: FrameModel, meshNodes: Set<FrameId>): Warnings => {
+const disconnectedNodes = (model: FeaModel, meshNodes: Set<FeaId>): Warnings => {
   const warnings: Warnings = [];
   const shells = model.shells ?? [];
-  const position = new Map<FrameId, Vec3>(model.nodes.map((n) => [n.id, [n.x, n.y, n.z]]));
-  const memberNodes = new Set(model.members.flatMap((m) => [m.startNodeId, m.endNodeId]));
+  const position = new Map<FeaId, Vec3>(model.nodes.map((n) => [n.id, [n.x, n.y, n.z]]));
+  const memberNodes = new Set((model.members ?? []).flatMap((m) => [m.startNodeId, m.endNodeId]));
   for (const shell of shells) {
     const points = shell.nodeIds.map((id) => position.get(id)!);
     const axes = shellAxes(points);
@@ -94,15 +94,16 @@ const disconnectedNodes = (model: FrameModel, meshNodes: Set<FrameId>): Warnings
  * The generated nodes lying strictly inside each member (a beam along a meshed edge), so the
  * member can be split there and share them with the shells.
  */
-const splitMembers = (model: FrameModel, generated: FrameNode[]): SplitMember[] => {
-  if (generated.length === 0) return model.members;
-  const position = new Map<FrameId, Vec3>(model.nodes.map((n) => [n.id, [n.x, n.y, n.z]]));
-  return model.members.map((member) => {
+const splitMembers = (model: FeaModel, generated: FeaNode[]): SplitMember[] => {
+  const members = model.members ?? [];
+  if (generated.length === 0) return members;
+  const position = new Map<FeaId, Vec3>(model.nodes.map((n) => [n.id, [n.x, n.y, n.z]]));
+  return members.map((member) => {
     const [P, Q] = [position.get(member.startNodeId)!, position.get(member.endNodeId)!];
     const lo = [0, 1, 2].map((k) => Math.min(P[k], Q[k]));
     const hi = [0, 1, 2].map((k) => Math.max(P[k], Q[k]));
     const slack = AREA_GEOMETRY_TOLERANCE * Math.hypot(Q[0] - P[0], Q[1] - P[1], Q[2] - P[2]);
-    const through: { id: FrameId; t: number }[] = [];
+    const through: { id: FeaId; t: number }[] = [];
     for (const node of generated) {
       const x: Vec3 = [node.x, node.y, node.z];
       if (x.some((v, k) => v < lo[k] - slack || v > hi[k] + slack)) continue;
@@ -120,11 +121,16 @@ const splitMembers = (model: FrameModel, generated: FrameNode[]): SplitMember[] 
  * generated nodes split (see `meshShells`).
  * Without shells and line restraints the model is returned as it is.
  */
-export const expandModel = (model: FrameModel): ExpandedModel => {
+export const expandModel = (model: FeaModel): ExpandedModel => {
   const shells = model.shells ?? [];
   if (shells.length === 0) {
     return {
-      model: { ...model, shells: [], restraints: spreadLineRestraints(model, model.nodes) },
+      model: {
+        ...model,
+        members: model.members ?? [],
+        shells: [],
+        restraints: spreadLineRestraints(model, model.nodes),
+      },
       mesh: undefined,
       warnings: [],
     };

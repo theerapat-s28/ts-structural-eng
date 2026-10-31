@@ -1,4 +1,4 @@
-import type { FrameId, FrameNode } from "@app-fea/shared/types/model.type";
+import type { FeaId, FeaNode } from "@app-fea/shared/types/model.type";
 
 /**
  * Forces per unit width and face stresses at one corner of a shell element, in the shell's
@@ -7,7 +7,7 @@ import type { FrameId, FrameNode } from "@app-fea/shared/types/model.type";
  * 3 up), as M3 of a member; V13 = −(∂M11/∂x₁ + ∂M12/∂x₂), as V2 = −dM3/dx. Top is the +3 face.
  */
 export interface ShellCornerForces {
-  nodeId: FrameId;
+  nodeId: FeaId;
   F11: number; // kN/m, membrane force along local 1
   F22: number; // kN/m, membrane force along local 2
   F12: number; // kN/m, membrane shear
@@ -30,18 +30,18 @@ export type ShellForceComponent = Exclude<keyof ShellCornerForces, "nodeId">;
 /**
  * Forces of one shell element at its four corners, in its node order. `shellId` is the shell
  * area's id when the area is one element, and `"<areaId>:<i>,<j>"` for the elements the engine
- * generated when it meshed the area (see `FrameResult.mesh`).
+ * generated when it meshed the area (see `FeaResult.mesh`).
  */
 export interface ShellElementForces {
-  shellId: FrameId;
-  areaId: FrameId;
+  shellId: FeaId;
+  areaId: FeaId;
   corners: ShellCornerForces[];
 }
 
 /** The shell elements analysed, and the nodes the engine generated to mesh them. */
-export interface FrameMesh {
+export interface FeaMesh {
   /** Generated nodes, in global coordinates (mm); empty when no area was subdivided. */
-  nodes: FrameNode[];
+  nodes: FeaNode[];
   /** Every shell element, in model order of their areas, with its four corner nodes. */
-  shells: { id: FrameId; areaId: FrameId; nodeIds: FrameId[] }[];
+  shells: { id: FeaId; areaId: FeaId; nodeIds: FeaId[] }[];
 }

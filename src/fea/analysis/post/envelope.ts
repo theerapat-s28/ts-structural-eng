@@ -3,8 +3,8 @@ import type { ShellForceComponent } from "@app-fea/shell/types/results.type";
 
 import type {
   Bound,
-  FrameCaseResult,
-  FrameEnvelope,
+  FeaCaseResult,
+  FeaEnvelope,
   GoverningExtremeValue,
   GoverningValue,
 } from "../types/results.type";
@@ -48,11 +48,11 @@ const update = <T extends GoverningValue>(
  *
  * @param results - Combination results, in model order
  */
-export const buildEnvelope = (results: FrameCaseResult[]): FrameEnvelope => {
+export const buildEnvelope = (results: FeaCaseResult[]): FeaEnvelope => {
   const first = results[0];
 
   const nodalDisplacements = first.nodalDisplacements.map((d, n) => {
-    const entry = { nodeId: d.nodeId } as FrameEnvelope["nodalDisplacements"][number];
+    const entry = { nodeId: d.nodeId } as FeaEnvelope["nodalDisplacements"][number];
     for (const key of DISPLACEMENT_KEYS) {
       let bound: Bound<GoverningValue> | undefined;
       for (const r of results) {
@@ -65,7 +65,7 @@ export const buildEnvelope = (results: FrameCaseResult[]): FrameEnvelope => {
   });
 
   const reactions = first.reactions.map((d, n) => {
-    const entry = { nodeId: d.nodeId } as FrameEnvelope["reactions"][number];
+    const entry = { nodeId: d.nodeId } as FeaEnvelope["reactions"][number];
     for (const key of REACTION_KEYS) {
       let bound: Bound<GoverningValue> | undefined;
       for (const r of results) {
@@ -93,7 +93,7 @@ export const buildEnvelope = (results: FrameCaseResult[]): FrameEnvelope => {
   const shells = first.shellForces.map((shell, s) => ({
     shellId: shell.shellId,
     corners: shell.corners.map((corner, c) => {
-      const entry = { nodeId: corner.nodeId } as FrameEnvelope["shells"][number]["corners"][number];
+      const entry = { nodeId: corner.nodeId } as FeaEnvelope["shells"][number]["corners"][number];
       for (const key of SHELL_COMPONENTS) {
         let bound: Bound<GoverningValue> | undefined;
         for (const r of results) {

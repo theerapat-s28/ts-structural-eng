@@ -1,5 +1,5 @@
 import { SINGULARITY_TOLERANCE } from "@app-core/constants/frame.constant";
-import { FrameErrors } from "@app-core/errors/frame-analysis.error";
+import { FeaErrors } from "@app-core/errors/fea.error";
 import { memberGlobalStiffness } from "@app-fea/frame/solver/member-assembly";
 import {
   prepareSystemMembers,
@@ -16,8 +16,8 @@ import {
   type BoundaryConditions,
 } from "@app-fea/shared/solver/boundary-conditions";
 import { elementDofs, type StiffnessElement } from "@app-fea/shared/solver/global-assembly";
-import type { FrameId, FrameNode } from "@app-fea/shared/types/model.type";
-import { frameIssue, throwIssues } from "@app-fea/shared/validation/issues";
+import type { FeaId, FeaNode } from "@app-fea/shared/types/model.type";
+import { modelIssue, throwIssues } from "@app-fea/shared/validation/issues";
 import { prepareSystemShells, type SystemShell } from "@app-fea/shell/solver/system-shell";
 import type { ShellArea } from "@app-fea/shell/types/model.type";
 import {
@@ -29,23 +29,23 @@ import {
   type SkylineMatrix,
 } from "@app-utils/skyline";
 
-import type { FrameModel } from "../types/model.type";
+import type { FeaModel } from "../types/model.type";
 
 const DOF_NAMES = ["ux", "uy", "uz", "rx", "ry", "rz"] as const;
 
-/** The load-independent part of a frame analysis: geometry, stiffness and its factorisation. */
-export interface FrameSystem {
-  nodes: FrameNode[];
-  nodeIndex: Map<FrameId, number>;
+/** The load-independent part of an analysis: geometry, stiffness and its factorisation. */
+export interface AnalysisSystem {
+  nodes: FeaNode[];
+  nodeIndex: Map<FeaId, number>;
   /** Index into `memberGroups` of each model member. */
-  memberIndex: Map<FrameId, number>;
+  memberIndex: Map<FeaId, number>;
   /** Model members, in model order. */
   memberGroups: MemberGroup[];
   /** The pieces that are assembled: one per member unless the shell mesh splits it. */
   members: SystemMember[];
-  shellIndex: Map<FrameId, number>;
+  shellIndex: Map<FeaId, number>;
   /** Element indices of each shell area. */
-  shellsByArea: Map<FrameId, number[]>;
+  shellsByArea: Map<FeaId, number[]>;
   shells: SystemShell[];
   dofCount: number;
   boundary: BoundaryConditions;
@@ -62,23 +62,23 @@ export interface FrameSystem {
 }
 
 /**
- * Builds the member and shell matrices of a model that passed `validateFrameModel`, assembles
+ * Builds the member and shell matrices of a model that passed `validateModel`, assembles
  * the free stiffness in skyline storage with nodes in reverse Cuthill–McKee order, and
  * factorises it once for all load cases. Joint rotations that nothing resists (e.g. at truss
  * joints) are held by a spring along each null direction, which carries no force.
  *
- * @throws {FrameAnalysisError} 328 if a node connected only to shells has a translation that
+ * @throws {FeaError} 328 if a node connected only to shells has a translation that
  *   nothing resists (a membrane's out-of-plane or a plate's in-plane direction), with `nodeId`,
  *   `shellId` and `dof`; 304 if the structure is a mechanism; `details` names a node and a DOF
  *   involved in it
  */
-export const prepareFrameSystem = (model: FrameModel): FrameSystem => {
-  const { nodes, members, restraints } = model;
+export const prepareAnalysisSystem = (model: FeaModel): AnalysisSystem => {
+  const { nodes, members = [], restraints } = model;
   // shell elements: after `expandModel` they carry their area's id
-  const shells = (model.shells ?? []) as (ShellArea & { areaId?: FrameId })[];
-  const nodeIndex = new Map<FrameId, number>(nodes.map((n, i) => [n.id, i]));
-  const memberIndex = new Map<FrameId, number>(members.map((m, i) => [m.id, i]));
-  const shellIndex = new Map<FrameId, number>(shells.map((sh, i) => [sh.id, i]));
+  const shells = (model.shells ?? []) as (ShellArea & { areaId?: FeaId })[];
+  const nodeIndex = new Map<FeaId, number>(nodes.map((n, i) => [n.id, i]));
+  const memberIndex = new Map<FeaId, number>(members.map((m, i) => [m.id, i]));
+  const shellIndex = new Map<FeaId, number>(shells.map((sh, i) => [sh.id, i]));
   const dofCount = 6 * nodes.length;
   const boundary = buildBoundaryConditions(restraints, nodeIndex, dofCount);
 
@@ -89,7 +89,7 @@ export const prepareFrameSystem = (model: FrameModel): FrameSystem => {
   );
   const systemShells = prepareSystemShells(shells, nodes, nodeIndex);
 
-  const shellsByArea = new Map<FrameId, number[]>();
+  const shellsByArea = new Map<FeaId, number[]>();
   systemShells.forEach((sh, s) => {
     const list = shellsByArea.get(sh.areaId);
     if (list) list.push(s);
@@ -124,7 +124,7 @@ export const prepareFrameSystem = (model: FrameModel): FrameSystem => {
           (best, c, i) => (Math.abs(c) > Math.abs(axis[best]) ? i : best),
           0,
         );
-        return frameIssue(FrameErrors.SHELL_DOF_UNSUPPORTED, {
+        return modelIssue(FeaErrors.SHELL_DOF_UNSUPPORTED, {
           nodeId: nodes[node].id,
           shellId: systemShells.find((sh) => sh.nodeIndices.includes(node))?.id,
           dof: DOF_NAMES[lead],
@@ -209,7 +209,7 @@ export const prepareFrameSystem = (model: FrameModel): FrameSystem => {
     if (!result.ok) {
       const dof = free[result.failedPivot];
       throwIssues([
-        frameIssue(FrameErrors.STRUCTURE_UNSTABLE, {
+        modelIssue(FeaErrors.STRUCTURE_UNSTABLE, {
           nodeId: nodes[Math.floor(dof / 6)].id,
           dof: DOF_NAMES[dof % 6],
         }),

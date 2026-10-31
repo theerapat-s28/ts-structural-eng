@@ -1,6 +1,6 @@
 import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/frame.constant";
 import type { Warnings } from "@app-core/types/output-message.type";
-import type { AreaLoad, FrameId, FrameNode } from "@app-fea/shared/types/model.type";
+import type { AreaLoad, FeaId, FeaNode } from "@app-fea/shared/types/model.type";
 
 import type { LoadDirection, Member, MemberLoad, NullArea } from "../types/model.type";
 import {
@@ -185,14 +185,14 @@ const segmentPieces = (
 
 /**
  * Turns the area loads on a model's null areas into member loads, assuming the model is valid
- * (as `validateFrameModel` checks): each area's edge profiles are built once, then scaled for
+ * (as `validateModel` checks): each area's edge profiles are built once, then scaled for
  * each of its loads and split into global X, Y and Z trapezoidal loads (plus torques for a
  * cantilever). Loads on other areas (shells) are skipped. Everything is linear in `q`, so
  * load-case superposition still holds.
  */
 export const areaMemberLoads = (model: {
-  nodes: FrameNode[];
-  members: Member[];
+  nodes: FeaNode[];
+  members?: Member[];
   areas?: NullArea[];
   areaLoads?: AreaLoad[];
 }): { memberLoads: MemberLoad[]; warnings: Warnings } => {
@@ -203,7 +203,7 @@ export const areaMemberLoads = (model: {
   if (areas.length === 0 || areaLoads.length === 0) return { memberLoads, warnings };
 
   const nodeById = new Map(model.nodes.map((n) => [n.id, n]));
-  const position = (id: FrameId): Vec3 => {
+  const position = (id: FeaId): Vec3 => {
     const node = nodeById.get(id)!;
     return [node.x, node.y, node.z];
   };
@@ -213,8 +213,8 @@ export const areaMemberLoads = (model: {
   };
 
   const loadedAreas = new Set(areaLoads.map((l) => l.areaId));
-  const adjacency = memberAdjacency(model.members);
-  const prepared = new Map<FrameId, { plane: AreaPlane; edges: LoadedEdge[] }>();
+  const adjacency = memberAdjacency(model.members ?? []);
+  const prepared = new Map<FeaId, { plane: AreaPlane; edges: LoadedEdge[] }>();
   for (const area of areas) {
     if (!loadedAreas.has(area.id)) continue;
     const ids = area.nodeIds;

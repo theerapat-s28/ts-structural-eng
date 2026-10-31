@@ -1,11 +1,11 @@
 import type { MemberDiagram } from "@app-fea/frame/types/results.type";
-import type { FrameId } from "@app-fea/shared/types/model.type";
+import type { FeaId } from "@app-fea/shared/types/model.type";
 import { roundToDecimalPlaces } from "@app-utils/math";
 
-import type { FrameCaseResult, FrameResult } from "../types/results.type";
+import type { FeaCaseResult, FeaResult } from "../types/results.type";
 
 export interface MemberDemandEnvelope {
-  memberId: FrameId;
+  memberId: FeaId;
   MuPositive: number; // kN·m, largest M3 (sagging for local 2 up), 0 if M3 is never positive
   MuNegative: number; // kN·m, magnitude of the most negative M3 (hogging), 0 if M3 is never negative
   Vu: number; // kN, largest |V2| over the checked length
@@ -36,7 +36,7 @@ const diagramDemands = (diagram: MemberDiagram, from: number, to: number) => {
     // analysed with diagrams: "extremes" — Vu over the whole length comes from the extremes
     if (from > 0) {
       throw new Error(
-        'shearCriticalDistance needs member stations: analyse with diagrams: "full", or pass a diagram from createFrameAnalysis(...).memberDiagram.',
+        'shearCriticalDistance needs member stations: analyse with diagrams: "full", or pass a diagram from createAnalysis(...).memberDiagram.',
       );
     }
     return { ...moments, Vu: Math.max(Math.abs(V2.max.value), Math.abs(V2.min.value)) };
@@ -68,7 +68,7 @@ const diagramDemands = (diagram: MemberDiagram, from: number, to: number) => {
  * enveloped over load combinations (and optionally load cases), with the governing id of each.
  * Works on plain numbers and does not depend on the `rc` module.
  *
- * @param result - Result of `analyzeFrame`
+ * @param result - Result of `analyze`
  * @param memberId - Member to reduce
  * @param options - Combinations and/or cases to envelope, `shearCriticalDistance` in mm
  * @returns Demands in kN and kN·m with their governing load case or combination
@@ -76,14 +76,14 @@ const diagramDemands = (diagram: MemberDiagram, from: number, to: number) => {
  *   or if `shearCriticalDistance` is used on a result analysed with `diagrams: "extremes"`
  */
 export const memberDemandEnvelope = (
-  result: FrameResult,
-  memberId: FrameId,
+  result: FeaResult,
+  memberId: FeaId,
   options: DemandEnvelopeOptions = {},
 ): MemberDemandEnvelope => {
-  const pick = (source: Record<string, FrameCaseResult>, ids: string[], label: string) =>
+  const pick = (source: Record<string, FeaCaseResult>, ids: string[], label: string) =>
     ids.map((id) => {
       const r = source[id];
-      if (!r) throw new Error(`${label} "${id}" is not in the frame result.`);
+      if (!r) throw new Error(`${label} "${id}" is not in the result.`);
       return r;
     });
   const combinationIds =
@@ -100,7 +100,7 @@ export const memberDemandEnvelope = (
 
   const diagrams = selected.map((r) => {
     const diagram = r.memberDiagrams.find((d) => d.memberId === memberId);
-    if (!diagram) throw new Error(`Member ${String(memberId)} is not in the frame result.`);
+    if (!diagram) throw new Error(`Member ${String(memberId)} is not in the result.`);
     return { id: r.id, diagram };
   });
 

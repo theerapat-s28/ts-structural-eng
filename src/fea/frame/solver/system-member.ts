@@ -1,5 +1,5 @@
 import type { SectionProperties } from "@app-core/types/section-properties.type";
-import type { FrameId, FrameNode } from "@app-fea/shared/types/model.type";
+import type { FeaId, FeaNode } from "@app-fea/shared/types/model.type";
 import type { Matrix } from "@app-utils/matrix";
 
 import { beam3dLocalStiffnessRightHanded } from "../elements/beam-3d-stiffness";
@@ -14,7 +14,7 @@ import type { AssemblyMember } from "./member-assembly";
  * cut into pieces where generated shell-mesh nodes lie inside it; otherwise it is one piece.
  */
 export interface SystemMember extends AssemblyMember {
-  id: FrameId; // the model member's id
+  id: FeaId; // the model member's id
   /** Distance of the piece's start from the member's start (mm); 0 for a whole member. */
   offset: number;
   section: SectionProperties;
@@ -30,7 +30,7 @@ export interface SystemMember extends AssemblyMember {
 
 /** A model member and the pieces it is analysed as (one unless the shell mesh splits it). */
 export interface MemberGroup {
-  id: FrameId;
+  id: FeaId;
   /** Indices of its pieces among all pieces, from the member's start to its end. */
   pieces: number[];
   section: SectionProperties;
@@ -39,7 +39,7 @@ export interface MemberGroup {
 }
 
 /**
- * Builds the pieces of every member of a model that passed `validateFrameModel`: local axes,
+ * Builds the pieces of every member of a model that passed `validateModel`: local axes,
  * transformation and local stiffness condensed for the end releases, which apply only at the
  * member's own ends. A member is one piece unless mesh nodes lie inside it.
  *
@@ -50,11 +50,11 @@ export interface MemberGroup {
  * @returns `pieces` to assemble, and one `group` per member indexing its pieces
  */
 export const prepareSystemMembers = (
-  members: (Member & { through?: FrameId[] })[],
-  nodes: FrameNode[],
-  nodeIndex: Map<FrameId, number>,
+  members: (Member & { through?: FeaId[] })[],
+  nodes: FeaNode[],
+  nodeIndex: Map<FeaId, number>,
 ): { pieces: SystemMember[]; groups: MemberGroup[] } => {
-  const point = (id: FrameId): [number, number, number] => {
+  const point = (id: FeaId): [number, number, number] => {
     const n = nodes[nodeIndex.get(id) as number];
     return [n.x, n.y, n.z];
   };

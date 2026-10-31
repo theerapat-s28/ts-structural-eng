@@ -1,25 +1,25 @@
-import { FrameAnalysisError } from "@app-core/errors/frame-analysis.error";
-import { analyzeFrame, createFrameAnalysis } from "@app-fea/analysis/solver/analyze-frame";
+import { FeaError } from "@app-core/errors/fea.error";
+import { analyze, createAnalysis } from "@app-fea/analysis/solver/analyze";
 import type { Member, MemberLoad } from "@app-fea/frame/types/model.type";
-import type { FrameModel } from "@app-fea/analysis/types/model.type";
-import type { FrameNode } from "@app-fea/shared/types/model.type";
+import type { FeaModel } from "@app-fea/analysis/types/model.type";
+import type { FeaNode } from "@app-fea/shared/types/model.type";
 import type { ShellArea } from "@app-fea/shell/types/model.type";
-import type { FrameResult } from "@app-fea/analysis/types/results.type";
-import { validateFrameModel } from "@app-fea/analysis/validation/validate-model";
+import type { FeaResult } from "@app-fea/analysis/types/results.type";
+import { validateModel } from "@app-fea/analysis/validation/validate-model";
 
 const concrete = { thickness: 200, E: 30000, nu: 0.2, unitWeight: 24 };
 const beam = { E: 30000, G: 12500, A: 1.2e5, I22: 1.6e9, I33: 3.6e9, J: 2e9, unitWeight: 24 };
 const fixed = { ux: true, uy: true, uz: true, rx: true, ry: true, rz: true } as const;
 
-const issuesOf = (model: FrameModel) =>
-  validateFrameModel(model).map((i) => ({ code: i.code, ...i.details }));
-const node = (r: FrameResult, id: unknown) => {
+const issuesOf = (model: FeaModel) =>
+  validateModel(model).map((i) => ({ code: i.code, ...i.details }));
+const node = (r: FeaResult, id: unknown) => {
   const all = [...r.mesh!.nodes];
   return all.find((n) => n.id === id);
 };
 
 /** A 2 × 6 m wall in the XZ plane as one shell area, base fixed along a line restraint. */
-const wallArea = (mesh?: ShellArea["mesh"]): FrameModel => ({
+const wallArea = (mesh?: ShellArea["mesh"]): FeaModel => ({
   nodes: [
     { id: 1, x: 0, y: 0, z: 0 },
     { id: 2, x: 2000, y: 0, z: 0 },
@@ -35,7 +35,7 @@ const wallArea = (mesh?: ShellArea["mesh"]): FrameModel => ({
 });
 
 describe("engine meshing of a shell area", () => {
-  const r = analyzeFrame(wallArea({ maxSize: 250 }));
+  const r = analyze(wallArea({ maxSize: 250 }));
 
   it("divides every edge into pieces of at most maxSize: 8 × 24 elements", () => {
     expect(r.calculationDetails.shellCount).toBe(192);
@@ -69,7 +69,7 @@ describe("engine meshing of a shell area", () => {
     const n1 = 8;
     const n2 = 24;
     const id = (i: number, j: number) => `g${i}_${j}`;
-    const nodes: FrameNode[] = [];
+    const nodes: FeaNode[] = [];
     for (let j = 0; j <= n2; j++) {
       for (let i = 0; i <= n1; i++) nodes.push({ id: id(i, j), x: 250 * i, y: 0, z: 250 * j });
     }
@@ -83,7 +83,7 @@ describe("engine meshing of a shell area", () => {
         });
       }
     }
-    const manual = analyzeFrame({
+    const manual = analyze({
       nodes,
       members: [],
       restraints: Array.from({ length: n1 + 1 }, (_, i) => ({ nodeId: id(i, 0), ...fixed })),
@@ -91,16 +91,16 @@ describe("engine meshing of a shell area", () => {
       loadCases: [{ id: "H" }],
       areaLoads: shells.map((s) => ({ loadCase: "H", areaId: s.id, direction: "X", q: 10 })),
     });
-    const top = (res: FrameResult, nodeId: unknown) =>
+    const top = (res: FeaResult, nodeId: unknown) =>
       res.cases.H.nodalDisplacements.find((d) => d.nodeId === nodeId)!.ux;
     expect(top(r, 3)).toBeCloseTo(top(manual, id(n1, n2)), 8);
     expect(top(r, 3)).toBeGreaterThan(0);
   });
 
   it("treats divisions as a minimum, and keeps an area with no mesh as one element", () => {
-    const divided = analyzeFrame(wallArea({ divisions: [3, 5] }));
+    const divided = analyze(wallArea({ divisions: [3, 5] }));
     expect(divided.calculationDetails.shellCount).toBe(15);
-    const single = analyzeFrame(wallArea());
+    const single = analyze(wallArea());
     expect(single.mesh).toEqual({
       nodes: [],
       shells: [{ id: "W", areaId: "W", nodeIds: [1, 2, 3, 4] }],
@@ -111,7 +111,7 @@ describe("engine meshing of a shell area", () => {
 
 describe("conforming meshes", () => {
   // a 6 × 4 m slab at z = 3 m on two 3 m wall panels along its edge y = 0 (a T-junction)
-  const slabOnWalls = (): FrameModel => ({
+  const slabOnWalls = (): FeaModel => ({
     nodes: [
       { id: "a", x: 0, y: 0, z: 0 },
       { id: "b", x: 3000, y: 0, z: 0 },
@@ -138,7 +138,7 @@ describe("conforming meshes", () => {
   });
 
   it("shares nodes where a slab edge sits on two wall panels with different mesh sizes", () => {
-    const r = analyzeFrame(slabOnWalls());
+    const r = analyze(slabOnWalls());
     const nodesOf = (areaId: string) =>
       new Set(r.mesh!.shells.filter((s) => s.areaId === areaId).flatMap((s) => s.nodeIds));
     const position = new Map(
@@ -160,7 +160,7 @@ describe("conforming meshes", () => {
 
 describe("members along meshed edges", () => {
   // 5 × 4 m slab on four edge beams and four columns, meshed at 1 m; B34 is pinned at its ends
-  const frame = (): FrameModel => ({
+  const frame = (): FeaModel => ({
     nodes: [
       { id: 1, x: 0, y: 0, z: 3000 },
       { id: 2, x: 5000, y: 0, z: 3000 },
@@ -207,7 +207,7 @@ describe("members along meshed edges", () => {
   });
 
   /** The same model with the engine's mesh entered as shells and each beam split by hand. */
-  const byHand = (engine: FrameResult) => {
+  const byHand = (engine: FeaResult) => {
     const model = frame();
     const nodes = [...model.nodes, ...engine.mesh!.nodes];
     const at = new Map(nodes.map((n) => [n.id, n] as const));
@@ -274,7 +274,7 @@ describe("members along meshed edges", () => {
       nodeIds: s.nodeIds,
       section: concrete,
     }));
-    const result = analyzeFrame({
+    const result = analyze({
       ...model,
       nodes,
       members,
@@ -285,7 +285,7 @@ describe("members along meshed edges", () => {
     return { result, pieces };
   };
 
-  const engine = analyzeFrame(frame());
+  const engine = analyze(frame());
   const { result: manual, pieces } = byHand(engine);
 
   it("splits the edge beams at the mesh nodes but reports each under its own id", () => {
@@ -334,7 +334,7 @@ describe("members along meshed edges", () => {
     expect(xs[0]).toBe(0);
     expect(xs[xs.length - 1]).toBe(5000);
     expect([...xs].sort((a, b) => a - b)).toEqual(xs);
-    const onDemand = createFrameAnalysis(frame()).memberDiagram("L", "B12");
+    const onDemand = createAnalysis(frame()).memberDiagram("L", "B12");
     expect(onDemand.extremes).toEqual(diagram.extremes);
   });
 
@@ -376,11 +376,11 @@ describe("mesh and line-restraint validation", () => {
     const model = wallArea({ maxSize: 1000 });
     model.nodes.push({ id: "1~2:1", x: 9000, y: 9000, z: 9000 });
     expect(issuesOf(model)).toEqual([{ code: 329, shellId: "W", field: "mesh" }]);
-    expect(() => analyzeFrame(model)).toThrow(FrameAnalysisError);
+    expect(() => analyze(model)).toThrow(FeaError);
   });
 
   it("warns about a member node inside a shell area that is not on its mesh", () => {
-    const model: FrameModel = {
+    const model: FeaModel = {
       nodes: [
         { id: 1, x: 0, y: 0, z: 0 },
         { id: 2, x: 4000, y: 0, z: 0 },
@@ -398,7 +398,7 @@ describe("mesh and line-restraint validation", () => {
       shells: [{ id: "S", nodeIds: [1, 2, 3, 4], section: concrete, mesh: { maxSize: 1000 } }],
       loadCases: [{ id: "L" }],
     };
-    expect(analyzeFrame(model).warnings).toEqual([
+    expect(analyze(model).warnings).toEqual([
       {
         reference: "Shell area meshing",
         message:

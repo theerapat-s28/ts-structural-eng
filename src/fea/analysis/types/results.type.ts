@@ -5,9 +5,9 @@ import type {
   MemberReleaseDeformations,
   StationComponent,
 } from "@app-fea/frame/types/results.type";
-import type { FrameId } from "@app-fea/shared/types/model.type";
+import type { FeaId } from "@app-fea/shared/types/model.type";
 import type {
-  FrameMesh,
+  FeaMesh,
   ShellElementForces,
   ShellForceComponent,
 } from "@app-fea/shell/types/results.type";
@@ -15,7 +15,7 @@ import type {
 import type { LoadCaseType } from "./model.type";
 
 export interface NodalDisplacement {
-  nodeId: FrameId;
+  nodeId: FeaId;
   ux: number; // mm
   uy: number; // mm
   uz: number; // mm
@@ -25,7 +25,7 @@ export interface NodalDisplacement {
 }
 
 export interface NodalReaction {
-  nodeId: FrameId;
+  nodeId: FeaId;
   fx: number; // kN
   fy: number; // kN
   fz: number; // kN
@@ -34,9 +34,9 @@ export interface NodalReaction {
   mz: number; // kN·m
 }
 
-/** A rotation direction at a node held by `analyzeFrame` because no member resists it. */
+/** A rotation direction at a node held by `analyze` because no member resists it. */
 export interface AutoRestrainedDof {
-  nodeId: FrameId;
+  nodeId: FeaId;
   /** Unit vector of the held rotation axis, global X, Y, Z. */
   axis: [number, number, number];
   /** The global rotation DOF when `axis` is a global axis. */
@@ -56,7 +56,7 @@ export interface GoverningExtremeValue extends GoverningValue {
 export type Bound<T> = { max: T; min: T };
 
 /** Results of one load case or one load combination. */
-export interface FrameCaseResult {
+export interface FeaCaseResult {
   id: string;
   kind: "case" | "combination";
   name?: string;
@@ -67,40 +67,40 @@ export interface FrameCaseResult {
   /** One entry per member with any released or spring end DOF, in model order. */
   releaseDeformations: MemberReleaseDeformations[];
   memberDiagrams: MemberDiagram[];
-  /** One entry per shell element, area by area in model order (see `FrameResult.mesh`). */
+  /** One entry per shell element, area by area in model order (see `FeaResult.mesh`). */
   shellForces: ShellElementForces[];
   equilibriumResidual: { force: number; moment: number }; // kN, kN·m
   warnings: Warnings;
 }
 
 /** Max/min of every result across a set of combinations, with the governing combination. */
-export interface FrameEnvelope {
+export interface FeaEnvelope {
   combinationIds: string[];
-  nodalDisplacements: ({ nodeId: FrameId } & Record<
+  nodalDisplacements: ({ nodeId: FeaId } & Record<
     "ux" | "uy" | "uz" | "rx" | "ry" | "rz",
     Bound<GoverningValue>
   >)[];
-  reactions: ({ nodeId: FrameId } & Record<
+  reactions: ({ nodeId: FeaId } & Record<
     "fx" | "fy" | "fz" | "mx" | "my" | "mz",
     Bound<GoverningValue>
   >)[];
   members: {
-    memberId: FrameId;
+    memberId: FeaId;
     extremes: Record<StationComponent, Bound<GoverningExtremeValue>>;
   }[];
   shells: {
-    shellId: FrameId;
-    corners: ({ nodeId: FrameId } & Record<ShellForceComponent, Bound<GoverningValue>>)[];
+    shellId: FeaId;
+    corners: ({ nodeId: FeaId } & Record<ShellForceComponent, Bound<GoverningValue>>)[];
   }[];
 }
 
-export interface FrameResult {
-  cases: Record<string, FrameCaseResult>;
-  combinations: Record<string, FrameCaseResult>;
+export interface FeaResult {
+  cases: Record<string, FeaCaseResult>;
+  combinations: Record<string, FeaCaseResult>;
   /** Envelope over all combinations; absent when the model has none. */
-  envelope?: FrameEnvelope;
+  envelope?: FeaEnvelope;
   /** The shell mesh; absent when the model has no shells. */
-  mesh?: FrameMesh;
+  mesh?: FeaMesh;
   calculationDetails: {
     nodeCount: number;
     memberCount: number;

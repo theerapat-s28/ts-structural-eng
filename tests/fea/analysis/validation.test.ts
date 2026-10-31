@@ -1,13 +1,13 @@
-import { FrameAnalysisError } from "@app-core/errors/frame-analysis.error";
-import { analyzeFrame, createFrameAnalysis } from "@app-fea/analysis/solver/analyze-frame";
+import { FeaError } from "@app-core/errors/fea.error";
+import { analyze, createAnalysis } from "@app-fea/analysis/solver/analyze";
 import { memberDemandEnvelope } from "@app-fea/analysis/post/demand-envelope";
-import type { FrameModel } from "@app-fea/analysis/types/model.type";
-import { validateFrameModel } from "@app-fea/analysis/validation/validate-model";
+import type { FeaModel } from "@app-fea/analysis/types/model.type";
+import { validateModel } from "@app-fea/analysis/validation/validate-model";
 
 const sec = { E: 200000, G: 80000, A: 5000, I22: 8e7, I33: 8e7, J: 1e7 };
 const fixed = { ux: true, uy: true, uz: true, rx: true, ry: true, rz: true };
 
-const model = (over: Partial<FrameModel> = {}): FrameModel => ({
+const model = (over: Partial<FeaModel> = {}): FeaModel => ({
   nodes: [
     { id: 1, x: 0, y: 0, z: 0 },
     { id: 2, x: 3000, y: 0, z: 0 },
@@ -22,14 +22,14 @@ const model = (over: Partial<FrameModel> = {}): FrameModel => ({
 /** Casts a deliberately malformed value past the types, as untyped UI input would arrive. */
 const bad = <T>(value: unknown) => value as T;
 
-const thrown = (m: FrameModel): FrameAnalysisError => {
+const thrown = (m: FeaModel): FeaError => {
   try {
-    analyzeFrame(m);
+    analyze(m);
   } catch (e) {
-    expect(e).toBeInstanceOf(FrameAnalysisError);
-    return e as FrameAnalysisError;
+    expect(e).toBeInstanceOf(FeaError);
+    return e as FeaError;
   }
-  throw new Error("expected analyzeFrame to throw");
+  throw new Error("expected analyze to throw");
 };
 
 describe("input values a form can produce", () => {
@@ -133,7 +133,7 @@ describe("input values a form can produce", () => {
       model({ loadCases: [{ id: "D", type: bad<"dead">("Dead") }] }),
       { loadCaseId: "D", field: "type" },
     ],
-  ])("%s → FrameAnalysisError 314 naming where it is", (_, m, details) => {
+  ])("%s → FeaError 314 naming where it is", (_, m, details) => {
     const error = thrown(m);
     expect(error.code).toBe(314);
     expect(error.details).toEqual(details);
@@ -141,13 +141,13 @@ describe("input values a form can produce", () => {
   });
 });
 
-describe("validateFrameModel", () => {
+describe("validateModel", () => {
   it("returns no issues for a valid model", () => {
-    expect(validateFrameModel(model())).toEqual([]);
+    expect(validateModel(model())).toEqual([]);
   });
 
   it("collects every problem at once, each with its location", () => {
-    const issues = validateFrameModel(
+    const issues = validateModel(
       model({
         nodes: [
           { id: 1, x: 0, y: 0, z: 0 },
@@ -170,7 +170,7 @@ describe("validateFrameModel", () => {
     ]);
   });
 
-  it("is what analyzeFrame throws: the first issue, with all of them in `issues`", () => {
+  it("is what analyze throws: the first issue, with all of them in `issues`", () => {
     const m = model({
       nodalLoads: [
         { loadCase: "D", nodeId: 2, fz: Number.NaN },
@@ -178,13 +178,13 @@ describe("validateFrameModel", () => {
       ],
     });
     const error = thrown(m);
-    expect(error.issues).toEqual(validateFrameModel(m));
+    expect(error.issues).toEqual(validateModel(m));
     expect(error.issues).toHaveLength(2);
     expect(error.details).toEqual(error.issues[0].details);
   });
 
   it("locates members, load cases and combinations in the other codes", () => {
-    const loop = validateFrameModel(
+    const loop = validateModel(
       model({
         combinations: [
           { id: "C1", terms: [{ combination: "C2", factor: 1 }] },
@@ -195,7 +195,7 @@ describe("validateFrameModel", () => {
     expect(loop.map((i) => i.code)).toEqual([310]);
     expect(loop[0].details.combinationId).toBeDefined();
 
-    const release = validateFrameModel(
+    const release = validateModel(
       model({
         members: [
           {
@@ -210,7 +210,7 @@ describe("validateFrameModel", () => {
     );
     expect(release.map((i) => [i.code, i.details])).toEqual([[307, { memberId: "m" }]]);
 
-    const outside = validateFrameModel(
+    const outside = validateModel(
       model({
         memberLoads: [
           { loadCase: "D", type: "point", memberId: "m", direction: "Z", P: 1, a: 5000 },
@@ -221,7 +221,7 @@ describe("validateFrameModel", () => {
       [308, { loadCaseId: "D", memberId: "m" }],
     ]);
 
-    const weight = validateFrameModel(model({ loadCases: [{ id: "D", selfWeight: 1 }] }));
+    const weight = validateModel(model({ loadCases: [{ id: "D", selfWeight: 1 }] }));
     expect(weight.map((i) => [i.code, i.details])).toEqual([
       [313, { loadCaseId: "D", memberId: "m", field: "unitWeight" }],
     ]);
@@ -249,8 +249,8 @@ describe("unstable structure (304)", () => {
   });
 });
 
-describe("createFrameAnalysis and diagram detail", () => {
-  const frame = (): FrameModel => ({
+describe("createAnalysis and diagram detail", () => {
+  const frame = (): FeaModel => ({
     nodes: [
       { id: "A", x: 0, y: 0, z: 0 },
       { id: "B", x: 0, y: 0, z: 3500 },
@@ -284,8 +284,8 @@ describe("createFrameAnalysis and diagram detail", () => {
   });
 
   it("'extremes' keeps every extreme and the envelope but drops the stations", () => {
-    const full = analyzeFrame(frame());
-    const lean = analyzeFrame(frame(), { diagrams: "extremes" });
+    const full = analyze(frame());
+    const lean = analyze(frame(), { diagrams: "extremes" });
     for (const id of ["G", "W"]) {
       lean.cases[id].memberDiagrams.forEach((d, i) => {
         expect(d.stations).toEqual([]);
@@ -297,8 +297,8 @@ describe("createFrameAnalysis and diagram detail", () => {
   });
 
   it("memberDiagram computes a full diagram on demand, equal to the full analysis", () => {
-    const full = analyzeFrame(frame());
-    const analysis = createFrameAnalysis(frame(), { diagrams: "extremes" });
+    const full = analyze(frame());
+    const analysis = createAnalysis(frame(), { diagrams: "extremes" });
     expect(analysis.memberDiagram("G+W", "BC")).toEqual(full.combinations["G+W"].memberDiagrams[1]);
     expect(analysis.memberDiagram("W", "AB")).toEqual(full.cases.W.memberDiagrams[0]);
     expect(analysis.memberDiagram("G", "BC", 41).stations.length).toBeGreaterThan(41);
@@ -307,8 +307,8 @@ describe("createFrameAnalysis and diagram detail", () => {
   });
 
   it("memberDemandEnvelope works on an extremes-only result, except at a critical distance", () => {
-    const full = analyzeFrame(frame());
-    const lean = analyzeFrame(frame(), { diagrams: "extremes" });
+    const full = analyze(frame());
+    const lean = analyze(frame(), { diagrams: "extremes" });
     expect(memberDemandEnvelope(lean, "BC")).toEqual(memberDemandEnvelope(full, "BC"));
     expect(() => memberDemandEnvelope(lean, "BC", { shearCriticalDistance: 500 })).toThrow(
       /stations/,
@@ -316,7 +316,7 @@ describe("createFrameAnalysis and diagram detail", () => {
   });
 
   it("reports the stiffness profile size in calculationDetails", () => {
-    const r = analyzeFrame(frame());
+    const r = analyze(frame());
     expect(r.calculationDetails.profileSize).toBeGreaterThan(0);
     expect(r.calculationDetails.profileSize).toBeLessThanOrEqual(
       (r.calculationDetails.freeDofCount * (r.calculationDetails.freeDofCount + 1)) / 2,

@@ -1,5 +1,5 @@
 import type { Member, MemberLoad, NullArea } from "@app-fea/frame/types/model.type";
-import type { AreaLoad, FrameId, FrameNode, Restraint } from "@app-fea/shared/types/model.type";
+import type { AreaLoad, FeaId, FeaNode, Restraint } from "@app-fea/shared/types/model.type";
 import type { ShellArea } from "@app-fea/shell/types/model.type";
 
 /**
@@ -9,7 +9,7 @@ import type { ShellArea } from "@app-fea/shell/types/model.type";
  * the same node, a fixed DOF stays fixed.
  */
 export interface LineRestraint {
-  nodeIds: [FrameId, FrameId]; // the two ends of the line
+  nodeIds: [FeaId, FeaId]; // the two ends of the line
   ux?: boolean;
   uy?: boolean;
   uz?: boolean;
@@ -20,7 +20,7 @@ export interface LineRestraint {
 
 export interface NodalLoad {
   loadCase: string; // id of the load case this load belongs to
-  nodeId: FrameId;
+  nodeId: FeaId;
   fx?: number; // kN, global X
   fy?: number; // kN, global Y
   fz?: number; // kN, global Z
@@ -42,7 +42,7 @@ export type LoadCaseType =
 
 /**
  * One independently analysed set of loads, e.g. dead, superimposed dead or live. The loads
- * themselves are listed in `FrameModel.nodalLoads` and `FrameModel.memberLoads`, each tagged
+ * themselves are listed in `FeaModel.nodalLoads` and `FeaModel.memberLoads`, each tagged
  * with its `loadCase`.
  */
 export interface LoadCase {
@@ -69,9 +69,10 @@ export interface LoadCombination {
   terms: CombinationTerm[];
 }
 
-export interface FrameModel {
-  nodes: FrameNode[];
-  members: Member[];
+export interface FeaModel {
+  nodes: FeaNode[];
+  /** Frame members; omit for a model of shells only, e.g. a mat foundation. */
+  members?: Member[];
   restraints: Restraint[];
   /** Fixed DOFs of every node along straight lines, generated mesh nodes included. */
   lineRestraints?: LineRestraint[];

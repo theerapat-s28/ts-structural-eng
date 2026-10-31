@@ -1,5 +1,5 @@
-import { FrameAnalysisError, FrameErrors } from "@app-core/errors/frame-analysis.error";
-import type { FrameId } from "@app-fea/shared/types/model.type";
+import { FeaError, FeaErrors } from "@app-core/errors/fea.error";
+import type { FeaId } from "@app-fea/shared/types/model.type";
 import type { Matrix } from "@app-utils/matrix";
 
 import { loadIntensity, type LocalMemberLoad } from "../elements/fixed-end-forces";
@@ -103,12 +103,12 @@ const clipLoads = (
  * @param loadCaseId - The load case, which tags the self-weight load
  * @param selfWeight - The load case's self-weight multiplier
  * @returns The local loads of each piece, in the order of `pieces`
- * @throws {FrameAnalysisError} 313 if self-weight is requested for a member without `unitWeight`
+ * @throws {FeaError} 313 if self-weight is requested for a member without `unitWeight`
  */
 export const memberPieceLoads = (
   groups: MemberGroup[],
   pieces: SystemMember[],
-  memberIndex: Map<FrameId, number>,
+  memberIndex: Map<FeaId, number>,
   loads: MemberLoad[],
   loadCaseId: string,
   selfWeight: number,
@@ -124,7 +124,7 @@ export const memberPieceLoads = (
     const memberLoadsHere = [...loadsByMember[g]];
     if (selfWeight !== 0) {
       const { unitWeight, A } = group.section;
-      if (unitWeight === undefined) throw new FrameAnalysisError(FrameErrors.MISSING_UNIT_WEIGHT);
+      if (unitWeight === undefined) throw new FeaError(FeaErrors.MISSING_UNIT_WEIGHT);
       // kN/m³ · m² = kN/m
       const w = -selfWeight * unitWeight * A * 1e-6;
       if (w !== 0) {

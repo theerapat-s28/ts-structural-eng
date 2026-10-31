@@ -1,5 +1,5 @@
 import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/frame.constant";
-import type { FrameId, FrameNode } from "@app-fea/shared/types/model.type";
+import type { FeaId, FeaNode } from "@app-fea/shared/types/model.type";
 
 import { isValidShellQuad, type Vec3 } from "../elements/shell-axes";
 import type { ShellArea } from "../types/model.type";
@@ -7,26 +7,26 @@ import type { ShellArea } from "../types/model.type";
 /** A shell element of the analysed model: a shell area, or one element of its mesh. */
 export interface ShellElement extends ShellArea {
   /** The shell area it belongs to (its own id when the area is one element). */
-  areaId: FrameId;
+  areaId: FeaId;
 }
 
 /** The result of meshing a model's shell areas. */
 export interface ShellMeshResult {
   /** Generated nodes, in global coordinates (mm). */
-  nodes: FrameNode[];
+  nodes: FeaNode[];
   /** Every shell element, area by area in model order. */
   elements: ShellElement[];
   /** Areas that could not be meshed (no conforming division counts, a bad generated element, or a generated id already in use). */
-  problems: FrameId[];
+  problems: FeaId[];
 }
 
 /** A straight piece of an area edge between two model nodes (corners or nodes lying on it). */
 interface Segment {
-  a: FrameId; // canonical first end
-  b: FrameId;
+  a: FeaId; // canonical first end
+  b: FeaId;
   length: number; // mm
   count: number; // divisions
-  chain?: FrameId[]; // node ids from a to b, once generated
+  chain?: FeaId[]; // node ids from a to b, once generated
 }
 
 interface PlannedArea {
@@ -44,7 +44,7 @@ const lerp = (p: Vec3, q: Vec3, t: number): Vec3 => [
   p[2] + (q[2] - p[2]) * t,
 ];
 /** A string that tells `1` and `"1"` apart, for ordering and map keys. */
-const idKey = (id: FrameId) => `${typeof id}:${String(id)}`;
+const idKey = (id: FeaId) => `${typeof id}:${String(id)}`;
 
 /** Parameter t ∈ (0, 1) of `x` on the segment p → q when it lies strictly inside it, else null. */
 export const pointOnSegment = (x: Vec3, p: Vec3, q: Vec3, inclusive = false): number | null => {
@@ -79,10 +79,10 @@ export const pointOnSegment = (x: Vec3, p: Vec3, q: Vec3, inclusive = false): nu
  * @param nodes - Model nodes
  * @param shells - Shell areas, each with 4 valid corner nodes
  */
-export const meshShells = (nodes: FrameNode[], shells: ShellArea[]): ShellMeshResult => {
-  const position = new Map<FrameId, Vec3>(nodes.map((n) => [n.id, [n.x, n.y, n.z]]));
+export const meshShells = (nodes: FeaNode[], shells: ShellArea[]): ShellMeshResult => {
+  const position = new Map<FeaId, Vec3>(nodes.map((n) => [n.id, [n.x, n.y, n.z]]));
   const segments = new Map<string, Segment>();
-  const segmentOf = (p: FrameId, q: FrameId): { segment: Segment; forward: boolean } => {
+  const segmentOf = (p: FeaId, q: FeaId): { segment: Segment; forward: boolean } => {
     const forward = idKey(p) < idKey(q);
     const [a, b] = forward ? [p, q] : [q, p];
     const key = `${idKey(a)}|${idKey(b)}`;
@@ -101,7 +101,7 @@ export const meshShells = (nodes: FrameNode[], shells: ShellArea[]): ShellMeshRe
     const edges = [0, 1, 2, 3].map((i) => {
       const [p, q] = [corners[i], corners[(i + 1) % 4]];
       const [P, Q] = [position.get(p)!, position.get(q)!];
-      const inside: { id: FrameId; t: number }[] = [];
+      const inside: { id: FeaId; t: number }[] = [];
       for (const node of nodes) {
         if (corners.includes(node.id)) continue;
         const t = pointOnSegment([node.x, node.y, node.z], P, Q);
@@ -167,8 +167,8 @@ export const meshShells = (nodes: FrameNode[], shells: ShellArea[]): ShellMeshRe
   }
 
   // ---- Nodes along segments ---------------------------------------------------------
-  const generated: FrameNode[] = [];
-  const generate = (id: FrameId, at: Vec3) => {
+  const generated: FeaNode[] = [];
+  const generate = (id: FeaId, at: Vec3) => {
     generated.push({ id, x: at[0], y: at[1], z: at[2] });
     position.set(id, at);
   };
@@ -185,7 +185,7 @@ export const meshShells = (nodes: FrameNode[], shells: ShellArea[]): ShellMeshRe
 
   // ---- Areas ------------------------------------------------------------------------
   const elements: ShellElement[] = [];
-  const problems: FrameId[] = [];
+  const problems: FeaId[] = [];
   for (const { shell, edges } of plans) {
     // node ids along each edge, corner i → corner i + 1
     const along = edges.map((edge) =>
@@ -206,7 +206,7 @@ export const meshShells = (nodes: FrameNode[], shells: ShellArea[]): ShellMeshRe
     const right = along[1];
     const top = [...along[2]].reverse();
     const left = [...along[3]].reverse();
-    const fractions = (ids: FrameId[]) => {
+    const fractions = (ids: FeaId[]) => {
       const out = [0];
       for (let k = 1; k < ids.length; k++) {
         const d = sub(position.get(ids[k])!, position.get(ids[k - 1])!);
@@ -216,7 +216,7 @@ export const meshShells = (nodes: FrameNode[], shells: ShellArea[]): ShellMeshRe
     };
     const [uB, uT, vL, vR] = [bottom, top, left, right].map(fractions);
     const C = shell.nodeIds.map((id) => position.get(id)!);
-    const grid: FrameId[][] = [];
+    const grid: FeaId[][] = [];
     for (let i = 0; i <= n1; i++) {
       grid.push([]);
       for (let j = 0; j <= n2; j++) {

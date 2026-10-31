@@ -14,7 +14,7 @@ export interface EndReleaseDof {
 /**
  * The released local end DOFs of a member, in local DOF order. `true` and `0` are full releases,
  * a positive number is a partial-fixity spring; `false` and omitted DOFs stay rigidly connected.
- * Expects values that passed `validateFrameModel`.
+ * Expects values that passed `validateModel`.
  */
 export const memberEndReleases = (releases: Member["releases"]): EndReleaseDof[] =>
   ([releases?.start, releases?.end] as const).flatMap((release, end) =>

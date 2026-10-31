@@ -1,11 +1,7 @@
 import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/frame.constant";
-import {
-  FrameErrors,
-  type FrameErrorDetails,
-  type FrameModelIssue,
-} from "@app-core/errors/frame-analysis.error";
-import type { FrameId, FrameNode } from "@app-fea/shared/types/model.type";
-import { frameIssue } from "@app-fea/shared/validation/issues";
+import { FeaErrors, type FeaErrorDetails, type FeaModelIssue } from "@app-core/errors/fea.error";
+import type { FeaId, FeaNode } from "@app-fea/shared/types/model.type";
+import { modelIssue } from "@app-fea/shared/validation/issues";
 
 import {
   areaPlane,
@@ -45,54 +41,54 @@ export interface NullAreaInfo {
 export const validateNullAreas = (
   areas: NullArea[],
   members: Member[],
-  memberLength: Map<FrameId, number>,
-  nodeById: Map<FrameId, FrameNode>,
-  validNode: Set<FrameId>,
-): { issues: FrameModelIssue[]; areaInfo: Map<FrameId, NullAreaInfo> } => {
-  const issues: FrameModelIssue[] = [];
-  const add = (std: { code: number; message: string }, details: FrameErrorDetails = {}) =>
-    issues.push(frameIssue(std, details));
+  memberLength: Map<FeaId, number>,
+  nodeById: Map<FeaId, FeaNode>,
+  validNode: Set<FeaId>,
+): { issues: FeaModelIssue[]; areaInfo: Map<FeaId, NullAreaInfo> } => {
+  const issues: FeaModelIssue[] = [];
+  const add = (std: { code: number; message: string }, details: FeaErrorDetails = {}) =>
+    issues.push(modelIssue(std, details));
   const adjacency = memberAdjacency(members.filter((m) => memberLength.has(m.id)));
-  const position = (id: FrameId): Vec3 => {
+  const position = (id: FeaId): Vec3 => {
     const node = nodeById.get(id)!;
     return [node.x, node.y, node.z];
   };
   // only for areas whose geometry and supports are valid
-  const areaInfo = new Map<FrameId, NullAreaInfo>();
+  const areaInfo = new Map<FeaId, NullAreaInfo>();
   for (const area of areas) {
     const at = { areaId: area.id };
     const distributionOk = AREA_DISTRIBUTIONS.has(area.distribution);
-    if (!distributionOk) add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "distribution" });
+    if (!distributionOk) add(FeaErrors.INVALID_INPUT_VALUE, { ...at, field: "distribution" });
 
     const ids = Array.isArray(area.nodeIds) ? area.nodeIds : [];
     if (ids.length !== 3 && ids.length !== 4) {
-      add(FrameErrors.INVALID_AREA_GEOMETRY, { ...at, field: "nodeIds" });
+      add(FeaErrors.INVALID_AREA_GEOMETRY, { ...at, field: "nodeIds" });
       continue;
     }
     if (ids.some((id) => !nodeById.has(id))) {
-      add(FrameErrors.UNKNOWN_NODE_REFERENCE, { ...at, field: "nodeIds" });
+      add(FeaErrors.UNKNOWN_NODE_REFERENCE, { ...at, field: "nodeIds" });
       continue;
     }
     if (!ids.every((id) => validNode.has(id))) continue; // reported on the node
     const plane = areaPlane(ids.map(position));
     if ("problem" in plane) {
-      add(FrameErrors.INVALID_AREA_GEOMETRY, { ...at, field: "nodeIds" });
+      add(FeaErrors.INVALID_AREA_GEOMETRY, { ...at, field: "nodeIds" });
       continue;
     }
     if (!distributionOk) continue;
     if (area.distribution === "cantilever" && !isRectangle(plane)) {
-      add(FrameErrors.INVALID_AREA_GEOMETRY, { ...at, field: "nodeIds" });
+      add(FeaErrors.INVALID_AREA_GEOMETRY, { ...at, field: "nodeIds" });
       continue;
     }
 
     const supports = resolveAreaSupports(plane, area.distribution, area.supportEdges);
     if (!supports) {
-      add(FrameErrors.INVALID_AREA_DISTRIBUTION, { ...at, field: "supportEdges" });
+      add(FeaErrors.INVALID_AREA_DISTRIBUTION, { ...at, field: "supportEdges" });
       continue;
     }
     for (const edge of supports.loadedEdges) {
       const chain = edgeMemberChain(ids[edge], ids[(edge + 1) % ids.length], position, adjacency);
-      if (!chain) add(FrameErrors.AREA_EDGE_UNSUPPORTED, { ...at, edge });
+      if (!chain) add(FeaErrors.AREA_EDGE_UNSUPPORTED, { ...at, edge });
     }
     areaInfo.set(area.id, { area, plane, supports });
   }
