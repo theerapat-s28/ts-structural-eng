@@ -62,7 +62,7 @@ Every feature added must conform to the following core principles:
 | [x] | 5 | Generic element assembly (refactor) | S | — |
 | [x] | 5 | Membrane element (drilling quad) | M | Generic assembly |
 | [x] | 5 | DKQ plate element | M | Generic assembly |
-| [ ] | 5 | Flat shell element (axes, warping, modifiers) | M | Membrane, DKQ |
+| [x] | 5 | Flat shell element (axes, warping, modifiers) | M | Membrane, DKQ |
 | [ ] | 5 | Shells in the model (validation, assembly, loads) | L | Flat shell |
 | [ ] | 5 | Shell results & first release | M | Shells in the model |
 | [ ] | 5 | Engine meshing of shell areas | L | Shell results |
@@ -374,9 +374,10 @@ Flat four-node shell elements with membrane, plate and shell behaviour, so walls
 - [x] Tests in [`tests/fea/frame/shell/dkq-plate.test.ts`](tests/fea/frame/shell/dkq-plate.test.ts): symmetry; exactly 3 rigid-body modes (rectangle and distorted); tensor transformation, corner-order invariance, $t^3$ scaling; MacNeal–Harder plate patch test (exact field and moments); square plate, simply supported uniform ($w_c$ 0.003785 → 0.004062 for 2–16 elements per side, $M_c$ within 0.5 % of $0.0479\,qa^2$), clamped uniform (from above, within 2 % of $0.00126\,qa^4/D$, $M_c$ within 1 % of $0.0231\,qa^2$), centre point load (within 1 % of $0.0116\,Pa^2/D$); no locking ($w_c$ identical for $t/a = 0.01$ and $0.3$); straight cantilever, out-of-plane shear 0.4263 / 0.4266 / 0.4261 (regular / trapezoidal / parallelogram, reference 0.4321).
 
 ### 5.3 Flat Shell Element
-- [ ] `elements/shell/shell-axes.ts`: local 3 normal by the right-hand rule around the nodes (as for null areas); local 2 = +Z projected onto the plane for non-horizontal elements, local 1 = +X for horizontal ones; optional `angle`.
-- [ ] `elements/shell/flat-shell.ts`: membrane and plate scattered into a 24×24 local matrix; `type` switch; stiffness modifiers on $\mathbf{D}_m$ and $\mathbf{D}_b$; block-wise transformation $\lambda^T \mathbf{k}_{ab} \lambda$; warped quads projected onto the mean plane with rigid links to the real nodes.
-- [ ] Tests: exactly 6 rigid-body modes in any orientation; invariance under node renumbering and rigid rotation; warped vs flat convergence; modifiers scale only their terms.
+- [x] [`elements/shell/shell-axes.ts`](src/fea/frame/elements/shell/shell-axes.ts): local 3 = unit $\mathbf{d}_1 \times \mathbf{d}_2$ (the right-hand rule around the nodes, as for null areas); local 2 = +Z projected onto the plane for non-horizontal elements, local 1 = +X for horizontal ones (a wall in the XZ plane gets the axes of a member along +X); optional `angle`; corners projected onto the mean plane and their offsets $\pm h$.
+- [x] [`elements/shell/flat-shell.ts`](src/fea/frame/elements/shell/flat-shell.ts): membrane on $u_1, u_2, r_3$ and DKQ on $u_3, r_1, r_2$ in a 24×24 local matrix; `type` `"shell" | "membrane" | "plate"`; per-corner 6×6 transformations ($\lambda$ plus the rigid link $-h r_2 \to u_1$, $+h r_1 \to u_2$) applied block by block.
+- [x] [`elements/shell/rigidity.ts`](src/fea/frame/elements/shell/rigidity.ts): stiffness modifiers as $\mathbf{S D S}$, $\mathbf{S} = \mathrm{diag}(\sqrt{f_{11}}, \sqrt{f_{22}}, \sqrt{f_{12}})$, on both the membrane and the plate rigidity (so 5.5's stress recovery uses the same modified $\mathbf{D}$); the drilling penalty keeps the unmodified $G$.
+- [x] Tests in [`tests/fea/frame/shell/`](tests/fea/frame/shell/) (`shell-axes`, `flat-shell`, 6-DOF dense harness): axes for horizontal, wall, inclined and warped elements; part placement and `type` switch; symmetry; exactly 6 rigid-body modes for flat and warped elements (and a warped element without the links fails); $\mathbf{k}(R\mathbf{x}) = R\,\mathbf{k}(\mathbf{x})\,R^T$; `angle` irrelevant without modifiers, and a 90° `angle` swaps the 11 and 22 modifiers; $\mathbf{SDS}$ values; the straight cantilever as a 3D shell equals the 2D elements and is unchanged by a 3D rotation; MacNeal–Harder twisted beam within 1 % for both thicknesses and load directions.
 
 ### 5.4 Shells in the Model
 - [ ] Types: `ShellArea`, `ShellSection`, `ShellModifiers` (`f11, f22, f12, m11, m22, m12, weight`), `FrameModel.shells`.
@@ -413,6 +414,7 @@ Flat four-node shell elements with membrane, plate and shell behaviour, so walls
 
 - [ ] **ETABS local-axis convention check**: confirm the local 3 rule ($1 \times Z$ for non-vertical, $+X$ for vertical) matches CSI ETABS v21 documentation exactly.
 - [ ] **Cook's membrane reference**: our plane-stress set-up (E = 1, ν = 1/3, t = 1, unit uniform shear) converges to ≈ 25.2 with three element types, against the published 23.9–23.96. Find the published set-up (load distribution, ν, mesh) before quoting a value in the docs.
+- [ ] **Shell stiffness modifiers vs ETABS**: we apply f11/f22 (and m11/m22) as $\mathbf{SDS}$, so the Poisson coupling scales by $\sqrt{f_{11} f_{22}}$; confirm how ETABS treats the coupling term before documenting modifiers as ETABS-equivalent.
 - [ ] **ETABS area local-axis convention check**: confirm the shell local 1/2 default (5.3) against the CSI documentation before shells ship.
 - [ ] **ACI 318-19 Table 6.6.3.1.1 verification**: confirm the cracked moment of inertia factors before quoting them in the 1.2 docs and in [`src/rc/`](src/rc/).
 - [ ] **ACI 318-19 second-order limit**: confirm the clause number of the 1.4 × first-order moment limit used by the 3.3 warning.

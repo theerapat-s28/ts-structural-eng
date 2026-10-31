@@ -1007,14 +1007,23 @@
       <p>
         Build the flat element on the projected nodes. Then connect each real node to its projection with a rigid link,
         <strong>u</strong><sub>proj</sub> = <strong>u</strong> + h<sub>i</sub> (<strong>n</strong> × <strong>θ</strong>). With <strong>W</strong> the block matrix of these links, <strong>k</strong> = <strong>W</strong><sup>T</sup> <strong>k</strong><sub>flat</sub> <strong>W</strong>.
-        Member end offsets (Roadmap 2.1) need the same rigid-link algebra. This is adequate for mild warping. Validation should warn above one
+        In local components the link adds −h<sub>i</sub>·r<sub>2</sub> to u<sub>1</sub> and +h<sub>i</sub>·r<sub>1</sub> to u<sub>2</sub>, so each corner's 6×6 transformation is
+        λ on translations and rotations plus those two terms; the global matrix is assembled block by block from them.
+        Member end offsets (Roadmap 2.1) need the same rigid-link algebra. Validation should warn above one
         warping ratio and reject above a larger one, with the thresholds set from the benchmarks.
+      </p>
+      <p>
+        The links are what keep a warped element free of force under rigid-body motion: without them a rigid rotation of a warped element is resisted.
+        On the MacNeal–Harder twisted beam, where every element is warped, the element gives 5.410·10⁻³ and 1.7575·10⁻³ (references 5.424·10⁻³ and 1.754·10⁻³) for t = 0.32,
+        and 5.282·10⁻³ and 1.300·10⁻³ (5.256·10⁻³ and 1.294·10⁻³) for t = 0.0032 with P = 10⁻⁶ (Roadmap 5.3 tests).
       </p>
 
       <div class="sub-label">Stiffness modifiers</div>
       <p>
         Cracked-section stiffness per ACI 318-19 Table 6.6.3.1.1(a) (walls 0.70 I<sub>g</sub> uncracked or 0.35 I<sub>g</sub> cracked; flat plates and flat slabs 0.25 I<sub>g</sub>)
-        is applied by scaling <strong>D</strong><sub>m</sub> and <strong>D</strong><sub>b</sub> component by component, ETABS-style: f11, f22, f12 for membrane and m11, m22, m12 for bending.
+        is applied by modifying <strong>D</strong><sub>m</sub> and <strong>D</strong><sub>b</sub> along local 1 and 2, ETABS-style: f11, f22, f12 for membrane and m11, m22, m12 for bending.
+        Each matrix becomes <strong>S·D·S</strong> with <strong>S</strong> = diag(√f<sub>11</sub>, √f<sub>22</sub>, √f<sub>12</sub>): D<sub>11</sub>, D<sub>22</sub> and D<sub>33</sub> scale by their own modifier and the
+        coupling D<sub>12</sub> by √(f<sub>11</sub>f<sub>22</sub>), so <strong>D</strong> stays symmetric and positive definite and equal modifiers scale it uniformly. The drilling penalty keeps the unmodified G.
         The modifiers are linear, so superposition is unaffected.
       </p>
     </div>
@@ -1121,6 +1130,7 @@
           <tr><td>Cook's membrane</td><td>Tapered panel (0,0), (48,44), (48,60), (0,44); E = 1, ν = 1/3, t = 1, plane stress; unit total shear, uniform, on the free edge; top-corner vertical displacement</td><td>≈ 25.2 (converged, own)</td><td>A bilinear quad, the drilling quad and an independent 9-node element all converge to ≈ 25.2 for this set-up. Published values are 23.9–23.96 (e.g. Bergan &amp; Felippa 1985); the difference is not yet explained, so tests check convergence rather than that value.</td></tr>
           <tr><td>Square plate, uniform load</td><td>Simply supported / clamped, mesh convergence, t/a down to 1/1000</td><td>w<sub>c</sub> = 0.00406 / 0.00126 qa⁴/D; SS M<sub>c</sub> = 0.0479 qa²</td><td>Timoshenko &amp; Woinowsky-Krieger</td></tr>
           <tr><td>Square plate, centre point load</td><td>Simply supported</td><td>w<sub>c</sub> = 0.01160 Pa²/D</td><td>Timoshenko &amp; Woinowsky-Krieger</td></tr>
+          <tr><td>Twisted beam</td><td>Every element warped (twisted 7.5°); in-plane and out-of-plane tip loads, t = 0.32 and 0.0032</td><td>5.424·10⁻³ / 1.754·10⁻³; 5.256·10⁻³ / 1.294·10⁻³ (P = 10⁻⁶)</td><td>MacNeal &amp; Harder 1985</td></tr>
           <tr><td>Scordelis–Lo roof</td><td>Membrane–bending interaction in a curved shell of flat facets</td><td>0.3024 (mid free edge, vertical)</td><td>MacNeal &amp; Harder 1985</td></tr>
           <tr><td>Pinched cylinder with end diaphragms</td><td>Inextensional bending, the hardest common shell test</td><td>1.8248 × 10⁻⁵ under the load</td><td>Belytschko et al. 1985</td></tr>
           <tr><td>Beam into wall, in-plane</td><td>Drilling stiffness transfers moment: finite tip deflection that approaches the fixed-end value as the wall stiffens</td><td>Beam theory</td><td>Own</td></tr>
