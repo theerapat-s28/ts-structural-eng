@@ -1,9 +1,11 @@
 import {
   bilinearShape,
   cartesianDerivatives,
+  cornerAreas,
   GAUSS_2X2,
   midsideShape,
   quadJacobian,
+  serendipityShape,
   type Vec2,
 } from "@app-fea/frame/elements/shell/quad-geometry";
 
@@ -109,5 +111,46 @@ describe("quadJacobian", () => {
   it("is negative for corners listed clockwise", () => {
     const clockwise = [...quad].reverse();
     expect(quadJacobian(clockwise, 0, 0).detJ).toBeLessThan(0);
+  });
+});
+
+describe("serendipityShape", () => {
+  const nodes8 = [...CORNERS_XI_ETA, ...MIDSIDES_XI_ETA];
+
+  it("is 1 at its own node and 0 at the other seven", () => {
+    nodes8.forEach(([xi, eta], n) => {
+      expect(serendipityShape(xi, eta).N.map((v) => v + 0)).toEqual(
+        nodes8.map((_, k) => (k === n ? 1 : 0)),
+      );
+    });
+  });
+
+  it("sums to 1 with derivatives matching finite differences", () => {
+    const h = 1e-6;
+    const { N, dXi, dEta } = serendipityShape(0.25, -0.6);
+    expect(N.reduce((a, b) => a + b)).toBeCloseTo(1, 14);
+    const fx = serendipityShape(0.25 + h, -0.6).N;
+    const bx = serendipityShape(0.25 - h, -0.6).N;
+    const fy = serendipityShape(0.25, -0.6 + h).N;
+    const by = serendipityShape(0.25, -0.6 - h).N;
+    dXi.forEach((d, i) => expect(d).toBeCloseTo((fx[i] - bx[i]) / (2 * h), 8));
+    dEta.forEach((d, i) => expect(d).toBeCloseTo((fy[i] - by[i]) / (2 * h), 8));
+  });
+});
+
+describe("cornerAreas", () => {
+  it("sums to the quad's area", () => {
+    const areas = cornerAreas(quad);
+    expect(areas.reduce((a, b) => a + b)).toBeCloseTo(3_420_000, 4);
+  });
+
+  it("gives a quarter of the area to each corner of a parallelogram", () => {
+    const parallelogram: Vec2[] = [
+      [0, 0],
+      [4000, 0],
+      [5000, 3000],
+      [1000, 3000],
+    ];
+    for (const a of cornerAreas(parallelogram)) expect(a).toBeCloseTo(3_000_000, 4);
   });
 });

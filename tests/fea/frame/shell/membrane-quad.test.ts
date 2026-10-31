@@ -5,7 +5,7 @@ import {
 } from "@app-fea/frame/elements/shell/membrane-quad";
 import { GAUSS_2X2, type Vec2 } from "@app-fea/frame/elements/shell/quad-geometry";
 import { choleskyFactor, matVec, type Matrix } from "@app-utils/matrix";
-import { dof, mapMesh, solveMembraneMesh } from "./membrane-harness";
+import { dof, mapMesh, solveQuadMesh } from "./mesh-harness";
 
 const wall = { E: 30000, nu: 0.2, t: 200 }; // MPa, —, mm
 // A distorted convex quad, counter-clockwise (mm)
@@ -132,7 +132,13 @@ describe("MacNeal–Harder membrane patch test", () => {
       prescribed.set(dof(n, 1), v);
       prescribed.set(dof(n, 2), rotation);
     }
-    return { U: solveMembraneMesh(nodes, elements, properties, prescribed), exact };
+    const U = solveQuadMesh(
+      nodes,
+      elements,
+      (c) => membraneQuadStiffness(c, properties),
+      prescribed,
+    );
+    return { U, exact };
   };
 
   it("reproduces the linear field exactly, with θ equal to the material rotation", () => {
@@ -187,13 +193,12 @@ describe("MacNeal–Harder straight cantilever, in-plane tip shear", () => {
       [dof(12, 1), 0.5],
       [dof(13, 1), 0.5],
     ]);
-    const U = solveMembraneMesh(
+    const U = solveQuadMesh(
       nodes,
       elements,
-      { E: 1e7, nu: 0.3, t: 0.1 },
+      (c) => membraneQuadStiffness(c, { E: 1e7, nu: 0.3, t: 0.1 }, penaltyRatio),
       prescribed,
       loads,
-      penaltyRatio,
     );
     return (U[dof(12, 1)] + U[dof(13, 1)]) / 2;
   };
@@ -249,7 +254,13 @@ describe("Cook's membrane (tapered panel, plane stress)", () => {
       prescribed.set(dof(id(0, j), 1), 0);
       loads.set(dof(id(n, j), 1), j === 0 || j === n ? 0.5 / n : 1 / n);
     }
-    const U = solveMembraneMesh(nodes, elements, { E: 1, nu: 1 / 3, t: 1 }, prescribed, loads);
+    const U = solveQuadMesh(
+      nodes,
+      elements,
+      (c) => membraneQuadStiffness(c, { E: 1, nu: 1 / 3, t: 1 }),
+      prescribed,
+      loads,
+    );
     return U[dof(id(n, n), 1)];
   };
 

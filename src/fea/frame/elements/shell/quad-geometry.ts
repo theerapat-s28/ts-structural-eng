@@ -71,6 +71,26 @@ export const midsideShape = (xi: number, eta: number): ShapeValues => ({
   dEta: [-0.5 * (1 - xi * xi), -(1 + xi) * eta, 0.5 * (1 - xi * xi), -(1 - xi) * eta],
 });
 
+/**
+ * 8-node serendipity functions: the corner functions
+ * `Nᵢ = ¼(1 + ξᵢξ)(1 + ηᵢη)(ξᵢξ + ηᵢη − 1)`, i = 1…4, followed by the mid-side functions
+ * N₅…N₈ of `midsideShape`. Each is 1 at its own node and 0 at the other seven.
+ */
+export const serendipityShape = (xi: number, eta: number): ShapeValues => {
+  const N: number[] = [];
+  const dXi: number[] = [];
+  const dEta: number[] = [];
+  for (let i = 0; i < 4; i++) {
+    const a = CORNER_XI[i];
+    const b = CORNER_ETA[i];
+    N.push(0.25 * (1 + a * xi) * (1 + b * eta) * (a * xi + b * eta - 1));
+    dXi.push(0.25 * a * (1 + b * eta) * (2 * a * xi + b * eta));
+    dEta.push(0.25 * b * (1 + a * xi) * (a * xi + 2 * b * eta));
+  }
+  const mid = midsideShape(xi, eta);
+  return { N: [...N, ...mid.N], dXi: [...dXi, ...mid.dXi], dEta: [...dEta, ...mid.dEta] };
+};
+
 /** The bilinear map's Jacobian at one point, as needed to turn ξ, η derivatives into x, y ones. */
 export interface QuadJacobian {
   detJ: number; // mm², dA = det J · dξ · dη
@@ -119,3 +139,20 @@ export const cartesianDerivatives = (
   dX: shape.dXi.map((d, i) => inverse[0][0] * d + inverse[0][1] * shape.dEta[i]),
   dY: shape.dXi.map((d, i) => inverse[1][0] * d + inverse[1][1] * shape.dEta[i]),
 });
+
+/**
+ * Integrals `∫ Nᵢ dA` of the bilinear corner functions over a quad (2×2 Gauss, exact): the
+ * share of a uniform surface load each corner takes. They sum to the quad's area; each is
+ * A/4 for a parallelogram.
+ *
+ * @param corners - The four corners in the element plane (mm), counter-clockwise
+ * @returns Four areas in mm²
+ */
+export const cornerAreas = (corners: readonly Vec2[]): number[] => {
+  const areas = [0, 0, 0, 0];
+  for (const { xi, eta, weight } of GAUSS_2X2) {
+    const { detJ } = quadJacobian(corners, xi, eta);
+    bilinearShape(xi, eta).N.forEach((n, i) => (areas[i] += n * detJ * weight));
+  }
+  return areas;
+};

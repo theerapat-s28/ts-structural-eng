@@ -1,40 +1,31 @@
-import {
-  membraneQuadStiffness,
-  type MembraneProperties,
-} from "@app-fea/frame/elements/shell/membrane-quad";
 import type { Vec2 } from "@app-fea/frame/elements/shell/quad-geometry";
-import { choleskySolve, zeros } from "@app-utils/matrix";
+import { choleskySolve, zeros, type Matrix } from "@app-utils/matrix";
 
-/** DOF of node n: 0 = u, 1 = v, 2 = θ (3 per node). */
+/** DOF k (0, 1 or 2) of node n, 3 DOFs per node: membrane [u v θ] or plate [w θx θy]. */
 export const dof = (node: number, k: 0 | 1 | 2): number => 3 * node + k;
 
 /**
- * Assembles a mesh of drilling membrane quads and solves it densely — a small test oracle, not
+ * Assembles a mesh of 3-DOF-per-node quads and solves it densely — a small test oracle, not
  * the engine's solver.
  *
- * @param nodes - Node coordinates (mm)
+ * @param nodes - Node coordinates in the element plane (mm)
  * @param elements - Four node indices per element, counter-clockwise
+ * @param stiffness - The element's 12×12 stiffness from its corners
  * @param prescribed - Prescribed DOF values (supports, or displacements in a patch test)
  * @param loads - Nodal forces by DOF (N, N·mm)
- * @param penaltyRatio - γ / G of the drilling penalty (default: the engine's)
  * @returns All DOF values
  */
-export const solveMembraneMesh = (
+export const solveQuadMesh = (
   nodes: Vec2[],
   elements: number[][],
-  properties: MembraneProperties,
+  stiffness: (corners: Vec2[]) => Matrix,
   prescribed: Map<number, number>,
   loads: Map<number, number> = new Map(),
-  penaltyRatio?: number,
 ): number[] => {
   const n = 3 * nodes.length;
   const K = zeros(n, n);
   for (const element of elements) {
-    const k = membraneQuadStiffness(
-      element.map((i) => nodes[i]),
-      properties,
-      penaltyRatio,
-    );
+    const k = stiffness(element.map((i) => nodes[i]));
     const dofs = element.flatMap((i) => [3 * i, 3 * i + 1, 3 * i + 2]);
     dofs.forEach((p, a) => dofs.forEach((q, b) => (K[p][q] += k[a][b])));
   }
@@ -46,7 +37,7 @@ export const solveMembraneMesh = (
     free.map((i) => free.map((j) => K[i][j])),
     rhs,
   );
-  if (!solution) throw new Error("singular membrane mesh");
+  if (!solution) throw new Error("singular mesh");
   const U = new Array<number>(n).fill(0);
   prescribed.forEach((v, d) => (U[d] = v));
   free.forEach((d, e) => (U[d] = solution[e]));
