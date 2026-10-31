@@ -471,7 +471,7 @@
     <div class="page-header">
       <div class="import-tag">
         <span class="label">Status</span>
-        <code>@theerapat-s28/ts-structural-eng-tools/fea — shell areas in progress (unreleased)</code>
+        <code>@theerapat-s28/ts-structural-eng-tools/fea — shell areas with forces (unreleased); meshing and thick plates to come</code>
       </div>
       <h1>Shell Element — Theory Notes</h1>
       <p>How a flat four-node shell element (membrane, plate bending and drilling rotation) gets its stiffness matrix, which formulations this library will use, and how the element fits into the existing frame solver.</p>
@@ -490,7 +490,7 @@
 
       <div class="alert alert--info">
         <span>ℹ️</span>
-        <span><strong>In progress.</strong> Shell areas are part of <code>analyzeFrame</code> (<code>model.shells</code>, unreleased; see the <a href="fea/#shell-areas" style="color:var(--accent)">FEA reference</a>); internal forces, engine meshing, thick plates and triangles are still to come (Roadmap Phase 5). Numbers on this page come from the library's tests unless marked <em>prototype</em>, which were checked with a throwaway prototype before the code existed. The basis is the finite element method, not a code provision <span class="std-badge" title="Basis: linear-elastic finite element method — not an ACI 318-19 provision">FEM</span>.</span>
+        <span><strong>In progress.</strong> Shell areas and their forces are part of <code>analyzeFrame</code> (<code>model.shells</code>, <code>shellForces</code>; unreleased, see the <a href="fea/#shell-areas" style="color:var(--accent)">FEA reference</a>); engine meshing, thick plates and triangles are still to come (Roadmap Phase 5). Numbers on this page come from the library's tests unless marked <em>prototype</em>, which were checked with a throwaway prototype before the code existed. The basis is the finite element method, not a code provision <span class="std-badge" title="Basis: linear-elastic finite element method — not an ACI 318-19 provision">FEM</span>.</span>
       </div>
 
       <div class="sub-label">Basis</div>
@@ -983,7 +983,7 @@
         <span>A membrane-only mesh has no out-of-plane stiffness: at an interior node of a membrane wall nothing resists w. The engine does not hold such a translation for the user. It throws <strong>328</strong>, naming the node, a shell and the DOF, with a message explaining that a membrane carries no out-of-plane load (and a plate no in-plane load), so the user can restrain the DOF, connect a frame, or switch the area to <code>"shell"</code>. Unresisted rotations at those nodes are held as at truss joints and reported in <code>autoRestrainedDofs</code>.</span>
       </div>
 
-      <div class="sub-label">Local axes (proposal)</div>
+      <div class="sub-label">Local axes</div>
       <ul>
         <li><strong>Local 3</strong> is the normal by the right-hand rule around <code>nodeIds</code>, as for <a href="fea/#conventions" style="color:var(--accent)">null areas</a>. For four nodes, Newell's vector area is exactly ½ <strong>d</strong><sub>1</sub> × <strong>d</strong><sub>2</sub> (diagonals <strong>d</strong><sub>1</sub> = <strong>x</strong><sub>3</sub> − <strong>x</strong><sub>1</sub>, <strong>d</strong><sub>2</sub> = <strong>x</strong><sub>4</sub> − <strong>x</strong><sub>2</sub>), so the null-area normal and the warped-quad mean-plane normal below are the same vector.</li>
         <li><strong>Non-horizontal element</strong>: local 2 is the projection of +Z onto the element plane (upward on a wall), and local 1 = 2 × 3 is horizontal.</li>
@@ -1056,15 +1056,16 @@
         <tbody>
           <tr><td>F11, F22, F12</td><td>kN/m</td><td>Membrane forces <strong>n</strong> = <strong>D</strong><sub>m</sub> ε per unit width (1 N/mm = 1 kN/m)</td></tr>
           <tr><td>M11, M22, M12</td><td>kN·m/m</td><td>Bending and twisting moments per unit width (1 kN·m/m = 1000 N·mm/mm)</td></tr>
-          <tr><td>V13, V23</td><td>kN/m</td><td>Transverse shears; recovered from equilibrium for DKQ</td></tr>
+          <tr><td>V13, V23</td><td>kN/m</td><td>Transverse shears <code>V13 = −(∂M11/∂x₁ + ∂M12/∂x₂)</code>, <code>V23 = −(∂M12/∂x₁ + ∂M22/∂x₂)</code>; recovered from equilibrium for DKQ</td></tr>
           <tr><td>S11, S22, S12 top / bottom</td><td>MPa</td><td>Face stresses σ = F/t ∓ 6M/t² (top = +3 face) with the moment sign below</td></tr>
         </tbody>
       </table>
       <ul>
-        <li><strong>Sign (proposal)</strong>: M11 is positive when it puts the −3 face in tension, which is sagging for a slab with local 3 up. This matches "M3 positive for sagging" for members. With <strong>m</strong> = ∫ zσ dz as defined above, M11 = −M<sub>x</sub>.</li>
-        <li><strong>Recovery</strong>: evaluate at the 2×2 Gauss points, where gradient quantities are most accurate, and extrapolate bilinearly to the corners. Corner i sits at ±√3 in the Gauss points' own coordinates.</li>
+        <li><strong>Sign</strong>: M11 is positive when it puts the −3 face in tension, which is sagging for a slab with local 3 up. This matches "M3 positive for sagging" for members. With <strong>m</strong> = ∫ zσ dz as defined above, M11 = −M<sub>x</sub>; likewise the shears follow V2 = −dM3/dx.</li>
+        <li><strong>Recovery</strong>: evaluate at the 2×2 Gauss points, where gradient quantities are most accurate, and extrapolate bilinearly to the corners. Corner i sits at ±√3 in the Gauss points' own coordinates. The shears are the gradient of the bilinear field through the Gauss-point moments, taken at each corner.</li>
         <li><strong>Per-element values</strong>: return corner values per element. Averaging across elements at a node is a display choice and belongs in the front end.</li>
         <li><strong>Superposition</strong>: all of these are linear in the displacements, so they are computed from each raw state and rounded only in <code>present-state.ts</code>, as for members.</li>
+        <li><strong>Checks (Roadmap 5.5 tests)</strong>: on a cantilever strip M11 is linear and V13 constant exactly; on a 16 × 16 square plate (ν = 0.3) the centre moment is 0.0480 qa² simply supported (0.0479) and 0.0233 qa² clamped (0.0231), and the clamped edge moment −0.0512 qa² (−0.0513). The recovered edge shear reaches about 80 % (simply supported) and 90 % (clamped) of Timoshenko's peak, so shears are the coarsest output.</li>
         <li><strong>Design</strong>: design quantities (for example Wood–Armer slab moments, or wall pier and spandrel forces from section cuts) belong in <code>rc/</code> or a later helper, not in the element.</li>
       </ul>
     </div>

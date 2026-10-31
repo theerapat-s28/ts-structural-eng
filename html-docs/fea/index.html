@@ -428,6 +428,8 @@
       <a href="#member-release-deformations"><span class="mbadge m-type">TYPE</span> MemberReleaseDeformations</a>
       <a href="#release-deformation"><span class="mbadge m-type">TYPE</span> ReleaseDeformation</a>
       <a href="#member-diagram"><span class="mbadge m-type">TYPE</span> MemberDiagram</a>
+      <a href="#shell-element-forces"><span class="mbadge m-type">TYPE</span> ShellElementForces</a>
+      <a href="#shell-corner-forces"><span class="mbadge m-type">TYPE</span> ShellCornerForces</a>
       <a href="#member-station"><span class="mbadge m-type">TYPE</span> MemberStation</a>
       <a href="#station-component"><span class="mbadge m-type">TYPE</span> StationComponent</a>
       <a href="#extreme-value"><span class="mbadge m-type">TYPE</span> ExtremeValue</a>
@@ -466,7 +468,7 @@
         <code>analyzeFrame</code> takes nodes, members, supports, the <strong>load cases</strong> (dead,
         superimposed dead, live, wind…) and the <strong>load combinations</strong> built from them. It analyses
         every load case, forms every combination by superposition, and returns displacements, reactions,
-        member end forces and force diagrams for each, plus an envelope over the combinations. Section
+        member end forces and force diagrams, and shell forces and stresses for each, plus an envelope over the combinations. Section
         properties come from
         <a href="../rc/#rect-beam-to-section-properties" style="color:var(--accent)">rectBeamToSectionProperties</a>
         or are supplied directly, so the module itself does not depend on the RC code.
@@ -896,13 +898,31 @@
         <pre>
 <span class="c">// "W": top drift ux = 1.92884 mm at both top corners (beam theory with shear deformation: 1.944 mm);</span>
 <span class="c">//      Σ reactions fx = −100 kN</span>
-<span class="c">// "D": Σ reactions fz = 57.6 kN (24 kN/m³ × 0.2 m × 12 m²); the top settles uz = −0.01435 mm</span>
-<span class="c">// calculationDetails: nodeCount 65, dofCount 390</span></pre>
+<span class="c">//      base corner of shell "W0_0" at node "0_0": F22 = 920.5896 kN/m, S22Top = S22Bot = 4.6029 MPa</span>
+<span class="c">//      (beam theory M/S = 4.5 MPa); the opposite corner "4_0" has F22 = −920.5896 kN/m</span>
+<span class="c">// "D": Σ reactions fz = 57.6 kN (24 kN/m³ × 0.2 m × 12 m²); the top settles uz = −0.01435 mm;</span>
+<span class="c">//      F22 = −29.9351 kN/m at node "0_0" (28.8 kN/m of wall weight per metre)</span>
+<span class="c">// calculationDetails: nodeCount 65, shellCount 48, dofCount 390</span></pre>
       </div>
 
+      <div class="sub-label">Results</div>
+      <p>
+        Every load case and combination has <code>shellForces</code>: per shell, the forces per unit width and the face
+        stresses at its four corners, in the shell's local axes (see <a href="#shell-corner-forces" style="color:var(--accent)">ShellCornerForces</a>).
+        The envelope has their max and min per corner.
+      </p>
+      <table class="param-table">
+        <thead><tr><th>Component</th><th>Unit</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>F11, F22, F12</td><td>kN/m</td><td>Membrane forces along local 1, along local 2, and in-plane shear; positive in tension.</td></tr>
+          <tr><td>M11, M22, M12</td><td>kN·m/m</td><td>M11 (M22) stresses the material along local 1 (2) and is positive when it puts the −3 face in tension — sagging when local 3 points up, as <code>M3</code> of a member. M12 is the twisting moment.</td></tr>
+          <tr><td>V13, V23</td><td>kN/m</td><td>Transverse shear on the 1- and 2-faces, along local 3: <code>V13 = −(∂M11/∂x₁ + ∂M12/∂x₂)</code>, as <code>V2 = −dM3/dx</code> for a member.</td></tr>
+          <tr><td>S11Top … S12Bot</td><td>MPa</td><td>Face stresses <code>σ = F/t ∓ 6M/t²</code>; top is the +3 face.</td></tr>
+        </tbody>
+      </table>
       <div class="alert alert--info">
         <span>ℹ️</span>
-        <span>Shell results so far are nodal displacements and reactions, and the stiffness shells add to the frame (member forces and diagrams include it). Shell internal forces (F11 … M12, V13, V23) and stresses are not reported yet; they follow in a later version (Roadmap Phase 5).</span>
+        <span>Forces and moments are evaluated at the element's 2×2 Gauss points and extrapolated to its corners, so each element reports its own corner values; averaging them at a node is left to the front end. The plate has no shear strain, so V13 and V23 are recovered from the moment gradient within each element and are coarser than the moments (about 80–90 % of the peak edge shear of a square plate on a 16 × 16 mesh). Stiffness modifiers enter the forces: they come from the modified rigidity.</span>
       </div>
       <div class="alert alert--info">
         <span>ℹ️</span>
@@ -1893,7 +1913,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>nodeIds</td><td>FrameId[]</td><td>—</td><td><span class="req">Required</span></td><td>4 distinct corner nodes in order around a convex, nearly flat quadrilateral; local 3 follows the right-hand rule around them</td></tr>
               <tr><td>type</td><td>ShellType</td><td>—</td><td><span class="opt">Optional</span></td><td><code>"shell"</code> (default), <code>"membrane"</code> or <code>"plate"</code></td></tr>
               <tr><td>section</td><td>ShellSection</td><td>—</td><td><span class="req">Required</span></td><td>Thickness and material; see <a href="#shell-section" style="color:var(--accent)">ShellSection</a></td></tr>
-              <tr><td>angle</td><td>number</td><td>rad</td><td><span class="opt">Optional</span></td><td>Rotates local 1 and 2 about local 3 by the right-hand rule; default 0. Matters only with unequal 11 and 22 modifiers</td></tr>
+              <tr><td>angle</td><td>number</td><td>rad</td><td><span class="opt">Optional</span></td><td>Rotates local 1 and 2 about local 3 by the right-hand rule; default 0. Sets the directions of the reported forces (F11, M11 … along the new local 1), and changes the stiffness only with unequal 11 and 22 modifiers</td></tr>
               <tr><td>modifiers</td><td>ShellModifiers</td><td>—</td><td><span class="opt">Optional</span></td><td>Stiffness and weight modifiers; see <a href="#shell-modifiers" style="color:var(--accent)">ShellModifiers</a></td></tr>
             </tbody>
           </table>
@@ -2323,12 +2343,12 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>cases</td><td>Record&lt;string, FrameCaseResult&gt;</td><td>—</td><td>Result of each load case, keyed by its id; see <a href="#frame-case-result" style="color:var(--accent)">FrameCaseResult</a></td></tr>
               <tr><td>combinations</td><td>Record&lt;string, FrameCaseResult&gt;</td><td>—</td><td>Result of each combination, keyed by its id; empty when none are defined</td></tr>
               <tr><td>envelope</td><td>FrameEnvelope | undefined</td><td>—</td><td>Max/min over all combinations; absent when there are none. See <a href="#frame-envelope" style="color:var(--accent)">FrameEnvelope</a></td></tr>
-              <tr><td>calculationDetails.nodeCount, memberCount</td><td>number</td><td>—</td><td>Model size</td></tr>
+              <tr><td>calculationDetails.nodeCount, memberCount, shellCount</td><td>number</td><td>—</td><td>Model size</td></tr>
               <tr><td>calculationDetails.dofCount, freeDofCount</td><td>number</td><td>—</td><td>All DOFs (6 per node) and the unrestrained ones solved for</td></tr>
               <tr><td>calculationDetails.profileSize</td><td>number</td><td>—</td><td>Stored entries of the banded stiffness factor: a measure of memory and solve work</td></tr>
               <tr><td>calculationDetails.loadCaseCount, combinationCount</td><td>number</td><td>—</td><td>Number of load cases and combinations</td></tr>
               <tr><td>calculationDetails.autoRestrainedDofs</td><td>AutoRestrainedDof[]</td><td>—</td><td>Joint rotations held because no member resists them, e.g. at truss joints; empty when there are none. See <a href="#auto-restrained-dof" style="color:var(--accent)">AutoRestrainedDof</a></td></tr>
-              <tr><td>units</td><td>object</td><td>—</td><td><code>{ force: "kN", moment: "kN·m", length: "mm", rotation: "rad" }</code></td></tr>
+              <tr><td>units</td><td>object</td><td>—</td><td><code>{ force: "kN", moment: "kN·m", length: "mm", rotation: "rad", forcePerLength: "kN/m", momentPerLength: "kN·m/m", stress: "MPa" }</code></td></tr>
               <tr><td>warnings</td><td>Warnings</td><td>—</td><td>Null-area warnings, then every case and combination warning prefixed with its id</td></tr>
             </tbody>
           </table>
@@ -2371,6 +2391,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>memberEndForces</td><td>MemberEndForces[]</td><td>kN, kN·m</td><td>f1, f2, f3, m1, m2, m3 that the node exerts on each member end, local axes, right-hand; see <a href="#member-end-forces" style="color:var(--accent)">MemberEndForces</a></td></tr>
               <tr><td>releaseDeformations</td><td>MemberReleaseDeformations[]</td><td>mm, rad</td><td>Node-minus-member displacement across every released or spring end DOF, for each member that has any (model order); see <a href="#member-release-deformations" style="color:var(--accent)">MemberReleaseDeformations</a></td></tr>
               <tr><td>memberDiagrams</td><td>MemberDiagram[]</td><td>kN, kN·m, mm</td><td><code>{ memberId, length, stations, extremes }</code>: forces N, V2, V3, T, M2, M3 and displacements u1, u2, u3 (local) and ux, uy, uz (global) at stations along the member, and each component's <code>{ max, min }</code> as <code>{ value, x }</code>; see <a href="#member-diagram" style="color:var(--accent)">MemberDiagram</a> and <a href="#member-diagrams" style="color:var(--accent)">Member diagrams</a></td></tr>
+              <tr><td>shellForces</td><td>ShellElementForces[]</td><td>kN/m, kN·m/m, MPa</td><td>Per shell area (model order), forces per unit width and face stresses at its corners; empty without shells. See <a href="#shell-element-forces" style="color:var(--accent)">ShellElementForces</a></td></tr>
               <tr><td>equilibriumResidual</td><td>{ force, moment }</td><td>kN, kN·m</td><td>Global equilibrium residual of applied loads plus reactions</td></tr>
               <tr><td>warnings</td><td>Warnings</td><td>—</td><td>Warnings of this case or combination</td></tr>
             </tbody>
@@ -2581,6 +2602,46 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
         </div>
       </div>
 
+      <div class="export-card" id="shell-element-forces">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">ShellElementForces</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">The forces of one shell area at its four corners: <code>{ shellId, corners: ShellCornerForces[] }</code>, corners in the shell's <code>nodeIds</code> order. See <a href="#shell-areas" style="color:var(--accent)">Shell areas</a>.</p>
+        </div>
+      </div>
+
+      <div class="export-card" id="shell-corner-forces">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">ShellCornerForces</span>
+          <span class="scope-badge s-public">Public API</span>
+          <span class="std-badge" title="Basis: finite element method — not an ACI 318-19 provision">FEM</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Forces per unit width and face stresses at one corner of a shell, in its local axes 1, 2, 3, extrapolated from the element's 2×2 Gauss points. <code>ShellForceComponent</code> is any key but <code>nodeId</code>.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>nodeId</td><td>FrameId</td><td>—</td><td>The corner's node</td></tr>
+              <tr><td>F11, F22</td><td>number</td><td>kN/m</td><td>Membrane forces along local 1 and 2, positive in tension</td></tr>
+              <tr><td>F12</td><td>number</td><td>kN/m</td><td>In-plane shear force</td></tr>
+              <tr><td>M11, M22</td><td>number</td><td>kN·m/m</td><td>Moments stressing along local 1 and 2, positive with the −3 face in tension (sagging when local 3 points up)</td></tr>
+              <tr><td>M12</td><td>number</td><td>kN·m/m</td><td>Twisting moment</td></tr>
+              <tr><td>V13, V23</td><td>number</td><td>kN/m</td><td>Transverse shear along local 3 on the 1- and 2-faces, from moment equilibrium: <code>V13 = −(∂M11/∂x₁ + ∂M12/∂x₂)</code>, <code>V23 = −(∂M12/∂x₁ + ∂M22/∂x₂)</code></td></tr>
+              <tr><td>S11Top, S22Top, S12Top</td><td>number</td><td>MPa</td><td>Stresses on the +3 face: <code>F/t − 6M/t²</code></td></tr>
+              <tr><td>S11Bot, S22Bot, S12Bot</td><td>number</td><td>MPa</td><td>Stresses on the −3 face: <code>F/t + 6M/t²</code></td></tr>
+            </tbody>
+          </table>
+          <div class="alert alert--info">
+            <span>ℹ️</span>
+            <span>A membrane reports zero moments and shears; a plate zero membrane forces. The forces of a statically determinate shell structure do not change with stiffness modifiers.</span>
+          </div>
+        </div>
+      </div>
+
       <div class="export-card" id="frame-envelope">
         <div class="export-card__header">
           <span class="kind m-type">TYPE</span>
@@ -2596,6 +2657,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>nodalDisplacements</td><td>array</td><td>mm, rad</td><td>Per node: <code>ux … rz</code>, each a <a href="#bound" style="color:var(--accent)">Bound</a> of <a href="#governing-value" style="color:var(--accent)">GoverningValue</a></td></tr>
               <tr><td>reactions</td><td>array</td><td>kN, kN·m</td><td>Per node: <code>fx … mz</code>, each a <a href="#bound" style="color:var(--accent)">Bound</a> of <a href="#governing-value" style="color:var(--accent)">GoverningValue</a></td></tr>
               <tr><td>members</td><td>array</td><td>kN, kN·m, mm</td><td>Per member: <code>extremes</code> of N, V2, V3, T, M2, M3, u1, u2, u3, each a <a href="#bound" style="color:var(--accent)">Bound</a> of <a href="#governing-extreme-value" style="color:var(--accent)">GoverningExtremeValue</a></td></tr>
+              <tr><td>shells</td><td>array</td><td>kN/m, kN·m/m, MPa</td><td>Per shell: <code>{ shellId, corners }</code>, each corner <code>{ nodeId }</code> plus F11 … S12Bot, each a <a href="#bound" style="color:var(--accent)">Bound</a> of <a href="#governing-value" style="color:var(--accent)">GoverningValue</a></td></tr>
             </tbody>
           </table>
         </div>
@@ -2825,6 +2887,8 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberReleaseDeformations</td><td>—</td><td>Deformation across a member's end releases</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ReleaseDeformation</td><td>—</td><td>Node-minus-member displacement at one end</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberDiagram</td><td>—</td><td>Stations and extremes along a member</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ShellElementForces</td><td>—</td><td>A shell's forces at its four corners</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ShellCornerForces, ShellForceComponent</td><td>—</td><td>Forces per unit width and face stresses at one corner, and their keys</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberStation</td><td>—</td><td>Forces and displacements at one point</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">StationComponent</td><td>—</td><td>Components that have extremes</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ExtremeValue</td><td>—</td><td>Extreme value and its position</td></tr>

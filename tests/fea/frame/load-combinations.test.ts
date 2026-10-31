@@ -207,7 +207,15 @@ describe("load combinations — superposition", () => {
       kind: "combination",
     });
     expect(result.calculationDetails).toMatchObject({ loadCaseCount: 3, combinationCount: 4 });
-    expect(result.units).toEqual({ force: "kN", moment: "kN·m", length: "mm", rotation: "rad" });
+    expect(result.units).toEqual({
+      force: "kN",
+      moment: "kN·m",
+      length: "mm",
+      rotation: "rad",
+      forcePerLength: "kN/m",
+      momentPerLength: "kN·m/m",
+      stress: "MPa",
+    });
     expect(result.warnings).toEqual([]);
     Object.values({ ...result.cases, ...result.combinations }).forEach((r) => {
       expect(r.equilibriumResidual.force).toBeLessThan(1e-6);

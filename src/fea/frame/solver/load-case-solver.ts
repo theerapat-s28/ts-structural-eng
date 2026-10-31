@@ -4,6 +4,7 @@ import { matVec, type Matrix } from "@app-utils/matrix";
 import { skylineSolve } from "@app-utils/skyline";
 
 import { fixedEndForces, type LocalMemberLoad } from "../elements/fixed-end-forces";
+import { shellRawForces } from "../post/shell-forces";
 import type { AreaLoad, LoadCase, LoadDirection, MemberLoad, NodalLoad } from "../types/model.type";
 import { frameIssue, throwIssues } from "../validation/validate-model";
 import type { FrameSystem } from "./frame-system";
@@ -18,6 +19,7 @@ export interface RawState {
   R: number[]; // reactions at restrained DOFs, 0 elsewhere
   F: number[]; // applied global load vector (nodal + equivalent member loads)
   memberForces: number[][]; // per member, 12 local right-hand end forces
+  shellForces: number[][]; // per shell, 8 corner forces × 4 corners (see `shellRawForces`)
   memberLoads: LocalMemberLoad[][]; // per member, local loads (for the diagrams)
 }
 
@@ -210,7 +212,9 @@ export const solveLoadCase = (
   }
   const R = KU.map((v, i) => (boundary.restrained[i] ? v - F[i] : 0));
 
-  return { U, R, F, memberForces, memberLoads };
+  const shellForces = system.shells.map((shell) => shellRawForces(shell, U));
+
+  return { U, R, F, memberForces, shellForces, memberLoads };
 };
 
 const scaleLoad = (load: LocalMemberLoad, factor: number): LocalMemberLoad => {
@@ -234,6 +238,7 @@ export const combineStates = (terms: { state: RawState; factor: number }[]): Raw
     R: add((s) => s.R, first.R.length),
     F: add((s) => s.F, first.F.length),
     memberForces: first.memberForces.map((_, m) => add((s) => s.memberForces[m], 12)),
+    shellForces: first.shellForces.map((f, sh) => add((s) => s.shellForces[sh], f.length)),
     memberLoads: first.memberLoads.map((_, m) =>
       terms.flatMap(({ state, factor }) =>
         factor === 0 ? [] : state.memberLoads[m].map((l) => scaleLoad(l, factor)),

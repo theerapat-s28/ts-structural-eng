@@ -14,6 +14,7 @@ import type {
   ReleaseDeformation,
 } from "../types/results.type";
 import { memberDiagram } from "./member-diagram";
+import { presentShellForces } from "./shell-forces";
 
 const FORCE_DECIMALS = 4;
 const DISPLACEMENT_DECIMALS = 5;
@@ -174,6 +175,13 @@ export const presentState = (
     }),
     memberDiagrams: system.members.map((_, m) =>
       presentMemberDiagram(system, state, m, diagram.stations, diagram.withStations ?? true),
+    ),
+    shellForces: system.shells.map((shell, s) =>
+      presentShellForces(
+        shell,
+        shell.nodeIndices.map((n) => system.nodes[n].id),
+        state.shellForces[s],
+      ),
     ),
     equilibriumResidual: {
       force: roundToDecimalPlaces(residual.force, 8),

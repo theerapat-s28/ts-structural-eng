@@ -156,6 +156,7 @@ export const createFrameAnalysis = (
     calculationDetails: {
       nodeCount: system.nodes.length,
       memberCount: system.members.length,
+      shellCount: system.shells.length,
       dofCount: system.dofCount,
       freeDofCount: system.free.length,
       profileSize: system.profileSize,
@@ -163,7 +164,15 @@ export const createFrameAnalysis = (
       combinationCount: combinations.length,
       autoRestrainedDofs: autoRestrainedDofs(system),
     },
-    units: { force: "kN", moment: "kN·m", length: "mm", rotation: "rad" },
+    units: {
+      force: "kN",
+      moment: "kN·m",
+      length: "mm",
+      rotation: "rad",
+      forcePerLength: "kN/m",
+      momentPerLength: "kN·m/m",
+      stress: "MPa",
+    },
     warnings,
   };
 

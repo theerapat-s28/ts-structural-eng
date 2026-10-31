@@ -64,7 +64,7 @@ Every feature added must conform to the following core principles:
 | [x] | 5 | DKQ plate element | M | Generic assembly |
 | [x] | 5 | Flat shell element (axes, warping, modifiers) | M | Membrane, DKQ |
 | [x] | 5 | Shells in the model (validation, assembly, loads) | L | Flat shell |
-| [ ] | 5 | Shell results & first release | M | Shells in the model |
+| [x] | 5 | Shell results & first release | M | Shells in the model |
 | [ ] | 5 | Engine meshing of shell areas | L | Shell results |
 | [ ] | 5 | Thick plates (DKMQ or MITC4) | M | Shell results |
 | [ ] | 5 | Triangular shells & openings | L | Engine meshing |
@@ -388,11 +388,12 @@ Flat four-node shell elements with membrane, plate and shell behaviour, so walls
 - [x] Docs: FEA reference (shell section, types, conventions, errors), README, CHANGELOG (Unreleased), theory page status.
 
 ### 5.5 Shell Results & First Release
-- [ ] `FrameCaseResult.shellForces`: per element, corner values of F11, F22, F12 (kN/m), M11, M22, M12 (kN·m/m, positive for sagging with local 3 up) and V13, V23 (kN/m), from the 2×2 Gauss points extrapolated to the corners; top and bottom face stresses (MPa).
-- [ ] Unrounded element results in `RawState`, superposed in combinations; rounding only in [`post/present-state.ts`](src/fea/frame/post/present-state.ts).
-- [ ] Envelope: max/min per element corner.
-- [ ] `calculationDetails.shellCount`; `units` gains the per-length units.
-- [ ] Docs: [html-docs/fea/index.html](html-docs/fea/index.html) (types, conventions, errors, an example with real outputs), theory page marked implemented, README, CHANGELOG; release as a minor version.
+- [x] [`post/shell-forces.ts`](src/fea/frame/post/shell-forces.ts): per element, corner values of F11, F22, F12 (kN/m), M11, M22, M12 (kN·m/m, positive with the −3 face in tension) and V13, V23 (kN/m, $V_{13} = -(\partial M_{11}/\partial x_1 + \partial M_{12}/\partial x_2)$ on the bilinear field through the Gauss-point moments), from the 2×2 Gauss points extrapolated to the corners; face stresses $F/t \mp 6M/t^2$ (MPa). Modified rigidity, so cracked forces are consistent.
+- [x] Unrounded `RawState.shellForces` (8 per corner), superposed in combinations; rounding only in [`post/present-state.ts`](src/fea/frame/post/present-state.ts).
+- [x] `FrameCaseResult.shellForces`; envelope `shells` with max/min per corner and governing combination; `calculationDetails.shellCount`; `units.forcePerLength`, `momentPerLength`, `stress`. Types `ShellElementForces`, `ShellCornerForces`, `ShellForceComponent`.
+- [x] Tests in [`tests/fea/frame/shell-forces.test.ts`](tests/fea/frame/shell-forces.test.ts): cantilever strip (M11 linear and V13 constant exactly, sign of moments, shears and face stresses, uniform end moment, axial force), local axes via `angle`, determinate forces unchanged by modifiers, membrane/plate parts zero, square plate 16 × 16 (centre 0.0480 / 0.0233 qa², clamped edge −0.0512 qa² against 0.0479 / 0.0231 / −0.0513), superposition, envelope, counts and units.
+- [x] Docs: FEA reference (results, types, example with real outputs), theory page, README, CHANGELOG.
+- [ ] Release as a minor version (`update-version`, then `npm-publish`) — maintainer's call.
 
 ### 5.6 Engine Meshing
 - [ ] `ShellArea.mesh?: { maxSize } | { divisions: [n1, n2] }`; without `mesh` an area is one element.
@@ -479,7 +480,7 @@ Codes 301–314 are the existing validation and solver errors in [`frame-analysi
 | `FN` | `analyzeBuckling` | `BucklingResult` | Critical load factors and buckling modes |
 | `TYPE` | `FrameModel.responseSpectra` | `ResponseSpectrum[]` | Response spectrum cases (CQC/SRSS) |
 | `TYPE` | `FrameModel.shells`, `ShellArea`, `ShellSection`, `ShellModifiers` | — | Shell areas with membrane, plate or shell behaviour |
-| `TYPE` | `FrameCaseResult.shellForces` | `ShellElementForces[]` | Corner membrane forces, moments, shears and face stresses |
+| `TYPE` | `FrameCaseResult.shellForces` *(Unreleased)* | `ShellElementForces[]` | Corner membrane forces, moments, shears and face stresses |
 | `TYPE` | `ShellArea.mesh` | — | Engine meshing of shell areas |
 | `TYPE` | `ShellArea.plateTheory` | `"thin" \| "thick"` | Thick-plate formulation |
 

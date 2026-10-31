@@ -103,6 +103,39 @@ export interface MemberDiagram {
   extremes: Record<StationComponent, { max: ExtremeValue; min: ExtremeValue }>;
 }
 
+/**
+ * Forces per unit width and face stresses at one corner of a shell element, in the shell's
+ * local axes 1, 2, 3. Membrane forces are positive in tension. M11 (M22) is the moment that
+ * stresses along local 1 (2), positive when it puts the −3 face in tension (sagging with local
+ * 3 up), as M3 of a member; V13 = −(∂M11/∂x₁ + ∂M12/∂x₂), as V2 = −dM3/dx. Top is the +3 face.
+ */
+export interface ShellCornerForces {
+  nodeId: FrameId;
+  F11: number; // kN/m, membrane force along local 1
+  F22: number; // kN/m, membrane force along local 2
+  F12: number; // kN/m, membrane shear
+  M11: number; // kN·m/m
+  M22: number; // kN·m/m
+  M12: number; // kN·m/m, twisting moment
+  V13: number; // kN/m, transverse shear on the 1-face
+  V23: number; // kN/m, transverse shear on the 2-face
+  S11Top: number; // MPa, F11/t − 6·M11/t²
+  S22Top: number; // MPa
+  S12Top: number; // MPa
+  S11Bot: number; // MPa, F11/t + 6·M11/t²
+  S22Bot: number; // MPa
+  S12Bot: number; // MPa
+}
+
+/** A force or stress component of `ShellCornerForces`. */
+export type ShellForceComponent = Exclude<keyof ShellCornerForces, "nodeId">;
+
+/** Forces of one shell element at its four corners, in its `nodeIds` order. */
+export interface ShellElementForces {
+  shellId: FrameId;
+  corners: ShellCornerForces[];
+}
+
 /** Max or min of a result across combinations, with the combination that produces it. */
 export interface GoverningValue {
   value: number;
@@ -127,6 +160,8 @@ export interface FrameCaseResult {
   /** One entry per member with any released or spring end DOF, in model order. */
   releaseDeformations: MemberReleaseDeformations[];
   memberDiagrams: MemberDiagram[];
+  /** One entry per shell area, in model order. */
+  shellForces: ShellElementForces[];
   equilibriumResidual: { force: number; moment: number }; // kN, kN·m
   warnings: Warnings;
 }
@@ -146,6 +181,10 @@ export interface FrameEnvelope {
     memberId: FrameId;
     extremes: Record<StationComponent, Bound<GoverningExtremeValue>>;
   }[];
+  shells: {
+    shellId: FrameId;
+    corners: ({ nodeId: FrameId } & Record<ShellForceComponent, Bound<GoverningValue>>)[];
+  }[];
 }
 
 export interface FrameResult {
@@ -156,6 +195,7 @@ export interface FrameResult {
   calculationDetails: {
     nodeCount: number;
     memberCount: number;
+    shellCount: number;
     dofCount: number;
     freeDofCount: number;
     profileSize: number; // stored entries of the banded stiffness factor (memory / work measure)
@@ -164,6 +204,14 @@ export interface FrameResult {
     /** Joint rotations held because every member there releases them (e.g. truss joints). */
     autoRestrainedDofs: AutoRestrainedDof[];
   };
-  units: { force: "kN"; moment: "kN·m"; length: "mm"; rotation: "rad" };
+  units: {
+    force: "kN";
+    moment: "kN·m";
+    length: "mm";
+    rotation: "rad";
+    forcePerLength: "kN/m";
+    momentPerLength: "kN·m/m";
+    stress: "MPa";
+  };
   warnings: Warnings;
 }

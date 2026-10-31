@@ -4,12 +4,29 @@ import type {
   FrameEnvelope,
   GoverningExtremeValue,
   GoverningValue,
+  ShellForceComponent,
   StationComponent,
 } from "../types/results.type";
 
 const DISPLACEMENT_KEYS = ["ux", "uy", "uz", "rx", "ry", "rz"] as const;
 const REACTION_KEYS = ["fx", "fy", "fz", "mx", "my", "mz"] as const;
 const COMPONENTS: StationComponent[] = ["N", "V2", "V3", "T", "M2", "M3", "u1", "u2", "u3"];
+const SHELL_COMPONENTS: ShellForceComponent[] = [
+  "F11",
+  "F22",
+  "F12",
+  "M11",
+  "M22",
+  "M12",
+  "V13",
+  "V23",
+  "S11Top",
+  "S22Top",
+  "S12Top",
+  "S11Bot",
+  "S22Bot",
+  "S12Bot",
+];
 
 /** Keeps the larger max and smaller min; the first combination wins a tie. */
 const update = <T extends GoverningValue>(
@@ -72,5 +89,27 @@ export const buildEnvelope = (results: FrameCaseResult[]): FrameEnvelope => {
     return { memberId: d.memberId, extremes };
   });
 
-  return { combinationIds: results.map((r) => r.id), nodalDisplacements, reactions, members };
+  const shells = first.shellForces.map((shell, s) => ({
+    shellId: shell.shellId,
+    corners: shell.corners.map((corner, c) => {
+      const entry = { nodeId: corner.nodeId } as FrameEnvelope["shells"][number]["corners"][number];
+      for (const key of SHELL_COMPONENTS) {
+        let bound: Bound<GoverningValue> | undefined;
+        for (const r of results) {
+          const g = { value: r.shellForces[s].corners[c][key], combinationId: r.id };
+          bound = update(bound, g, g);
+        }
+        entry[key] = bound as Bound<GoverningValue>;
+      }
+      return entry;
+    }),
+  }));
+
+  return {
+    combinationIds: results.map((r) => r.id),
+    nodalDisplacements,
+    reactions,
+    members,
+    shells,
+  };
 };

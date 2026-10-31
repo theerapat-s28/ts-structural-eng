@@ -15,7 +15,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Types `ShellArea`, `ShellSection`, `ShellModifiers` and `ShellType`, exported from `/fea` and the package root; constant `SHELL_WARPING_LIMIT` (0.1), exported from `/core`.
 - A theory page for the shell element, `html-docs/shell-element.html`.
 
-Shell internal forces and stresses are not reported yet; nodal displacements, reactions and member results include the shells' stiffness.
+- **Shell forces**: every load case and combination result has `shellForces`, per shell the forces per unit width at its four corners in its local axes — membrane forces `F11`, `F22`, `F12` (kN/m), moments `M11`, `M22`, `M12` (kN·m/m, positive with the −3 face in tension, i.e. sagging when local 3 is up, like a member's `M3`) and transverse shears `V13`, `V23` (kN/m, `V13 = −(∂M11/∂x₁ + ∂M12/∂x₂)`) — plus top and bottom face stresses `S11Top` … `S12Bot` (MPa). They are extrapolated from the element's Gauss points, combine by superposition and are enveloped per corner (`envelope.shells`). The shears are recovered from the moments and are the coarsest output.
+- Types `ShellElementForces`, `ShellCornerForces` and `ShellForceComponent`; `calculationDetails.shellCount`; `units.forcePerLength` (`"kN/m"`), `units.momentPerLength` (`"kN·m/m"`) and `units.stress` (`"MPa"`).
 
 ### Changed
 
