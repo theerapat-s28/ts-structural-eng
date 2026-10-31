@@ -385,7 +385,7 @@ Flat four-node shell elements with membrane, plate and shell behaviour, so walls
 - [x] System ([`frame-system.ts`](src/fea/frame/solver/frame-system.ts)): `SystemShell`s assembled with the members (shell adjacency added once per pair, so member-only models are bit-identical); 328 from `findUnresistedTranslations` (eigen-check of the translational block at nodes connected only to shells, before factorisation). Unresisted rotations stay with auto-restraint.
 - [x] Loads ([`load-case-solver.ts`](src/fea/frame/solver/load-case-solver.ts)): `AreaLoad`s routed by id (shell loads to the shells; `areaMemberLoads` and `distributeAreaLoads` skip them), self-weight `selfWeight · unitWeight · thickness · weight`, all as corner forces $q \int N_i\,dA$ without offset moments; shells' $\mathbf{k u}$ added into the reactions.
 - [x] Tests in [`tests/fea/frame/shell-model.test.ts`](tests/fea/frame/shell-model.test.ts): every validation error with its location; 328 for membrane walls and plate slabs, not where two membranes meet at an angle; equilibrium of self-weight, projected and normal loads; `weight` modifier; superposition; Scordelis–Lo roof (from above, 16 × 16 within 1 % of 0.3024); pinched cylinder (16 × 16 octant within 2 %); 2 × 6 m wall within 1 % of beam theory with shear; beam framing into a near-rigid wall equals $PL^3/3EI$ (moment through the drilling DOF); simply supported plate slab within 0.2 % of Timoshenko, 4× softer with $m = 0.25$.
-- [x] Docs: FEA reference (shell section, types, conventions, errors), README, CHANGELOG (Unreleased), theory page status.
+- [x] Docs: FEA reference (shell section, types, conventions, errors), README, CHANGELOG, theory page status.
 
 ### 5.5 Shell Results & First Release
 - [x] [`post/shell-forces.ts`](src/fea/frame/post/shell-forces.ts): per element, corner values of F11, F22, F12 (kN/m), M11, M22, M12 (kN·m/m, positive with the −3 face in tension) and V13, V23 (kN/m, $V_{13} = -(\partial M_{11}/\partial x_1 + \partial M_{12}/\partial x_2)$ on the bilinear field through the Gauss-point moments), from the 2×2 Gauss points extrapolated to the corners; face stresses $F/t \mp 6M/t^2$ (MPa). Modified rigidity, so cracked forces are consistent.
@@ -393,7 +393,7 @@ Flat four-node shell elements with membrane, plate and shell behaviour, so walls
 - [x] `FrameCaseResult.shellForces`; envelope `shells` with max/min per corner and governing combination; `calculationDetails.shellCount`; `units.forcePerLength`, `momentPerLength`, `stress`. Types `ShellElementForces`, `ShellCornerForces`, `ShellForceComponent`.
 - [x] Tests in [`tests/fea/frame/shell-forces.test.ts`](tests/fea/frame/shell-forces.test.ts): cantilever strip (M11 linear and V13 constant exactly, sign of moments, shears and face stresses, uniform end moment, axial force), local axes via `angle`, determinate forces unchanged by modifiers, membrane/plate parts zero, square plate 16 × 16 (centre 0.0480 / 0.0233 qa², clamped edge −0.0512 qa² against 0.0479 / 0.0231 / −0.0513), superposition, envelope, counts and units.
 - [x] Docs: FEA reference (results, types, example with real outputs), theory page, README, CHANGELOG.
-- [ ] Release as a minor version (`update-version`, then `npm-publish`) — maintainer's call.
+- [x] Released together with 5.4 and 5.6 as **3.0.0** (a major version to mark shell element analysis; no breaking changes).
 
 ### 5.6 Engine Meshing
 API decisions: supports along meshed edges by line restraints; members along meshed edges split internally with results under their own id; results per generated element plus `result.mesh`.
@@ -449,10 +449,10 @@ Codes 301–314 are the existing validation and solver errors in [`frame-analysi
 | **323** | `GEOMETRIC_INSTABILITY` | Linearized P-Δ | $\mathbf{K} + \mathbf{K}_g$ not positive definite |
 | **324** | `NO_MASS` | Modal analysis | No mass on any free DOF |
 | **325** | `EIGEN_NOT_CONVERGED` | Modal, buckling | Eigensolver did not converge within the iteration limit |
-| **326** | `INVALID_SHELL_GEOMETRY` | Shell elements *(Unreleased)* | Not 4 distinct nodes (3 allowed from 5.8), non-convex, $\det \mathbf{J} \le 0$, or warping beyond the limit |
-| **327** | `INVALID_SHELL_SECTION` | Shell elements *(Unreleased)* | Thickness or $E$ not positive, $\nu$ outside $[0, 0.5)$, or negative `unitWeight` |
-| **328** | `SHELL_DOF_UNSUPPORTED` | Shell elements *(Unreleased)* | A translation nothing resists at a node connected only to membrane (or only to plate) shells |
-| **329** | `INVALID_SHELL_MESH` | Engine meshing *(Unreleased)* | No conforming division counts, a bad generated element, or a generated id already in use |
+| **326** | `INVALID_SHELL_GEOMETRY` | Shell elements *(3.0.0)* | Not 4 distinct nodes (3 allowed from 5.8), non-convex, $\det \mathbf{J} \le 0$, or warping beyond the limit |
+| **327** | `INVALID_SHELL_SECTION` | Shell elements *(3.0.0)* | Thickness or $E$ not positive, $\nu$ outside $[0, 0.5)$, or negative `unitWeight` |
+| **328** | `SHELL_DOF_UNSUPPORTED` | Shell elements *(3.0.0)* | A translation nothing resists at a node connected only to membrane (or only to plate) shells |
+| **329** | `INVALID_SHELL_MESH` | Engine meshing *(3.0.0)* | No conforming division counts, a bad generated element, or a generated id already in use |
 
 ---
 
@@ -485,10 +485,10 @@ Codes 301–314 are the existing validation and solver errors in [`frame-analysi
 | `FN` | `analyzeBuckling` | `BucklingResult` | Critical load factors and buckling modes |
 | `TYPE` | `FrameModel.responseSpectra` | `ResponseSpectrum[]` | Response spectrum cases (CQC/SRSS) |
 | `TYPE` | `FrameModel.shells`, `ShellArea`, `ShellSection`, `ShellModifiers` | — | Shell areas with membrane, plate or shell behaviour |
-| `TYPE` | `FrameCaseResult.shellForces` *(Unreleased)* | `ShellElementForces[]` | Corner membrane forces, moments, shears and face stresses |
-| `TYPE` | `ShellArea.mesh`, `ShellMesh` *(Unreleased)* | — | Engine meshing of shell areas |
-| `TYPE` | `FrameModel.lineRestraints`, `LineRestraint` *(Unreleased)* | — | Fixed DOFs along a line, generated nodes included |
-| `TYPE` | `FrameResult.mesh`, `FrameMesh` *(Unreleased)* | — | Generated nodes and shell elements |
+| `TYPE` | `FrameCaseResult.shellForces` *(3.0.0)* | `ShellElementForces[]` | Corner membrane forces, moments, shears and face stresses |
+| `TYPE` | `ShellArea.mesh`, `ShellMesh` *(3.0.0)* | — | Engine meshing of shell areas |
+| `TYPE` | `FrameModel.lineRestraints`, `LineRestraint` *(3.0.0)* | — | Fixed DOFs along a line, generated nodes included |
+| `TYPE` | `FrameResult.mesh`, `FrameMesh` *(3.0.0)* | — | Generated nodes and shell elements |
 | `TYPE` | `ShellArea.plateTheory` | `"thin" \| "thick"` | Thick-plate formulation |
 
 ---

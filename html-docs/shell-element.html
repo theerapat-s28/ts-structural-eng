@@ -471,7 +471,7 @@
     <div class="page-header">
       <div class="import-tag">
         <span class="label">Status</span>
-        <code>@theerapat-s28/ts-structural-eng-tools/fea — shell areas, forces and meshing (unreleased); thick plates and triangles to come</code>
+        <code>@theerapat-s28/ts-structural-eng-tools/fea — shell areas since 3.0.0; thick plates and triangles to come</code>
       </div>
       <h1>Shell Element — Theory Notes</h1>
       <p>How a flat four-node shell element (membrane, plate bending and drilling rotation) gets its stiffness matrix, which formulations this library will use, and how the element fits into the existing frame solver.</p>
@@ -490,7 +490,7 @@
 
       <div class="alert alert--info">
         <span>ℹ️</span>
-        <span><strong>In progress.</strong> Shell areas and their forces are part of <code>analyzeFrame</code> (<code>model.shells</code>, <code>shellForces</code>; unreleased, see the <a href="fea/#shell-areas" style="color:var(--accent)">FEA reference</a>); engine meshing is in (Roadmap 5.6); thick plates and triangles are still to come (Roadmap Phase 5). Numbers on this page come from the library's tests unless marked <em>prototype</em>, which were checked with a throwaway prototype before the code existed. The basis is the finite element method, not a code provision <span class="std-badge" title="Basis: linear-elastic finite element method — not an ACI 318-19 provision">FEM</span>.</span>
+        <span><strong>Implemented in 3.0.0</strong> (flat four-node shells, membrane and thin plate, engine meshing, forces): shell areas are part of <code>analyzeFrame</code> (<code>model.shells</code>, <code>shellForces</code>; see the <a href="fea/#shell-areas" style="color:var(--accent)">FEA reference</a>). Thick plates and triangular elements are still to come (Roadmap Phase 5). Numbers on this page come from the library's tests unless marked <em>prototype</em>, which were checked with a throwaway prototype before the code existed. The basis is the finite element method, not a code provision <span class="std-badge" title="Basis: linear-elastic finite element method — not an ACI 318-19 provision">FEM</span>.</span>
       </div>
 
       <div class="sub-label">Basis</div>

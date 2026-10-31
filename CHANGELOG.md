@@ -6,26 +6,30 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [3.0.0] — 2026-10-31
+
+**Shell element analysis.** `analyzeFrame` now analyses walls, cores, slabs and mats as shell elements alongside the frame: four-node flat shells with membrane and plate stiffness, meshed by the engine, with internal forces and stresses in every load case, combination and envelope. The major version marks this milestone; nothing is removed or renamed, and frame-only models give the same results as in 2.3.0, which only gain the new fields below (empty `shellForces` and `envelope.shells`, and the new `units` keys).
+
 ### Added
 
-- **Shell areas** (`model.shells`): four-node flat shell elements with their own stiffness, for walls, cores, transfer slabs and mats where a surface's stiffness matters; null areas are unchanged. Each `ShellArea` (`{ id, nodeIds, type?, section, angle?, modifiers? }`) combines a drilling-rotation membrane, so a beam framing into a wall in its plane transfers its moment, with a thin (DKQ) plate; `type` `"membrane"` or `"plate"` keeps only one part. Slightly warped quads are built on their mean plane and linked to their corners. Local axes follow ETABS: local 3 by the right-hand rule around `nodeIds`, local 2 up on walls, local 1 = +X on horizontal shells, rotated by `angle`. One shell area is one element, so meshes come from the caller.
-- `ShellSection` (`thickness`, `E`, `nu`, `unitWeight?`) and `ShellModifiers` (`f11`, `f22`, `f12`, `m11`, `m22`, `m12`, `weight`) for cracked-section stiffness, e.g. ACI 318-19 6.6.3.1.1 values entered by the user.
-- `AreaLoad` can load a shell area by its id (area ids are shared by null areas and shells), and self-weight acts on shells as `selfWeight · unitWeight · thickness` per unit area; both act as forces at the shell's corners.
-- Errors 326 (`INVALID_SHELL_GEOMETRY`), 327 (`INVALID_SHELL_SECTION`) and 328 (`SHELL_DOF_UNSUPPORTED`: a translation that nothing resists at a node connected only to membrane or plate shells, with `nodeId`, `shellId` and `dof`), and `FrameErrorDetails.shellId`.
-- Types `ShellArea`, `ShellSection`, `ShellModifiers` and `ShellType`, exported from `/fea` and the package root; constant `SHELL_WARPING_LIMIT` (0.1), exported from `/core`.
-- A theory page for the shell element, `html-docs/shell-element.html`.
-
-- **Shell forces**: every load case and combination result has `shellForces`, per shell the forces per unit width at its four corners in its local axes — membrane forces `F11`, `F22`, `F12` (kN/m), moments `M11`, `M22`, `M12` (kN·m/m, positive with the −3 face in tension, i.e. sagging when local 3 is up, like a member's `M3`) and transverse shears `V13`, `V23` (kN/m, `V13 = −(∂M11/∂x₁ + ∂M12/∂x₂)`) — plus top and bottom face stresses `S11Top` … `S12Bot` (MPa). They are extrapolated from the element's Gauss points, combine by superposition and are enveloped per corner (`envelope.shells`). The shears are recovered from the moments and are the coarsest output.
-- Types `ShellElementForces`, `ShellCornerForces` and `ShellForceComponent`; `calculationDetails.shellCount`; `units.forcePerLength` (`"kN/m"`), `units.momentPerLength` (`"kN·m/m"`) and `units.stress` (`"MPa"`).
-
-- **Engine meshing of shell areas**: `ShellArea.mesh` (`{ maxSize }` in mm, or `{ divisions: [n1, n2] }` as a minimum) divides an area into elements. Neighbouring areas share their mesh nodes, also where an area edge meets another at a node (a slab edge on two wall panels); division counts grow as needed for that, and an unmeshed area next to a meshed one is divided too. Model nodes lying on an area edge become mesh nodes. Generated elements are named `"<areaId>:<i>,<j>"` and generated nodes `"<areaId>:<i>,<j>"` (inside) or `"<a>~<b>:<k>"` (on an edge); an area that stays one element keeps its id. Displacements and reactions include the generated nodes, `shellForces` has one entry per element with its `areaId`, and `result.mesh` (`FrameMesh`) lists the generated nodes and every element for drawing.
+- **Shell areas** (`model.shells`): `ShellArea` (`{ id, nodeIds, type?, section, angle?, modifiers?, mesh? }`), a four-node flat shell with its own stiffness, sharing nodes with members and other shells. Null areas are unchanged; use shells where a surface's stiffness matters.
+  - The element is a drilling-rotation membrane (after Ibrahimbegovic, Taylor & Wilson), so a beam framing into a wall in its plane transfers its moment, plus a thin DKQ plate (Batoz & Ben Tahar). `type` `"membrane"` or `"plate"` keeps only one part; `"shell"` (the default) keeps both.
+  - Slightly warped quads are built on their mean plane and linked to their corners, up to `SHELL_WARPING_LIMIT` (0.1 × √A off the plane).
+  - Local axes follow ETABS: local 3 by the right-hand rule around `nodeIds`, local 2 up on walls, local 1 = +X on horizontal shells, rotated by `angle`.
+  - `ShellSection` (`thickness`, `E`, `nu`, `unitWeight?`) and `ShellModifiers` (`f11`, `f22`, `f12`, `m11`, `m22`, `m12`, `weight`) for cracked-section stiffness, e.g. the ACI 318-19 6.6.3.1.1 values entered by the user.
+- **Engine meshing**: `ShellArea.mesh` (`ShellMesh`: `{ maxSize }` in mm, or `{ divisions: [n1, n2] }` as a minimum) divides an area into elements. Neighbouring areas share their mesh nodes, also where an area edge meets another at a node (a slab edge on two wall panels); division counts grow as needed, and an unmeshed area next to a meshed one is divided too. Model nodes lying on an area edge become mesh nodes. Generated elements are named `"<areaId>:<i>,<j>"`, generated nodes `"<areaId>:<i>,<j>"` inside an area or `"<a>~<b>:<k>"` on an edge; an area that stays one element keeps its id.
 - **Members along meshed edges** (an edge beam under a slab, a beam on a wall top) are split at the mesh nodes inside them so they share them with the shells; their end forces, release deformations, diagrams, envelopes and design demands stay under the member's own id, the diagram stitched along its full length.
-- **Line restraints** (`model.lineRestraints`): `{ nodeIds: [a, b], ux?…rz? }` fixes those DOFs at every node on the segment from a to b, generated mesh nodes included — a wall base fixed along its length. A DOF fixed by a point or a line restraint is fixed.
-- A warning (**Shell area meshing**) for a member node inside a shell area but not on its mesh, which leaves it unconnected.
-- Error 329 (`INVALID_SHELL_MESH`) when areas cannot be meshed; types `ShellMesh`, `LineRestraint` and `FrameMesh`.
+- **Line restraints** (`model.lineRestraints`, `LineRestraint`): `{ nodeIds: [a, b], ux?…rz? }` fixes those DOFs at every node on the segment from a to b, generated mesh nodes included, e.g. a wall base fixed along its length. A DOF fixed by a point or a line restraint is fixed.
+- **Loads on shells**: an `AreaLoad` names a shell area by its id (area ids are shared by null areas and shells) and loads all its elements; self-weight acts as `selfWeight · unitWeight · thickness · modifiers.weight` per unit area. Both act as forces at the element corners.
+- **Shell results**: every load case and combination has `shellForces` (`ShellElementForces[]`), per element with its `areaId`, the forces per unit width at its corners in its local axes: membrane forces `F11`, `F22`, `F12` (kN/m), moments `M11`, `M22`, `M12` (kN·m/m, positive with the −3 face in tension, i.e. sagging when local 3 is up, like a member's `M3`), transverse shears `V13`, `V23` (kN/m, `V13 = −(∂M11/∂x₁ + ∂M12/∂x₂)`), and top and bottom face stresses `S11Top` … `S12Bot` (MPa). They are extrapolated from the element's Gauss points, combine by superposition and are enveloped per corner in `envelope.shells`. The shears are recovered from the moments and are the coarsest output. Types `ShellCornerForces` and `ShellForceComponent`.
+- `result.mesh` (`FrameMesh`): the generated nodes and every shell element with its nodes, for drawing; displacements and reactions include the generated nodes. `calculationDetails.shellCount`; `units.forcePerLength` (`"kN/m"`), `units.momentPerLength` (`"kN·m/m"`) and `units.stress` (`"MPa"`).
+- Errors 326 (`INVALID_SHELL_GEOMETRY`), 327 (`INVALID_SHELL_SECTION`), 328 (`SHELL_DOF_UNSUPPORTED`: a translation that nothing resists at a node connected only to membrane or plate shells, with `nodeId`, `shellId` and `dof`) and 329 (`INVALID_SHELL_MESH`: areas that cannot be meshed), and `FrameErrorDetails.shellId`. A warning (**Shell area meshing**) for a member node inside a shell area but not on its mesh, which leaves it unconnected.
+- Types `ShellArea`, `ShellSection`, `ShellModifiers`, `ShellType`, `ShellMesh`, `LineRestraint`, `ShellElementForces`, `ShellCornerForces`, `ShellForceComponent` and `FrameMesh` from `/fea` and the package root; `SHELL_WARPING_LIMIT` from `/core` and the root.
+- Shell element theory notes in the documentation (`shell-element.html`): how the element's stiffness is formed, the integration choices, and the benchmarks it is checked against (patch tests, MacNeal–Harder cantilevers and twisted beam, Timoshenko plates, Scordelis–Lo roof, pinched cylinder).
 
 ### Changed
 
+- `calculationDetails.nodeCount` counts the generated mesh nodes too, and `memberCount` counts model members (not the pieces a meshed edge splits them into).
 - Error 303 also covers an area id used by both a null area and a shell, and 313 also covers a shell section without `unitWeight`; their messages say so.
 
 ## [2.3.0] — 2026-10-24
@@ -159,7 +163,8 @@ Maintenance release with no changes to the library code.
 
 First version, under the unscoped name `ts-structural-eng-tools`: `rectBeamMomentCapacity` (singly and doubly reinforced rectangular beams per ACI 318-19), steel plate jacketing, and concrete property helpers.
 
-[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.3.0...v3.0.0
 [2.3.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.1.0...v2.1.1
