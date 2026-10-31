@@ -6,6 +6,57 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [3.1.0] — 2026-10-31
+
+**Engine reorganised, and a guide for upgrading from 2.x.** The analysis engine behind `/fea` is reorganised into separate parts for frame members, shell elements and the analysis that runs them together. Nothing you call changes: every export keeps its name, its import path and its behaviour, and every result is identical to 3.0.0. Coming from 2.x? Read **Upgrading from 2.x** below; it covers this release and 3.0.0 together.
+
+### Changed
+
+- **Files inside `dist/` moved.** The code behind `/fea` moved from `dist/fea/frame/…` into `dist/fea/shared/`, `dist/fea/frame/` (members and null areas), `dist/fea/shell/` (the shell element) and `dist/fea/analysis/` (`analyzeFrame`, `validateFrameModel`, and the model and result types), in both the CommonJS and the ES-module builds. Imports from the package root and the subpaths (`/fea`, `/core`, …) are unaffected. An import of a file inside `dist/` no longer resolves: the `exports` map has never allowed one, but TypeScript's legacy `"moduleResolution": "node"` and bundler aliases can reach those files. Import from the root or `/fea` instead. Your editor's "go to definition" now opens the new files.
+
+### Fixed
+
+- The type comment and the reference page for `FrameCaseResult.shellForces` said one entry per shell area. There is one entry per shell element, area by area in model order, as the results have always had.
+
+### Upgrading from 2.x
+
+Nothing has been removed or renamed since 2.3.0, and no input has become required. A model that runs on 2.3.0 runs unchanged and gives the same numbers, warnings and validation issues; results only gain the fields in step 3. Most frontends need step 1 and a look at steps 3 and 4. Step 5 matters once you start sending shells (see 3.0.0 for the shell features themselves).
+
+1. **Update the dependency.** A `^2.x` range does not pick up a major version: run `pnpm add @theerapat-s28/ts-structural-eng-tools@^3.1.0` (or `npm install` / `yarn add` with the same spec).
+
+2. **Imports.** Nothing to change. Every name exported in 2.3.0 is still exported from the same place: the package root and `/fea`, `/rc`, `/strengthening`, `/core`, `/utils`. Only imports of files inside `dist/` break (see **Changed**).
+
+3. **New result fields, on every result.** Without shells they are empty or zero:
+
+   | Field | Without shells |
+   | --- | --- |
+   | `cases[id].shellForces`, `combinations[id].shellForces` | `[]` |
+   | `envelope.shells` (when the model has combinations) | `[]` |
+   | `calculationDetails.shellCount` | `0` |
+   | `units.forcePerLength`, `units.momentPerLength`, `units.stress` | `"kN/m"`, `"kN·m/m"`, `"MPa"` |
+   | `mesh` | absent; present only when the model has shells |
+
+   Code that only reads results needs no change. Update code that:
+   - **builds** a `FrameResult` or `FrameCaseResult` itself, such as an empty placeholder in app state, test fixtures or mocks. TypeScript names the missing fields.
+   - **validates** stored or received results against a strict schema (Zod `.strict()`, JSON Schema `additionalProperties: false`).
+   - **snapshots** whole results. Refresh the snapshots once; the values in them do not change.
+   - maps **every key of `units`** to a label, e.g. for a units display.
+
+4. **Errors and warnings.** For frame-only models the codes, `details` and the order of `issues` are unchanged, but two messages are reworded to mention shells:
+   - 303 `DUPLICATE_ID`: "Node ids, member ids and restrained node ids must each be unique, area ids must be unique across null areas and shells, and load case and combination ids must be unique across both lists."
+   - 313 `MISSING_UNIT_WEIGHT`: "A load case requests self-weight but a member or shell section has no unitWeight; set unitWeight (0 for a weightless member or shell)."
+
+   If your code matches on `message`, match on `code` instead. Models with shells can also raise 326 `INVALID_SHELL_GEOMETRY`, 327 `INVALID_SHELL_SECTION`, 328 `SHELL_DOF_UNSUPPORTED` and 329 `INVALID_SHELL_MESH`, located by the new `details.shellId` (the shell area's id). Add them to any code-to-message table, and highlight the shell area that `shellId` names. The new warning **Shell area meshing** appears in `result.warnings`.
+
+5. **When you add shells to a model.** These points apply only to models with `shells`:
+   - **Generated nodes in node results.** Meshing adds nodes. `nodalDisplacements` and `reactions` list them after your own nodes, with string ids — `"<areaId>:<i>,<j>"` inside an area, `"<a>~<b>:<k>"` along an edge between your nodes `a` and `b` — even when your ids are numbers. Their coordinates are in `result.mesh.nodes`. Do not assume every node id in a result is one of yours; `calculationDetails.nodeCount` counts the generated nodes too.
+   - **Drawing the mesh.** `result.mesh.shells` lists every element with its four node ids. `shellForces[].shellId` and `envelope.shells[].shellId` name these elements, and `areaId` groups them under your area; an area that is not meshed is one element with the area's own id. `calculationDetails.shellCount` counts elements, not areas.
+   - **Contours.** Shell results are corner values in each element's local axes (`ShellCornerForces`), and `ShellForceComponent` lists the components for a picker. As usual for shell results, elements meeting at a node give different values there; average them for a smooth contour.
+   - **Members along meshed edges** are split internally at the mesh nodes on them, but every member result (end forces, diagrams, release deformations, envelopes, `memberDemandEnvelope`) stays under the member's own id, along its full length. `calculationDetails.memberCount` counts your members.
+   - **One id namespace for areas.** A null area and a shell cannot share an id (303), and an `AreaLoad` can name either. `distributeAreaLoads` returns only the loads from null areas; loads on shells stay on the shell.
+   - **Supports along an edge.** Fix a wall base or a slab edge with `lineRestraints`: they reach the generated nodes, which a point `Restraint` cannot name.
+   - **Model size.** Shell models have many more nodes than frames. Run the analysis in a Web Worker, and consider `diagrams: "extremes"` with `createFrameAnalysis(...).memberDiagram` to compute member diagrams on demand.
+
 ## [3.0.0] — 2026-10-31
 
 **Shell element analysis.** `analyzeFrame` now analyses walls, cores, slabs and mats as shell elements alongside the frame: four-node flat shells with membrane and plate stiffness, meshed by the engine, with internal forces and stresses in every load case, combination and envelope. The major version marks this milestone; nothing is removed or renamed, and frame-only models give the same results as in 2.3.0, which only gain the new fields below (empty `shellForces` and `envelope.shells`, and the new `units` keys).
@@ -163,7 +214,8 @@ Maintenance release with no changes to the library code.
 
 First version, under the unscoped name `ts-structural-eng-tools`: `rectBeamMomentCapacity` (singly and doubly reinforced rectangular beams per ACI 318-19), steel plate jacketing, and concrete property helpers.
 
-[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.3.0...v3.0.0
 [2.3.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.1.1...v2.2.0
