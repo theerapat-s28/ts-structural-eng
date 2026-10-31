@@ -471,7 +471,7 @@
     <div class="page-header">
       <div class="import-tag">
         <span class="label">Status</span>
-        <code>@theerapat-s28/ts-structural-eng-tools/fea — shell areas with forces (unreleased); meshing and thick plates to come</code>
+        <code>@theerapat-s28/ts-structural-eng-tools/fea — shell areas, forces and meshing (unreleased); thick plates and triangles to come</code>
       </div>
       <h1>Shell Element — Theory Notes</h1>
       <p>How a flat four-node shell element (membrane, plate bending and drilling rotation) gets its stiffness matrix, which formulations this library will use, and how the element fits into the existing frame solver.</p>
@@ -490,7 +490,7 @@
 
       <div class="alert alert--info">
         <span>ℹ️</span>
-        <span><strong>In progress.</strong> Shell areas and their forces are part of <code>analyzeFrame</code> (<code>model.shells</code>, <code>shellForces</code>; unreleased, see the <a href="fea/#shell-areas" style="color:var(--accent)">FEA reference</a>); engine meshing, thick plates and triangles are still to come (Roadmap Phase 5). Numbers on this page come from the library's tests unless marked <em>prototype</em>, which were checked with a throwaway prototype before the code existed. The basis is the finite element method, not a code provision <span class="std-badge" title="Basis: linear-elastic finite element method — not an ACI 318-19 provision">FEM</span>.</span>
+        <span><strong>In progress.</strong> Shell areas and their forces are part of <code>analyzeFrame</code> (<code>model.shells</code>, <code>shellForces</code>; unreleased, see the <a href="fea/#shell-areas" style="color:var(--accent)">FEA reference</a>); engine meshing is in (Roadmap 5.6); thick plates and triangles are still to come (Roadmap Phase 5). Numbers on this page come from the library's tests unless marked <em>prototype</em>, which were checked with a throwaway prototype before the code existed. The basis is the finite element method, not a code provision <span class="std-badge" title="Basis: linear-elastic finite element method — not an ACI 318-19 provision">FEM</span>.</span>
       </div>
 
       <div class="sub-label">Basis</div>
@@ -522,7 +522,10 @@
         <thead><tr><th>Question</th><th>Decision</th><th>What it means</th></tr></thead>
         <tbody>
           <tr><td>Which behaviours?</td><td>Membrane, plate and shell</td><td>One element class. Membrane and plate are the shell with one part switched off (see <a href="#flat-shell" style="color:var(--accent)">Flat shell</a>).</td></tr>
-          <tr><td>Who meshes?</td><td>The engine (tentative)</td><td>The user models a shell area by its 3–4 corners plus a mesh size, and the engine generates the elements (see <a href="#meshing" style="color:var(--accent)">Meshing</a>).</td></tr>
+          <tr><td>Who meshes?</td><td>The engine</td><td>The user models a shell area by its corners plus <code>mesh</code>, and the engine generates the elements (see <a href="#meshing" style="color:var(--accent)">Meshing</a>).</td></tr>
+          <tr><td>Supports along meshed edges?</td><td>Line restraints</td><td><code>lineRestraints: { nodeIds: [a, b], ux?…rz? }</code> fix every node on the line, generated nodes included.</td></tr>
+          <tr><td>Beams along meshed edges?</td><td>Split internally</td><td>Results, diagrams and design demands stay under the member's id.</td></tr>
+          <tr><td>Results of a meshed area?</td><td>Per element</td><td><code>shellForces</code> per generated element with its <code>areaId</code>; <code>result.mesh</code> lists the generated nodes and elements.</td></tr>
           <tr><td>Thin or thick plates?</td><td>Both, DKQ (thin) first</td><td>Thick plates follow as an option with the same inputs (see <a href="#thick-plates" style="color:var(--accent)">Thick plates</a>).</td></tr>
           <tr><td>Null areas?</td><td>Unchanged</td><td>Null areas keep distributing load to frames. Shells are opt-in, used only where the surface's stiffness matters (walls, cores, transfer slabs, mats). One model can mix both.</td></tr>
           <tr><td>Where is the behaviour chosen?</td><td>On the shell area</td><td><code>type?: "shell" | "membrane" | "plate"</code>, default <code>"shell"</code>.</td></tr>
@@ -1072,21 +1075,23 @@
 
     <!-- ══════════════ Meshing ══════════════ -->
     <div class="section" id="meshing">
-      <div class="section__title">Meshing</div>
+      <div class="section__title">Meshing <code style="font-size:13px">mesh/</code></div>
       <p>
-        Decision (tentative): the engine meshes. The user models a shell area with 3–4 corner nodes, as for a null area, plus a target element size,
-        and the engine generates the elements. One element per wall or slab panel is never adequate (see the membrane table), so meshing is not optional.
+        The engine meshes (Roadmap 5.6). The user models a shell area by its 4 corner nodes, as for a null area, with
+        <code>mesh: { maxSize }</code> or <code>{ divisions }</code>; the engine generates the elements. One element per wall or slab
+        panel is never adequate (see the membrane table), so meshing is the normal case.
       </p>
       <div class="flow-steps">
-        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Structured mapping.</strong> A 4-node area gets n<sub>1</sub> × n<sub>2</sub> divisions. Mesh node (a, b) is the bilinear map of ξ = 2a/n<sub>1</sub> − 1, η = 2b/n<sub>2</sub> − 1, the same map the element itself uses.</div></div>
-        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Conforming edges, the "chord" rule.</strong> Adjacent areas must share nodes along a common edge. Within one area, opposite edges need the same division count, and across areas a shared edge is one edge. Group edges into chords (union-find over "opposite in an area" and "shared"), and give each chord the largest count any of its edges needs for the target size. Counts belong to chords; node positions belong to physical edges.</div></div>
-        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Hard points.</strong> Model nodes lying on an area edge (a column or a beam end) must become mesh nodes. They fix node positions on that physical edge only. The count still comes from the chord, so the opposite edge can be spaced differently.</div></div>
-        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Frames on meshed edges.</strong> A beam along a slab or wall edge must share the mesh nodes. Either split it internally at those nodes (releases only at its real ends, member loads mapped by position, results stitched back under the original member id), or tie its nodes to the edge with constraints (Roadmap 3.1). Splitting needs no new solver feature.</div></div>
-        <div class="flow-step"><div class="step-num">5</div><div class="step-body"><strong>Ids and quality.</strong> Generated nodes and elements get deterministic ids derived from the area id, so a front end can draw contours and map results back. Quality checks (aspect ratio, corner angles, det <strong>J</strong>, warping) run on the generated elements and report the area id.</div></div>
+        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Edges cut at model nodes.</strong> Each area edge is cut into <em>segments</em> at the model nodes lying on it (hard points: a column, a beam end, the corner of a neighbouring area). A segment is identified by its two end nodes, so two areas sharing an edge, or meeting along part of one (a slab edge on two wall panels, a T-junction), share the same segments.</div></div>
+        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Division counts.</strong> Every segment gets a count c ≥ 1, at least ⌈length / maxSize⌉ for an area with <code>maxSize</code>. Each area needs its opposite edges to add up to the same count (and at least <code>divisions</code>): Σc over edge 0 = Σc over edge 2, and edge 1 = edge 3. The counts are raised until every area balances, each extra division going to the segment whose elements are longest. This generalises the planned "chord" rule (shared edges and opposite edges tied together) to edges made of several segments. If no balance is reached within a few passes per area, the areas get error 329.</div></div>
+        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Nodes.</strong> Segment nodes are evenly spaced and named <code>"&lt;a&gt;~&lt;b&gt;:&lt;k&gt;"</code> from its end node a to b. Inside each area, nodes come from transfinite (Coons) interpolation of its four edges, using each edge's own spacing, and are named <code>"&lt;areaId&gt;:&lt;i&gt;,&lt;j&gt;"</code>; with even spacing this is exactly the bilinear map of the area, so a planar area stays planar.</div></div>
+        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Elements and checks.</strong> Elements <code>"&lt;areaId&gt;:&lt;i&gt;,&lt;j&gt;"</code> keep the area's orientation and properties; an area that stays 1 × 1 keeps its own id. Every generated element must be a valid quadrilateral and every generated id new, otherwise 329.</div></div>
+        <div class="flow-step"><div class="step-num">5</div><div class="step-body"><strong>Members on meshed edges.</strong> A member with generated nodes inside it is split there internally, so it shares them with the shells. Releases stay at its real ends; its member loads are resolved over its whole length and then cut at the pieces; its end forces come from the first and last piece, and its diagram is stitched from the pieces' own diagrams (both sides reported where the shells feed load in). Results stay under the member's id, so envelopes and design demands are unchanged. A test against the same beams split by hand gives identical displacements, end forces and diagram extremes.</div></div>
+        <div class="flow-step"><div class="step-num">6</div><div class="step-body"><strong>Supports and warnings.</strong> <code>lineRestraints</code> fix DOFs at every node on a segment between two nodes, generated nodes included, so a wall base can be fixed along its length. A member node lying inside an area but not on its mesh is reported as a warning, because it is not connected to the shell.</div></div>
       </div>
       <p>
-        Triangular areas need a triangular element (DKT with an Allman triangle) or a split of each triangle into quads. Openings can be handled by the user
-        dividing the area around them, and the chord rule keeps the result conforming. Both come in later phases.
+        Triangular areas need a triangular element (DKT with an Allman triangle) or a split of each triangle into quads. Openings are handled by dividing the
+        area around them; the segment counts keep the result conforming. Both come in later phases.
       </p>
     </div>
 

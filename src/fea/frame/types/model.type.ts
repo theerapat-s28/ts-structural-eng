@@ -12,6 +12,22 @@ export interface FrameNode {
 /** A restrained DOF: `true` is fixed, a number is a spring stiffness, omitted/`false` is free. */
 export type DofRestraint = boolean | number;
 
+/**
+ * Fixed DOFs along a straight line: every node on the segment between two nodes, including the
+ * nodes the engine generates when it meshes shell areas, e.g. a wall base fixed along its
+ * length. `true` fixes the DOF; there are no line springs. Combined with point restraints at
+ * the same node, a fixed DOF stays fixed.
+ */
+export interface LineRestraint {
+  nodeIds: [FrameId, FrameId]; // the two ends of the line
+  ux?: boolean;
+  uy?: boolean;
+  uz?: boolean;
+  rx?: boolean;
+  ry?: boolean;
+  rz?: boolean;
+}
+
 export interface Restraint {
   nodeId: FrameId;
   ux?: DofRestraint; // true | kN/mm
@@ -178,8 +194,20 @@ export interface ShellModifiers {
 }
 
 /**
- * A four-node flat shell element with its own stiffness: a drilling-rotation membrane and a
- * thin (DKQ) plate, built on the mean plane of its corners. Local axis 3 is the normal by the
+ * How the engine meshes a shell area: `maxSize` (mm) is the largest element side wanted;
+ * `divisions` the least number of elements along edges 0–1 and 1–2 (from `nodeIds[0]` to
+ * `nodeIds[1]` and from `nodeIds[1]` to `nodeIds[2]`). Counts may grow so that areas sharing an
+ * edge, or meeting it at a node, share their mesh nodes.
+ */
+export interface ShellMesh {
+  maxSize?: number;
+  divisions?: [number, number];
+}
+
+/**
+ * A four-node flat shell area: a drilling-rotation membrane and a thin (DKQ) plate, built on
+ * the mean plane of its corners. Without `mesh` it is one element, unless a neighbour's mesh or
+ * a node lying on its edge forces divisions. Local axis 3 is the normal by the
  * right-hand rule around `nodeIds`; local 2 is +Z projected onto the plane (upward on a wall)
  * and local 1 = 2 × 3 is horizontal, except on a horizontal shell, where local 1 = +X.
  * `angle` rotates local 1 and 2 about local 3. Its id shares one namespace with null areas, so
@@ -192,6 +220,7 @@ export interface ShellArea {
   section: ShellSection;
   angle?: number; // rad, rotation of local 1 and 2 about local 3 (right-hand rule); default 0
   modifiers?: ShellModifiers;
+  mesh?: ShellMesh;
 }
 
 /** Area load direction: the area's local normal "3" or a global axis. */
@@ -256,6 +285,8 @@ export interface FrameModel {
   nodes: FrameNode[];
   members: Member[];
   restraints: Restraint[];
+  /** Fixed DOFs of every node along straight lines, generated mesh nodes included. */
+  lineRestraints?: LineRestraint[];
   loadCases: LoadCase[];
   /** Nodal loads of every load case, each tagged with its `loadCase`. */
   nodalLoads?: NodalLoad[];

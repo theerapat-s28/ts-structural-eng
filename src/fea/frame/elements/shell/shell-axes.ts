@@ -1,7 +1,11 @@
-import { VERTICAL_MEMBER_TOLERANCE } from "@app-core/constants/frame.constant";
+import {
+  AREA_GEOMETRY_TOLERANCE,
+  SHELL_WARPING_LIMIT,
+  VERTICAL_MEMBER_TOLERANCE,
+} from "@app-core/constants/frame.constant";
 import type { Matrix } from "@app-utils/matrix";
 
-import type { Vec2 } from "./quad-geometry";
+import { quadJacobian, type Vec2 } from "./quad-geometry";
 
 /** A point or vector in global axes: X, Y, Z in mm. */
 export type Vec3 = [number, number, number];
@@ -81,4 +85,46 @@ export const shellAxes = (points: readonly Vec3[], angle = 0): ShellAxes => {
     corners: relative.map((r): Vec2 => [dot(r, e1), dot(r, e2)]),
     offsets: relative.map((r) => dot(r, e3)),
   };
+};
+
+/**
+ * Whether four corners make a valid shell element: no repeated corner, a non-degenerate
+ * convex quadrilateral in order around it (det J > 0 at every corner of the bilinear map), and
+ * no corner farther than `SHELL_WARPING_LIMIT · √A` from the mean plane.
+ */
+export const isValidShellQuad = (points: readonly Vec3[]): boolean => {
+  const size = Math.max(
+    ...points.map((p, i) => {
+      const q = points[(i + 1) % 4];
+      return Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
+    }),
+  );
+  const tolerance = AREA_GEOMETRY_TOLERANCE * size;
+  for (let i = 0; i < 4; i++) {
+    for (let j = i + 1; j < 4; j++) {
+      const [p, q] = [points[i], points[j]];
+      if (!(Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) > tolerance)) return false;
+    }
+  }
+  const d1 = [0, 1, 2].map((k) => points[2][k] - points[0][k]);
+  const d2 = [0, 1, 2].map((k) => points[3][k] - points[1][k]);
+  const area =
+    Math.hypot(
+      d1[1] * d2[2] - d1[2] * d2[1],
+      d1[2] * d2[0] - d1[0] * d2[2],
+      d1[0] * d2[1] - d1[1] * d2[0],
+    ) / 2;
+  if (!(area > tolerance * size)) return false;
+  const axes = shellAxes(points);
+  for (const [xi, eta] of [
+    [-1, -1],
+    [1, -1],
+    [1, 1],
+    [-1, 1],
+  ]) {
+    if (!(quadJacobian(axes.corners, xi, eta).detJ > (AREA_GEOMETRY_TOLERANCE * area) / 4)) {
+      return false;
+    }
+  }
+  return Math.max(...axes.offsets.map(Math.abs)) <= SHELL_WARPING_LIMIT * Math.sqrt(area);
 };

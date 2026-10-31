@@ -398,6 +398,8 @@
       <a href="#shell-section"><span class="mbadge m-type">TYPE</span> ShellSection</a>
       <a href="#shell-modifiers"><span class="mbadge m-type">TYPE</span> ShellModifiers</a>
       <a href="#shell-type"><span class="mbadge m-type">TYPE</span> ShellType</a>
+      <a href="#shell-mesh"><span class="mbadge m-type">TYPE</span> ShellMesh</a>
+      <a href="#line-restraint"><span class="mbadge m-type">TYPE</span> LineRestraint</a>
       <div class="nav-section-label">Types — Loads</div>
       <a href="#load-case"><span class="mbadge m-type">TYPE</span> LoadCase</a>
       <a href="#load-case-type"><span class="mbadge m-type">TYPE</span> LoadCaseType</a>
@@ -430,6 +432,7 @@
       <a href="#member-diagram"><span class="mbadge m-type">TYPE</span> MemberDiagram</a>
       <a href="#shell-element-forces"><span class="mbadge m-type">TYPE</span> ShellElementForces</a>
       <a href="#shell-corner-forces"><span class="mbadge m-type">TYPE</span> ShellCornerForces</a>
+      <a href="#frame-mesh"><span class="mbadge m-type">TYPE</span> FrameMesh</a>
       <a href="#member-station"><span class="mbadge m-type">TYPE</span> MemberStation</a>
       <a href="#station-component"><span class="mbadge m-type">TYPE</span> StationComponent</a>
       <a href="#extreme-value"><span class="mbadge m-type">TYPE</span> ExtremeValue</a>
@@ -487,7 +490,7 @@
           <tr><td>Member loads</td><td>Exact fixed-end forces from the beam shape functions</td><td>Adaptation</td></tr>
           <tr><td>End releases and partial fixity</td><td>Static condensation of released end DOFs; partial fixity as a linear spring in series with the member end</td><td>Adaptation (standard matrix analysis)</td></tr>
           <tr><td>Area loads (null areas)</td><td>Tributary distribution to the edge members: corner bisectors (two-way), strips split at mid-span (one-way), line load plus torque (cantilever); the area adds no stiffness</td><td>Adaptation (common hand-calculation practice)</td></tr>
-          <tr><td>Shell areas</td><td>Flat four-node shell: drilling-rotation membrane (after Ibrahimbegovic, Taylor &amp; Wilson 1990) and DKQ thin plate (Batoz &amp; Ben Tahar 1982), no transverse shear deformation; warped quads built on their mean plane with rigid links; surface loads as forces at the corners. Theory and benchmarks: <a href="../shell-element.html" style="color:var(--accent)">shell element notes</a></td><td>Adaptation (finite element method)</td></tr>
+          <tr><td>Shell areas</td><td>Flat four-node shell: drilling-rotation membrane (after Ibrahimbegovic, Taylor &amp; Wilson 1990) and DKQ thin plate (Batoz &amp; Ben Tahar 1982), no transverse shear deformation; warped quads built on their mean plane with rigid links; surface loads as forces at the corners; engine meshing into structured quads (transfinite interpolation) that conform across shared edges, with members split at the mesh nodes. Theory and benchmarks: <a href="../shell-element.html" style="color:var(--accent)">shell element notes</a></td><td>Adaptation (finite element method)</td></tr>
           <tr><td>Shell stiffness modifiers</td><td>Cracked walls (0.70 I<sub>g</sub> / 0.35 I<sub>g</sub>) and flat slabs (0.25 I<sub>g</sub>), ACI 318-19, 6.6.3.1.1, entered by the user as <code>modifiers</code></td><td>Code values, applied by the user</td></tr>
           <tr><td>Solution</td><td>Linear, small displacements; no P-Δ, no cracking</td><td>Adaptation</td></tr>
           <tr><td>Load combinations</td><td>Linear superposition of load-case results, factors entered by the user</td><td>Adaptation; valid because the analysis is linear</td></tr>
@@ -840,8 +843,8 @@
         transfer slabs and mats where the surface's stiffness matters. Unlike a null area it adds stiffness and
         degrees of freedom: its corners connect to the nodes, so members and other shells framing into them share
         the displacements. Null areas stay as they are — use shells only where needed. Define them in
-        <code>shells</code>; load them with <code>areaLoads</code> (the same <code>AreaLoad</code>, naming the shell's
-        id) and with self-weight. The theory, formulations and benchmarks are in the
+        <code>shells</code>; give an area a <code>mesh</code> and the engine divides it into elements; load it with
+        <code>areaLoads</code> (the same <code>AreaLoad</code>, naming the area's id) and with self-weight. The theory, formulations and benchmarks are in the
         <a href="../shell-element.html" style="color:var(--accent)">shell element notes</a>.
       </p>
 
@@ -860,7 +863,12 @@
         <thead><tr><th>Topic</th><th>Field</th><th>Rule</th></tr></thead>
         <tbody>
           <tr><td>Corners</td><td>nodeIds</td><td>Exactly 4 distinct nodes in order around the shell, forming a convex quadrilateral. A slightly warped quad is allowed: it is built on its mean plane and linked rigidly to its corners, up to each corner being <code>SHELL_WARPING_LIMIT</code> (0.1, exported from <code>core</code>) × √A off that plane. Rejected otherwise (326).</td></tr>
-          <tr><td>Meshing</td><td>—</td><td>One shell area is one element, so mesh walls and slabs yourself (several elements per panel; one element through a wall's depth is far too stiff). Members along a meshed edge must be split at the mesh nodes so they share them.</td></tr>
+          <tr><td>Meshing</td><td>mesh</td><td><code>{ maxSize }</code> (mm, the largest element side) or <code>{ divisions: [n1, n2] }</code> (at least n1 elements along edge 0–1 and n2 along edge 1–2). Without <code>mesh</code> an area is one element. Mesh walls and slabs: one element through a wall's depth is about ten times too stiff.</td></tr>
+          <tr><td>Conforming meshes</td><td>—</td><td>Areas that share an edge, or meet it at a node (a slab edge on two wall panels), share their mesh nodes: division counts may grow beyond <code>maxSize</code> or <code>divisions</code> so that opposite edges of every area match, and an area without <code>mesh</code> is divided too when a neighbour needs it. Any model node lying on an area edge (a column, a beam end) becomes a mesh node. Edge nodes are evenly spaced between such nodes; interior nodes follow the edges (transfinite interpolation).</td></tr>
+          <tr><td>Generated ids</td><td>—</td><td>Elements <code>"&lt;areaId&gt;:&lt;i&gt;,&lt;j&gt;"</code> (i along edge 0–1, j along edge 1–2, from corner 0); interior nodes the same; edge nodes <code>"&lt;a&gt;~&lt;b&gt;:&lt;k&gt;"</code>, the k-th node from model node a to b. An area that stays one element keeps its own id. <code>result.mesh</code> lists the generated nodes and every element; displacements and reactions include the generated nodes.</td></tr>
+          <tr><td>Edge supports</td><td>lineRestraints</td><td><code>{ nodeIds: [a, b], ux?…rz? }</code> fixes those DOFs at every node on the straight segment from a to b, generated nodes included, e.g. a wall base along a foundation. Combined with a point restraint at the same node, a fixed DOF stays fixed. Values are <code>true</code>/<code>false</code> only (no line springs).</td></tr>
+          <tr><td>Members along meshed edges</td><td>—</td><td>A member with generated nodes inside it (an edge beam under a meshed slab, a beam on a wall top) is split there internally so it shares them with the shells. Its results stay under its own id: end forces at its real ends, releases only there, member loads applied along its whole length, and one diagram stitched along it, which shows the jumps where the shells feed load in.</td></tr>
+          <tr><td>Nodes inside an area</td><td>—</td><td>A member node strictly inside an area but not on its mesh is not connected to the shell: a warning names it (<strong>Shell area meshing</strong>). Divide the area through the node.</td></tr>
           <tr><td>Section</td><td>section</td><td><code>{ thickness, E, nu, unitWeight? }</code> in mm, MPa, —, kN/m³ (327 if out of range).</td></tr>
           <tr><td>Drilling rotation</td><td>—</td><td>The rotation about local 3 has real stiffness, so a beam framing into a wall <em>in the wall's plane</em> (a coupling beam, a spandrel) transfers its end moment instead of acting as a pin.</td></tr>
           <tr><td>Unsupported directions</td><td>type</td><td>A membrane carries nothing out of its plane and a plate nothing in its plane. A translation that nothing resists at a node connected only to shells throws <strong>328</strong>, naming the node, a shell and the DOF: restrain it, connect a member, or use <code>"shell"</code>. Rotations that nothing resists there (e.g. about local 3 in a plate) are held automatically and listed in <code>calculationDetails.autoRestrainedDofs</code>, as at truss joints.</td></tr>
@@ -869,39 +877,44 @@
         </tbody>
       </table>
 
-      <div class="sub-label">Example — 2 × 6 m cantilever wall, 4 × 12 elements</div>
+      <div class="sub-label">Example — 2 × 6 m cantilever wall meshed by the engine</div>
       <div class="code-block">
         <div class="code-block__label">TypeScript</div>
         <pre>
-<span class="b">const</span> nodes = [], shells = [];
-<span class="b">const</span> id = (i, j) =&gt; <span class="s">`${i}_${j}`</span>;
-<span class="b">for</span> (<span class="b">let</span> j = <span class="n">0</span>; j &lt;= <span class="n">12</span>; j++)
-  <span class="b">for</span> (<span class="b">let</span> i = <span class="n">0</span>; i &lt;= <span class="n">4</span>; i++) nodes.<span class="u">push</span>({ <span class="k">id</span>: <span class="u">id</span>(i, j), <span class="k">x</span>: <span class="n">500</span> * i, <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">500</span> * j });  <span class="c">// mm, wall in the XZ plane</span>
-<span class="b">for</span> (<span class="b">let</span> j = <span class="n">0</span>; j &lt; <span class="n">12</span>; j++)
-  <span class="b">for</span> (<span class="b">let</span> i = <span class="n">0</span>; i &lt; <span class="n">4</span>; i++)
-    shells.<span class="u">push</span>({
-      <span class="k">id</span>: <span class="s">`W${i}_${j}`</span>,
-      <span class="k">nodeIds</span>: [<span class="u">id</span>(i, j), <span class="u">id</span>(i + <span class="n">1</span>, j), <span class="u">id</span>(i + <span class="n">1</span>, j + <span class="n">1</span>), <span class="u">id</span>(i, j + <span class="n">1</span>)],
-      <span class="k">section</span>: { <span class="k">thickness</span>: <span class="n">200</span>, <span class="k">E</span>: <span class="n">30000</span>, <span class="k">nu</span>: <span class="n">0.2</span>, <span class="k">unitWeight</span>: <span class="n">24</span> },  <span class="c">// mm, MPa, —, kN/m³</span>
-    });
-
 <span class="b">const</span> result = <span class="u">analyzeFrame</span>({
-  nodes, <span class="k">members</span>: [], shells,
-  <span class="k">restraints</span>: [<span class="n">0</span>, <span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>, <span class="n">4</span>].<span class="u">map</span>((i) =&gt; ({ <span class="k">nodeId</span>: <span class="u">id</span>(i, <span class="n">0</span>), <span class="k">ux</span>: <span class="b">true</span>, <span class="k">uy</span>: <span class="b">true</span>, <span class="k">uz</span>: <span class="b">true</span>, <span class="k">rx</span>: <span class="b">true</span>, <span class="k">ry</span>: <span class="b">true</span>, <span class="k">rz</span>: <span class="b">true</span> })),
+  <span class="k">nodes</span>: [
+    { <span class="k">id</span>: <span class="n">1</span>, <span class="k">x</span>: <span class="n">0</span>,    <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">0</span> },     <span class="c">// mm, wall in the XZ plane</span>
+    { <span class="k">id</span>: <span class="n">2</span>, <span class="k">x</span>: <span class="n">2000</span>, <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">0</span> },
+    { <span class="k">id</span>: <span class="n">3</span>, <span class="k">x</span>: <span class="n">2000</span>, <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">6000</span> },
+    { <span class="k">id</span>: <span class="n">4</span>, <span class="k">x</span>: <span class="n">0</span>,    <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">6000</span> },
+  ],
+  <span class="k">members</span>: [],
+  <span class="k">restraints</span>: [],
+  <span class="c">// base fixed along its whole length, the generated base nodes included</span>
+  <span class="k">lineRestraints</span>: [{ <span class="k">nodeIds</span>: [<span class="n">1</span>, <span class="n">2</span>], <span class="k">ux</span>: <span class="b">true</span>, <span class="k">uy</span>: <span class="b">true</span>, <span class="k">uz</span>: <span class="b">true</span>, <span class="k">rx</span>: <span class="b">true</span>, <span class="k">ry</span>: <span class="b">true</span>, <span class="k">rz</span>: <span class="b">true</span> }],
+  <span class="k">shells</span>: [{
+    <span class="k">id</span>: <span class="s">"W"</span>, <span class="k">nodeIds</span>: [<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>, <span class="n">4</span>],
+    <span class="k">section</span>: { <span class="k">thickness</span>: <span class="n">200</span>, <span class="k">E</span>: <span class="n">30000</span>, <span class="k">nu</span>: <span class="n">0.2</span>, <span class="k">unitWeight</span>: <span class="n">24</span> },  <span class="c">// mm, MPa, —, kN/m³</span>
+    <span class="k">mesh</span>: { <span class="k">maxSize</span>: <span class="n">500</span> },  <span class="c">// mm: 4 × 12 elements</span>
+  }],
   <span class="k">loadCases</span>: [{ <span class="k">id</span>: <span class="s">"D"</span>, <span class="k">selfWeight</span>: <span class="n">1</span> }, { <span class="k">id</span>: <span class="s">"W"</span> }],
-  <span class="c">// 100 kN at the top, shared by the 5 top nodes</span>
-  <span class="k">nodalLoads</span>: [<span class="n">0</span>, <span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>, <span class="n">4</span>].<span class="u">map</span>((i) =&gt; ({ <span class="k">loadCase</span>: <span class="s">"W"</span>, <span class="k">nodeId</span>: <span class="u">id</span>(i, <span class="n">12</span>), <span class="k">fx</span>: i === <span class="n">0</span> || i === <span class="n">4</span> ? <span class="n">12.5</span> : <span class="n">25</span> })),  <span class="c">// kN</span>
+  <span class="k">nodalLoads</span>: [
+    { <span class="k">loadCase</span>: <span class="s">"W"</span>, <span class="k">nodeId</span>: <span class="n">3</span>, <span class="k">fx</span>: <span class="n">50</span> },  <span class="c">// kN, 100 kN at the top corners</span>
+    { <span class="k">loadCase</span>: <span class="s">"W"</span>, <span class="k">nodeId</span>: <span class="n">4</span>, <span class="k">fx</span>: <span class="n">50</span> },
+  ],
 });</pre>
       </div>
       <div class="code-block">
         <div class="code-block__label">Result</div>
         <pre>
-<span class="c">// "W": top drift ux = 1.92884 mm at both top corners (beam theory with shear deformation: 1.944 mm);</span>
-<span class="c">//      Σ reactions fx = −100 kN</span>
-<span class="c">//      base corner of shell "W0_0" at node "0_0": F22 = 920.5896 kN/m, S22Top = S22Bot = 4.6029 MPa</span>
-<span class="c">//      (beam theory M/S = 4.5 MPa); the opposite corner "4_0" has F22 = −920.5896 kN/m</span>
-<span class="c">// "D": Σ reactions fz = 57.6 kN (24 kN/m³ × 0.2 m × 12 m²); the top settles uz = −0.01435 mm;</span>
-<span class="c">//      F22 = −29.9351 kN/m at node "0_0" (28.8 kN/m of wall weight per metre)</span>
+<span class="c">// result.mesh: 61 generated nodes and 48 elements, e.g.</span>
+<span class="c">//   shells[0] = { id: "W:0,0", areaId: "W", nodeIds: [1, "1~2:1", "W:1,1", "1~4:1"] }</span>
+<span class="c">//   nodes[0]  = { id: "1~2:1", x: 500, y: 0, z: 0 }</span>
+<span class="c">// "W": top drift ux = 1.95527 mm at nodes 3 and 4 (beam theory with shear deformation: 1.944 mm);</span>
+<span class="c">//      Σ reactions fx = −100 kN, shared by the base nodes the line restraint holds</span>
+<span class="c">//      element "W:0,0" at node 1: F22 = 920.5896 kN/m, S22Top = S22Bot = 4.6029 MPa</span>
+<span class="c">//      (beam theory M/S = 4.5 MPa); element "W:3,0" at node 2: F22 = −920.5896 kN/m</span>
+<span class="c">// "D": Σ reactions fz = 57.6 kN (24 kN/m³ × 0.2 m × 12 m²); the top corners settle uz = −0.01437 mm</span>
 <span class="c">// calculationDetails: nodeCount 65, shellCount 48, dofCount 390</span></pre>
       </div>
 
@@ -924,13 +937,17 @@
         <span>ℹ️</span>
         <span>Forces and moments are evaluated at the element's 2×2 Gauss points and extrapolated to its corners, so each element reports its own corner values; averaging them at a node is left to the front end. The plate has no shear strain, so V13 and V23 are recovered from the moment gradient within each element and are coarser than the moments (about 80–90 % of the peak edge shear of a square plate on a 16 × 16 mesh). Stiffness modifiers enter the forces: they come from the modified rigidity.</span>
       </div>
+      <div class="alert alert--warn">
+        <span>⚠️</span>
+        <span>Pushes a warning to <code>result.warnings</code> when a member node lies inside a shell area but not on its mesh — <strong>Shell area meshing</strong>.</span>
+      </div>
       <div class="alert alert--info">
         <span>ℹ️</span>
         <span>The plate is thin-plate (Kirchhoff) theory, without transverse shear deformation, which suits ordinary RC slabs and walls (span/thickness ≳ 10). Thick mats and transfer slabs come out slightly too stiff.</span>
       </div>
       <div class="alert alert--error">
         <span>⚠️</span>
-        <span>Throws <strong>FrameAnalysisError 326</strong> for invalid shell geometry (not 4 distinct corners, not convex, wrong order, or too warped); <strong>327</strong> for an invalid <code>section</code>; <strong>328</strong> for a translation nothing resists at a node connected only to shells; <strong>314</strong> for an invalid <code>type</code>, <code>angle</code> or modifier; <strong>303</strong> for an id used twice among null areas and shells; <strong>302</strong> for an unknown node; <strong>313</strong> for self-weight without <code>unitWeight</code>.</span>
+        <span>Throws <strong>FrameAnalysisError 326</strong> for invalid shell geometry (not 4 distinct corners, not convex, wrong order, or too warped); <strong>327</strong> for an invalid <code>section</code>; <strong>328</strong> for a translation nothing resists at a node connected only to shells; <strong>314</strong> for an invalid <code>type</code>, <code>angle</code> or modifier; <strong>303</strong> for an id used twice among null areas and shells; <strong>302</strong> for an unknown node; <strong>313</strong> for self-weight without <code>unitWeight</code>; <strong>329</strong> when the areas cannot be meshed (no division counts let neighbouring meshes meet node to node, a generated element is not a valid quadrilateral, or a generated id is already used); <strong>314</strong> for an invalid <code>mesh</code> or line restraint value and <strong>302</strong> for a line restraint's unknown node.</span>
       </div>
     </div>
 
@@ -1262,7 +1279,7 @@ self.onmessage = ({ data }) =&gt; {
     <div class="section" id="analysis-flow">
       <div class="section__title">Analysis flow</div>
       <div class="flow-steps">
-        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Validate</strong> the model, load cases, loads and combinations with <code>validateFrameModel</code> (errors 301–303, 305–317, 326 and 327); every problem is collected, and the first is thrown with all of them in <code>issues</code>.</div></div>
+        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Validate</strong> the model, load cases, loads and combinations with <code>validateFrameModel</code> (errors 301–303, 305–317, 326, 327 and 329); every problem is collected, and the first is thrown with all of them in <code>issues</code>.</div></div>
         <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Distribute area loads</strong>: each null area's edge profiles are built once for a unit load, then scaled for each area load and cut at the members along the edges, giving <code>trapezoidal</code> (and cantilever <code>torque</code>) member loads in their load cases — what <code>distributeAreaLoads</code> returns.</div></div>
         <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Build the system once:</strong> member local stiffness, condensation of end releases and partial-fixity springs, and transformation <code>T</code>; number the free DOFs with the nodes in reverse Cuthill–McKee order (which narrows the band), assemble the stiffness in skyline (variable-band) storage, add spring stiffnesses, hold joint rotations that no member resists (<a href="#auto-restraint" style="color:var(--accent)">automatic joint restraint</a>) and factorise by Cholesky once. A singular matrix throws 304, naming a node and DOF of the mechanism.</div></div>
         <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Solve each load case</strong> against that factorisation: group the loads by their <code>loadCase</code>, resolve member loads and self-weight into local fixed-end forces, form <code>F</code> = nodal loads − fixed-end forces, check that it has no moment about an automatically held rotation (304), and recover displacements, reactions <code>R = K·U − F</code> and member end forces.</div></div>
@@ -1397,7 +1414,7 @@ self.onmessage = ({ data }) =&gt; {
           </div>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws <strong>FrameAnalysisError 301–317, 326–327</strong> for an invalid model, load case or combination, <strong>328</strong> for a translation nothing resists at a node connected only to shells, or an unstable structure (304). The model is checked by <a href="#validate-frame-model" style="color:var(--accent)">validateFrameModel</a> first; the error is the first problem found, its <code>details</code> say where it is, and <code>issues</code> lists every problem. See <a href="#errors" style="color:var(--accent)">the error table</a>.</span>
+            <span>Throws <strong>FrameAnalysisError 301–317, 326–327, 329</strong> for an invalid model, load case or combination, <strong>328</strong> for a translation nothing resists at a node connected only to shells, or an unstable structure (304). The model is checked by <a href="#validate-frame-model" style="color:var(--accent)">validateFrameModel</a> first; the error is the first problem found, its <code>details</code> say where it is, and <code>issues</code> lists every problem. See <a href="#errors" style="color:var(--accent)">the error table</a>.</span>
           </div>
         </div>
       </div>
@@ -1437,7 +1454,7 @@ analysis.result.cases.D.memberDiagrams[<span class="n">0</span>].stations;  <spa
           </table>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws like <code>analyzeFrame</code> (<strong>FrameAnalysisError 301–317, 326–328</strong>). <code>memberDiagram</code> throws a plain <code>Error</code> for an unknown load case, combination or member id.</span>
+            <span>Throws like <code>analyzeFrame</code> (<strong>FrameAnalysisError 301–317, 326–329</strong>). <code>memberDiagram</code> throws a plain <code>Error</code> for an unknown load case, combination or member id.</span>
           </div>
         </div>
       </div>
@@ -1551,7 +1568,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           </div>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws like <code>analyzeFrame</code> (<strong>FrameAnalysisError 301–317, 326–327</strong>, all problems in <code>issues</code>); the area errors are <strong>315</strong>–<strong>317</strong>, see <a href="#null-areas" style="color:var(--accent)">Null areas</a>.</span>
+            <span>Throws like <code>analyzeFrame</code> (<strong>FrameAnalysisError 301–317, 326–327, 329</strong>, all problems in <code>issues</code>); the area errors are <strong>315</strong>–<strong>317</strong>, see <a href="#null-areas" style="color:var(--accent)">Null areas</a>.</span>
           </div>
         </div>
       </div>
@@ -1722,7 +1739,8 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
             <tbody>
               <tr><td>nodes</td><td>FrameNode[]</td><td>mm</td><td><span class="req">Required</span></td><td><code>{ id, x, y, z }</code></td></tr>
               <tr><td>members</td><td>Member[]</td><td>—</td><td><span class="req">Required</span></td><td><code>{ id, startNodeId, endNodeId, section, angle?, releases? }</code>. <code>angle</code> in rad. <code>releases: { start?, end? }</code> set each local end DOF <code>u1, u2, u3, r1, r2, r3</code> to <code>true</code> (released: hinge, roller) or a spring stiffness (partial fixity); see <a href="#member-end-release" style="color:var(--accent)">MemberEndRelease</a></td></tr>
-              <tr><td>restraints</td><td>Restraint[]</td><td>kN/mm, kN·m/rad</td><td><span class="req">Required</span></td><td><code>{ nodeId, ux, uy, uz, rx, ry, rz }</code> in global axes. <code>true</code> fixes the DOF, a positive number is a spring stiffness, omitted is free. At least one DOF must be restrained</td></tr>
+              <tr><td>restraints</td><td>Restraint[]</td><td>kN/mm, kN·m/rad</td><td><span class="req">Required</span></td><td><code>{ nodeId, ux, uy, uz, rx, ry, rz }</code> in global axes. <code>true</code> fixes the DOF, a positive number is a spring stiffness, omitted is free. At least one DOF must be restrained, here or in <code>lineRestraints</code></td></tr>
+              <tr><td>lineRestraints</td><td>LineRestraint[]</td><td>—</td><td><span class="opt">Optional</span></td><td><code>{ nodeIds: [a, b], ux?…rz? }</code>: DOFs fixed at every node on the segment, generated mesh nodes included; see <a href="#line-restraint" style="color:var(--accent)">LineRestraint</a></td></tr>
               <tr><td>loadCases</td><td>LoadCase[]</td><td>—</td><td><span class="req">Required</span></td><td>At least one; see <a href="#load-case" style="color:var(--accent)">LoadCase</a></td></tr>
               <tr><td>nodalLoads</td><td>NodalLoad[]</td><td>kN, kN·m</td><td><span class="opt">Optional</span></td><td><code>{ loadCase, nodeId, fx, fy, fz, mx, my, mz }</code> along and about global axes; see <a href="#nodal-load" style="color:var(--accent)">NodalLoad</a></td></tr>
               <tr><td>memberLoads</td><td>MemberLoad[]</td><td>kN/m, kN, mm</td><td><span class="opt">Optional</span></td><td>Uniform: <code>{ loadCase, type: "udl", memberId, direction, w, start?, end? }</code>. Trapezoidal: <code>{ loadCase, type: "trapezoidal", memberId, direction, w1, w2, start?, end? }</code>. Torque: <code>{ loadCase, type: "torque", memberId, t, start?, end? }</code>. Point: <code>{ loadCase, type: "point", memberId, direction, P, a }</code>. <code>direction</code> is <code>"1" | "2" | "3"</code> (local) or <code>"X" | "Y" | "Z"</code> (global); positions are measured from the member start in mm; see <a href="#member-load" style="color:var(--accent)">MemberLoad</a></td></tr>
@@ -1915,6 +1933,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>section</td><td>ShellSection</td><td>—</td><td><span class="req">Required</span></td><td>Thickness and material; see <a href="#shell-section" style="color:var(--accent)">ShellSection</a></td></tr>
               <tr><td>angle</td><td>number</td><td>rad</td><td><span class="opt">Optional</span></td><td>Rotates local 1 and 2 about local 3 by the right-hand rule; default 0. Sets the directions of the reported forces (F11, M11 … along the new local 1), and changes the stiffness only with unequal 11 and 22 modifiers</td></tr>
               <tr><td>modifiers</td><td>ShellModifiers</td><td>—</td><td><span class="opt">Optional</span></td><td>Stiffness and weight modifiers; see <a href="#shell-modifiers" style="color:var(--accent)">ShellModifiers</a></td></tr>
+              <tr><td>mesh</td><td>ShellMesh</td><td>—</td><td><span class="opt">Optional</span></td><td>How the engine divides the area into elements; without it the area is one element unless a neighbour's mesh or a node on its edge needs more. See <a href="#shell-mesh" style="color:var(--accent)">ShellMesh</a></td></tr>
             </tbody>
           </table>
         </div>
@@ -1960,6 +1979,46 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>weight</td><td>number</td><td>—</td><td><span class="opt">Optional</span></td><td>Scales self-weight only; ≥ 0</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="shell-mesh">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">ShellMesh</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">How the engine meshes a shell area. Counts may grow so that neighbouring areas share their mesh nodes (see <a href="#shell-areas" style="color:var(--accent)">Shell areas</a>).</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>maxSize</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Largest element side wanted; positive</td></tr>
+              <tr><td>divisions</td><td>[number, number]</td><td>—</td><td><span class="opt">Optional</span></td><td>At least this many elements along edge 0–1 and along edge 1–2; positive integers</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="line-restraint">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">LineRestraint</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Fixed DOFs along a straight line: every node on the segment between two nodes, the nodes the engine generates when it meshes shell areas included. Combined with a point restraint at the same node, a DOF fixed by either is fixed.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>nodeIds</td><td>[FrameId, FrameId]</td><td>—</td><td><span class="req">Required</span></td><td>Two distinct nodes, the ends of the line (both included)</td></tr>
+              <tr><td>ux, uy, uz, rx, ry, rz</td><td>boolean</td><td>—</td><td><span class="opt">Optional</span></td><td><code>true</code> fixes the DOF in global axes; there are no line springs</td></tr>
+            </tbody>
+          </table>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws <strong>FrameAnalysisError 314</strong> for nodeIds that are not two distinct nodes or a value that is not a boolean (<code>details.field</code> e.g. <code>"lineRestraints.uz"</code>), <strong>302</strong> for an unknown node.</span>
+          </div>
         </div>
       </div>
 
@@ -2343,7 +2402,8 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>cases</td><td>Record&lt;string, FrameCaseResult&gt;</td><td>—</td><td>Result of each load case, keyed by its id; see <a href="#frame-case-result" style="color:var(--accent)">FrameCaseResult</a></td></tr>
               <tr><td>combinations</td><td>Record&lt;string, FrameCaseResult&gt;</td><td>—</td><td>Result of each combination, keyed by its id; empty when none are defined</td></tr>
               <tr><td>envelope</td><td>FrameEnvelope | undefined</td><td>—</td><td>Max/min over all combinations; absent when there are none. See <a href="#frame-envelope" style="color:var(--accent)">FrameEnvelope</a></td></tr>
-              <tr><td>calculationDetails.nodeCount, memberCount, shellCount</td><td>number</td><td>—</td><td>Model size</td></tr>
+              <tr><td>mesh</td><td>FrameMesh | undefined</td><td>mm</td><td>The generated nodes and every shell element with its nodes, for drawing; absent without shells. See <a href="#frame-mesh" style="color:var(--accent)">FrameMesh</a></td></tr>
+              <tr><td>calculationDetails.nodeCount, memberCount, shellCount</td><td>number</td><td>—</td><td>Model size: nodes including the generated mesh nodes, model members, and shell elements</td></tr>
               <tr><td>calculationDetails.dofCount, freeDofCount</td><td>number</td><td>—</td><td>All DOFs (6 per node) and the unrestrained ones solved for</td></tr>
               <tr><td>calculationDetails.profileSize</td><td>number</td><td>—</td><td>Stored entries of the banded stiffness factor: a measure of memory and solve work</td></tr>
               <tr><td>calculationDetails.loadCaseCount, combinationCount</td><td>number</td><td>—</td><td>Number of load cases and combinations</td></tr>
@@ -2609,7 +2669,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">The forces of one shell area at its four corners: <code>{ shellId, corners: ShellCornerForces[] }</code>, corners in the shell's <code>nodeIds</code> order. See <a href="#shell-areas" style="color:var(--accent)">Shell areas</a>.</p>
+          <p class="ex-desc">The forces of one shell element at its four corners: <code>{ shellId, areaId, corners: ShellCornerForces[] }</code>, corners in the element's node order. <code>shellId</code> is the area's id when the area is one element, else the generated element id <code>"&lt;areaId&gt;:&lt;i&gt;,&lt;j&gt;"</code>; <code>areaId</code> is the shell area. See <a href="#shell-areas" style="color:var(--accent)">Shell areas</a>.</p>
         </div>
       </div>
 
@@ -2639,6 +2699,24 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
             <span>ℹ️</span>
             <span>A membrane reports zero moments and shears; a plate zero membrane forces. The forces of a statically determinate shell structure do not change with stiffness modifiers.</span>
           </div>
+        </div>
+      </div>
+
+      <div class="export-card" id="frame-mesh">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">FrameMesh</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc"><code>result.mesh</code>: what the engine analysed for the shell areas, to draw the elements and contour their results.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>nodes</td><td>FrameNode[]</td><td>mm</td><td>The generated nodes with their coordinates; empty when no area was divided</td></tr>
+              <tr><td>shells</td><td>{ id, areaId, nodeIds }[]</td><td>—</td><td>Every shell element, area by area in model order, with its four nodes (model or generated)</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -2757,7 +2835,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>code</td><td>number</td><td>—</td><td>Error code, 301–317 or 326–327 (328 only from the analysis); see <a href="#errors" style="color:var(--accent)">the error table</a></td></tr>
+              <tr><td>code</td><td>number</td><td>—</td><td>Error code, 301–317, 326–327 or 329 (328 only from the analysis); see <a href="#errors" style="color:var(--accent)">the error table</a></td></tr>
               <tr><td>message</td><td>string</td><td>—</td><td>The code's message followed by the location in brackets</td></tr>
               <tr><td>details</td><td>FrameErrorDetails</td><td>—</td><td>Where the problem is; see <a href="#frame-error-details" style="color:var(--accent)">FrameErrorDetails</a></td></tr>
             </tbody>
@@ -2827,6 +2905,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td class="path-cell">326</td><td class="path-cell">INVALID_SHELL_GEOMETRY</td><td>A shell area does not have 4 distinct corners in order around a convex quadrilateral, or a corner is more than 0.1·√A off the mean plane.</td></tr>
           <tr><td class="path-cell">327</td><td class="path-cell">INVALID_SHELL_SECTION</td><td>A shell section's thickness or E is not positive, ν is outside [0, 0.5), or <code>unitWeight</code> is negative; <code>details.field</code> names it.</td></tr>
           <tr><td class="path-cell">328</td><td class="path-cell">SHELL_DOF_UNSUPPORTED</td><td>A node connected only to shells has a translation nothing resists — a membrane's out-of-plane or a plate's in-plane direction. <code>details</code> names the node, a shell and the DOF; every such node is in <code>issues</code>. Restrain the DOF, connect a member, or use type <code>"shell"</code>. Found when the stiffness is assembled, not by <code>validateFrameModel</code>.</td></tr>
+          <tr><td class="path-cell">329</td><td class="path-cell">INVALID_SHELL_MESH</td><td>Shell areas cannot be meshed: no division counts make the meshes of areas sharing edges meet node to node, a generated element is not a valid quadrilateral, or a generated id is already used by a node or shell. <code>details.shellId</code> names the area. Divide the areas so they meet edge to edge, or change their mesh sizes.</td></tr>
         </tbody>
       </table>
     </div>
@@ -2860,6 +2939,8 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ShellSection</td><td>—</td><td>Thickness, E, ν and unit weight of a shell</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ShellModifiers</td><td>—</td><td>Membrane, bending and weight modifiers</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ShellType</td><td>—</td><td><code>"shell"</code>, <code>"membrane"</code> or <code>"plate"</code></td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ShellMesh</td><td>—</td><td>How the engine meshes a shell area</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">LineRestraint</td><td>—</td><td>Fixed DOFs along a line, generated nodes included</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">LoadCase</td><td>—</td><td>One set of loads, with optional self-weight</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">LoadCaseType</td><td>—</td><td>Load case label</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">LoadCombination</td><td>—</td><td>Factored sum of load cases and combinations</td></tr>
@@ -2889,6 +2970,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberDiagram</td><td>—</td><td>Stations and extremes along a member</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ShellElementForces</td><td>—</td><td>A shell's forces at its four corners</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ShellCornerForces, ShellForceComponent</td><td>—</td><td>Forces per unit width and face stresses at one corner, and their keys</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameMesh</td><td>—</td><td>Generated nodes and shell elements (<code>result.mesh</code>)</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberStation</td><td>—</td><td>Forces and displacements at one point</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">StationComponent</td><td>—</td><td>Components that have extremes</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ExtremeValue</td><td>—</td><td>Extreme value and its position</td></tr>
@@ -2900,7 +2982,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberDemandEnvelope</td><td>—</td><td>Mu⁺, Mu⁻, Vu, Nu with the governing combination</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameModelIssue</td><td>—</td><td>One validation problem (core)</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FrameErrorDetails</td><td>—</td><td>Location of a problem (core)</td></tr>
-          <tr><td><span class="kind m-error">ERR</span></td><td class="path-cell">FrameAnalysisError, FrameErrors</td><td>—</td><td>Error class (code, message, details, issues) and coded entries 301–317 and 326–328 (core)</td></tr>
+          <tr><td><span class="kind m-error">ERR</span></td><td class="path-cell">FrameAnalysisError, FrameErrors</td><td>—</td><td>Error class (code, message, details, issues) and coded entries 301–317 and 326–329 (core)</td></tr>
         </tbody>
       </table>
     </div>

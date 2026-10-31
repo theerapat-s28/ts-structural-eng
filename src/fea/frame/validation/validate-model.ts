@@ -5,7 +5,7 @@ import {
   type FrameModelIssue,
 } from "@app-core/errors/frame-analysis.error";
 
-import { AREA_GEOMETRY_TOLERANCE, SHELL_WARPING_LIMIT } from "@app-core/constants/frame.constant";
+import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/frame.constant";
 
 import {
   areaPlane,
@@ -19,8 +19,8 @@ import {
 import { edgeMemberChain, memberAdjacency } from "../area/edge-members";
 import { beam3dLocalStiffnessRightHanded } from "../elements/beam-3d-stiffness";
 import { memberEndReleases, RELEASE_KEYS } from "../elements/end-releases";
-import { quadJacobian } from "../elements/shell/quad-geometry";
-import { shellAxes } from "../elements/shell/shell-axes";
+import { isValidShellQuad } from "../elements/shell/shell-axes";
+import { meshShells } from "../mesh/mesh-shells";
 import { condenseMember } from "../elements/static-condensation";
 import { resolveCombinations } from "../solver/combinations";
 import type {
@@ -60,48 +60,6 @@ const LOAD_CASE_TYPES = new Set<LoadCaseType>([
 
 const isFiniteNumber = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
-/**
- * Whether four corners make a valid shell element: no repeated corner, a non-degenerate
- * convex quadrilateral in order around it (det J > 0 at every corner of the bilinear map), and
- * no corner farther than `SHELL_WARPING_LIMIT · √A` from the mean plane.
- */
-const shellGeometryOk = (points: Vec3[]): boolean => {
-  const size = Math.max(
-    ...points.map((p, i) => {
-      const q = points[(i + 1) % 4];
-      return Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
-    }),
-  );
-  const tolerance = AREA_GEOMETRY_TOLERANCE * size;
-  for (let i = 0; i < 4; i++) {
-    for (let j = i + 1; j < 4; j++) {
-      const [p, q] = [points[i], points[j]];
-      if (!(Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) > tolerance)) return false;
-    }
-  }
-  const d1 = [0, 1, 2].map((k) => points[2][k] - points[0][k]);
-  const d2 = [0, 1, 2].map((k) => points[3][k] - points[1][k]);
-  const area =
-    Math.hypot(
-      d1[1] * d2[2] - d1[2] * d2[1],
-      d1[2] * d2[0] - d1[0] * d2[2],
-      d1[0] * d2[1] - d1[1] * d2[0],
-    ) / 2;
-  if (!(area > tolerance * size)) return false;
-  const axes = shellAxes(points);
-  for (const [xi, eta] of [
-    [-1, -1],
-    [1, -1],
-    [1, 1],
-    [-1, 1],
-  ]) {
-    if (!(quadJacobian(axes.corners, xi, eta).detJ > (AREA_GEOMETRY_TOLERANCE * area) / 4)) {
-      return false;
-    }
-  }
-  return Math.max(...axes.offsets.map(Math.abs)) <= SHELL_WARPING_LIMIT * Math.sqrt(area);
-};
-
 const describe = (d: FrameErrorDetails): string => {
   const parts: string[] = [];
   if (d.nodeId !== undefined) parts.push(`node "${String(d.nodeId)}"`);
@@ -135,7 +93,7 @@ export const throwIssues = (issues: FrameModelIssue[]): never => {
  * resists at a node connected only to shells (328), which only assembling the stiffness detects.
  *
  * @param model - The model to check
- * @returns Every problem found (codes 301–303, 305–317, 326 and 327), in model order
+ * @returns Every problem found (codes 301–303, 305–317 and 326–327, 329), in model order
  */
 export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
   const issues: FrameModelIssue[] = [];
@@ -151,6 +109,7 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
   const memberLoads = Array.isArray(model.memberLoads) ? model.memberLoads : [];
   const areas = Array.isArray(model.areas) ? model.areas : [];
   const shells = Array.isArray(model.shells) ? model.shells : [];
+  const lineRestraints = Array.isArray(model.lineRestraints) ? model.lineRestraints : [];
   const areaLoads = Array.isArray(model.areaLoads) ? model.areaLoads : [];
 
   // ---- Ids -------------------------------------------------------------------------
@@ -285,6 +244,19 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
       } else {
         add(FrameErrors.INVALID_INPUT_VALUE, { nodeId: restraint.nodeId, field });
       }
+    }
+  }
+  for (const line of lineRestraints) {
+    const ids = Array.isArray(line.nodeIds) ? line.nodeIds : [];
+    const at = { nodeId: ids[0], field: "lineRestraints.nodeIds" };
+    if (ids.length !== 2 || ids[0] === ids[1]) add(FrameErrors.INVALID_INPUT_VALUE, at);
+    else if (ids.some((id) => !nodeById.has(id))) add(FrameErrors.UNKNOWN_NODE_REFERENCE, at);
+    for (const field of DOF_KEYS) {
+      const v: unknown = line[field];
+      if (v === undefined || v === false) continue;
+      if (v === true) anyRestrained = true;
+      else
+        add(FrameErrors.INVALID_INPUT_VALUE, { nodeId: ids[0], field: `lineRestraints.${field}` });
     }
   }
   if (!anyRestrained) add(FrameErrors.NO_RESTRAINTS);
@@ -473,6 +445,25 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
       add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "modifiers.weight" });
     }
 
+    const mesh: unknown = shell.mesh;
+    if (mesh !== undefined) {
+      const { maxSize, divisions } = (mesh ?? {}) as { maxSize?: unknown; divisions?: unknown };
+      if (typeof mesh !== "object" || mesh === null) {
+        add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "mesh" });
+      } else {
+        if (maxSize !== undefined && !(isFiniteNumber(maxSize) && maxSize > 0)) {
+          add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "mesh.maxSize" });
+        }
+        const count = (v: unknown) => Number.isInteger(v) && (v as number) >= 1;
+        if (
+          divisions !== undefined &&
+          !(Array.isArray(divisions) && divisions.length === 2 && divisions.every(count))
+        ) {
+          add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "mesh.divisions" });
+        }
+      }
+    }
+
     const ids = Array.isArray(shell.nodeIds) ? shell.nodeIds : [];
     if (ids.length !== 4) {
       add(FrameErrors.INVALID_SHELL_GEOMETRY, { ...at, field: "nodeIds" });
@@ -483,8 +474,16 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
       continue;
     }
     if (!ids.every((id) => validNode.has(id))) continue; // reported on the node
-    if (!shellGeometryOk(ids.map(position))) {
+    if (!isValidShellQuad(ids.map(position))) {
       add(FrameErrors.INVALID_SHELL_GEOMETRY, { ...at, field: "nodeIds" });
+    }
+  }
+  // the mesh, once every shell and its mesh settings are valid
+  const shellProblem = issues.some((i) => i.details.shellId !== undefined);
+  const nodeProblem = nodes.length !== validNode.size;
+  if (shells.length > 0 && !shellProblem && !nodeProblem) {
+    for (const shellId of meshShells(nodes, shells).problems) {
+      add(FrameErrors.INVALID_SHELL_MESH, { shellId, field: "mesh" });
     }
   }
 

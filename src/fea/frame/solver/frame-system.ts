@@ -22,6 +22,8 @@ import type {
   FrameId,
   FrameModel,
   FrameNode,
+  Member,
+  ShellArea,
   ShellModifiers,
   ShellSection,
   ShellType,
@@ -42,9 +44,14 @@ import {
 
 const DOF_NAMES = ["ux", "uy", "uz", "rx", "ry", "rz"] as const;
 
-/** A member with everything that does not depend on the loads. */
+/**
+ * A member, or a piece of one, with everything that does not depend on the loads. A member is
+ * cut into pieces where generated shell-mesh nodes lie inside it; otherwise it is one piece.
+ */
 export interface SystemMember extends AssemblyMember {
-  id: FrameId;
+  id: FrameId; // the model member's id
+  /** Distance of the piece's start from the member's start (mm); 0 for a whole member. */
+  offset: number;
   section: SectionProperties;
   length: number; // mm
   lambda: Matrix; // 3×3 direction cosines, rows = local 1, 2, 3
@@ -56,9 +63,21 @@ export interface SystemMember extends AssemblyMember {
   memberEndDisplacements: CondensedMember["memberEndDisplacements"];
 }
 
+/** A model member and the pieces it is analysed as (one unless the shell mesh splits it). */
+export interface MemberGroup {
+  id: FrameId;
+  /** Indices into `FrameSystem.members`, from the member's start to its end. */
+  pieces: number[];
+  section: SectionProperties;
+  length: number; // mm, the whole member
+  lambda: Matrix; // 3×3 direction cosines of the whole member
+}
+
 /** A shell area with everything that does not depend on the loads. */
 export interface SystemShell {
   id: FrameId;
+  /** The shell area the element belongs to (its own id when the area is one element). */
+  areaId: FrameId;
   nodeIndices: number[]; // the four corners, in the shell's order
   type: ShellType;
   section: ShellSection;
@@ -73,9 +92,15 @@ export interface SystemShell {
 export interface FrameSystem {
   nodes: FrameNode[];
   nodeIndex: Map<FrameId, number>;
+  /** Index into `memberGroups` of each model member. */
   memberIndex: Map<FrameId, number>;
+  /** Model members, in model order. */
+  memberGroups: MemberGroup[];
+  /** The pieces that are assembled: one per member unless the shell mesh splits it. */
   members: SystemMember[];
   shellIndex: Map<FrameId, number>;
+  /** Element indices of each shell area. */
+  shellsByArea: Map<FrameId, number[]>;
   shells: SystemShell[];
   dofCount: number;
   boundary: BoundaryConditions;
@@ -104,41 +129,71 @@ export interface FrameSystem {
  */
 export const prepareFrameSystem = (model: FrameModel): FrameSystem => {
   const { nodes, members, restraints } = model;
-  const shells = model.shells ?? [];
+  // shell elements: after `expandModel` they carry their area's id
+  const shells = (model.shells ?? []) as (ShellArea & { areaId?: FrameId })[];
   const nodeIndex = new Map<FrameId, number>(nodes.map((n, i) => [n.id, i]));
   const memberIndex = new Map<FrameId, number>(members.map((m, i) => [m.id, i]));
   const shellIndex = new Map<FrameId, number>(shells.map((sh, i) => [sh.id, i]));
   const dofCount = 6 * nodes.length;
   const boundary = buildBoundaryConditions(restraints, nodeIndex, dofCount);
 
-  const systemMembers: SystemMember[] = members.map((member) => {
-    const start = nodes[nodeIndex.get(member.startNodeId) as number];
-    const end = nodes[nodeIndex.get(member.endNodeId) as number];
-    const { length, lambda } = memberAxes(
-      [start.x, start.y, start.z],
-      [end.x, end.y, end.z],
-      member.angle ?? 0,
-    );
-    const { E, G, A, I22, I33, J } = member.section;
-    const releases = memberEndReleases(member.releases);
-    const condensed = condenseMember(
-      beam3dLocalStiffnessRightHanded(E, G, A, I22, I33, J, length),
-      releases,
-    );
-    return {
-      id: member.id,
-      section: member.section,
-      startIndex: nodeIndex.get(member.startNodeId) as number,
-      endIndex: nodeIndex.get(member.endNodeId) as number,
-      T: transformationMatrix(lambda),
-      k: condensed.k,
-      hasReleases: releases.length > 0,
-      condenseFixedEndForces: condensed.condenseFixedEndForces,
-      memberEndDisplacements: condensed.memberEndDisplacements,
-      length,
-      lambda,
-    };
-  });
+  const point = (id: FrameId): [number, number, number] => {
+    const n = nodes[nodeIndex.get(id) as number];
+    return [n.x, n.y, n.z];
+  };
+  const systemMembers: SystemMember[] = [];
+  const memberGroups: MemberGroup[] = (members as (Member & { through?: FrameId[] })[]).map(
+    (member) => {
+      // pieces between the member's ends and the mesh nodes inside it (see `expandModel`)
+      const chain = [member.startNodeId, ...(member.through ?? []), member.endNodeId];
+      const whole = memberAxes(
+        point(member.startNodeId),
+        point(member.endNodeId),
+        member.angle ?? 0,
+      );
+      const { E, G, A, I22, I33, J } = member.section;
+      const pieces: number[] = [];
+      let offset = 0;
+      for (let k = 0; k + 1 < chain.length; k++) {
+        const { length, lambda } =
+          chain.length === 2
+            ? whole
+            : memberAxes(point(chain[k]), point(chain[k + 1]), member.angle ?? 0);
+        // releases only at the member's own ends
+        const releases = memberEndReleases({
+          start: k === 0 ? member.releases?.start : undefined,
+          end: k === chain.length - 2 ? member.releases?.end : undefined,
+        });
+        const condensed = condenseMember(
+          beam3dLocalStiffnessRightHanded(E, G, A, I22, I33, J, length),
+          releases,
+        );
+        pieces.push(systemMembers.length);
+        systemMembers.push({
+          id: member.id,
+          offset,
+          section: member.section,
+          startIndex: nodeIndex.get(chain[k]) as number,
+          endIndex: nodeIndex.get(chain[k + 1]) as number,
+          T: transformationMatrix(lambda),
+          k: condensed.k,
+          hasReleases: releases.length > 0,
+          condenseFixedEndForces: condensed.condenseFixedEndForces,
+          memberEndDisplacements: condensed.memberEndDisplacements,
+          length,
+          lambda,
+        });
+        offset += length;
+      }
+      return {
+        id: member.id,
+        pieces,
+        section: member.section,
+        length: whole.length,
+        lambda: whole.lambda,
+      };
+    },
+  );
 
   const systemShells: SystemShell[] = shells.map((shell) => {
     const nodeIndices = shell.nodeIds.map((id) => nodeIndex.get(id) as number);
@@ -160,6 +215,7 @@ export const prepareFrameSystem = (model: FrameModel): FrameSystem => {
     );
     return {
       id: shell.id,
+      areaId: shell.areaId ?? shell.id,
       nodeIndices,
       type,
       section: shell.section,
@@ -167,6 +223,13 @@ export const prepareFrameSystem = (model: FrameModel): FrameSystem => {
       element,
       cornerAreas: cornerAreas(element.axes.corners),
     };
+  });
+
+  const shellsByArea = new Map<FrameId, number[]>();
+  systemShells.forEach((sh, s) => {
+    const list = shellsByArea.get(sh.areaId);
+    if (list) list.push(s);
+    else shellsByArea.set(sh.areaId, [s]);
   });
 
   // Everything that adds stiffness, as elements over 6 DOFs per node; members have 2 nodes
@@ -295,8 +358,10 @@ export const prepareFrameSystem = (model: FrameModel): FrameSystem => {
     nodes,
     nodeIndex,
     memberIndex,
+    memberGroups,
     members: systemMembers,
     shellIndex,
+    shellsByArea,
     shells: systemShells,
     dofCount,
     boundary,

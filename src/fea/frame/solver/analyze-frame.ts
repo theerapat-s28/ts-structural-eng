@@ -12,6 +12,7 @@ import type {
   MemberDiagram,
 } from "../types/results.type";
 import { throwIssues, validateFrameModel } from "../validation/validate-model";
+import { expandModel } from "../mesh/expand-model";
 import { resolveCombinations } from "./combinations";
 import { prepareFrameSystem, type FrameSystem } from "./frame-system";
 import { combineStates, solveLoadCase, type RawState } from "./load-case-solver";
@@ -89,7 +90,8 @@ export const createFrameAnalysis = (
   const issues = validateFrameModel(model);
   if (issues.length > 0) throwIssues(issues);
 
-  const system = prepareFrameSystem(model);
+  const expanded = expandModel(model);
+  const system = prepareFrameSystem(expanded.model);
   const combinations = model.combinations ?? [];
   const resolved = resolveCombinations(combinations, new Set(model.loadCases.map((c) => c.id)));
   const withStations = (options.diagrams ?? "full") === "full";
@@ -104,7 +106,7 @@ export const createFrameAnalysis = (
   ]);
   // area loads on shells load the shell elements; those on null areas became member loads
   const shellByCase = groupByCase<AreaLoad>(
-    (model.areaLoads ?? []).filter((load) => system.shellIndex.has(load.areaId)),
+    (model.areaLoads ?? []).filter((load) => system.shellsByArea.has(load.areaId)),
   );
   for (const loadCase of model.loadCases) {
     const state = solveLoadCase(system, loadCase, {
@@ -140,6 +142,7 @@ export const createFrameAnalysis = (
 
   const warnings: Warnings = [
     ...fromAreas.warnings,
+    ...expanded.warnings,
     ...[...Object.values(cases), ...Object.values(combinationResults)].flatMap((r) =>
       r.warnings.map((w) => ({
         ...w,
@@ -153,9 +156,10 @@ export const createFrameAnalysis = (
     cases,
     combinations: combinationResults,
     envelope: combinationList.length > 0 ? buildEnvelope(combinationList) : undefined,
+    ...(expanded.mesh ? { mesh: expanded.mesh } : {}),
     calculationDetails: {
       nodeCount: system.nodes.length,
-      memberCount: system.members.length,
+      memberCount: system.memberGroups.length,
       shellCount: system.shells.length,
       dofCount: system.dofCount,
       freeDofCount: system.free.length,

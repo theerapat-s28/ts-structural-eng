@@ -210,6 +210,7 @@ const present = (c: StationComponent, value: number) =>
  * @param stationCount - Number of evenly spaced stations (at least 2); load breakpoints and
  *   zero-shear points are added, with both sides reported at a point load
  * @param withStations - false returns the extremes only, with an empty `stations` array
+ * @param stationPositions - Stations to use instead of the evenly spaced ones (mm from the start)
  */
 export const memberDiagram = (
   member: DiagramMember,
@@ -218,6 +219,7 @@ export const memberDiagram = (
   loads: LocalMemberLoad[],
   stationCount = 21,
   withStations = true,
+  stationPositions?: number[],
 ): MemberDiagram => {
   const L = member.length;
   const tolerance = 1e-9 * L;
@@ -280,7 +282,7 @@ export const memberDiagram = (
 
   const count = Math.max(2, Math.floor(stationCount));
   const uniform = withStations
-    ? Array.from({ length: count }, (_, i) => (L * i) / (count - 1))
+    ? (stationPositions ?? Array.from({ length: count }, (_, i) => (L * i) / (count - 1)))
     : [];
   // One grid for everything: breakpoints, zero-shear points, stations and the deflection grid
   const grid = mergeSorted([...sortedBreaks, ...roots, ...uniform, ...coarse]);
@@ -396,4 +398,82 @@ export const memberDiagram = (
   }
 
   return { memberId: member.id, length: L, stations, extremes };
+};
+
+/** One piece of a member split by shell-mesh nodes, with what its diagram needs. */
+export interface DiagramPiece {
+  member: DiagramMember; // the piece: its own length and axes, the member's id and section
+  offset: number; // mm from the member's start
+  startForce: number[];
+  endDisplacements: number[];
+  loads: LocalMemberLoad[];
+}
+
+/**
+ * The diagram of a member analysed as several pieces (split where shell-mesh nodes lie inside
+ * it), stitched along its full length. The evenly spaced stations are taken along the whole
+ * member and each is evaluated in the piece it falls in; at a piece end where the shells
+ * deliver a force, both sides are reported, as at a point load. Extremes are the extremes of
+ * the pieces.
+ *
+ * @param id - The member's id
+ * @param length - The member's length (mm)
+ */
+export const chainDiagram = (
+  id: FrameId,
+  length: number,
+  pieces: DiagramPiece[],
+  stationCount = 21,
+  withStations = true,
+): MemberDiagram => {
+  const count = Math.max(2, Math.floor(stationCount));
+  const tolerance = 1e-9 * length;
+  const along = Array.from({ length: count }, (_, i) => (length * i) / (count - 1));
+  const diagrams = pieces.map((piece) =>
+    memberDiagram(
+      piece.member,
+      piece.startForce,
+      piece.endDisplacements,
+      piece.loads,
+      count,
+      withStations,
+      along
+        .filter(
+          (x) =>
+            x >= piece.offset - tolerance && x <= piece.offset + piece.member.length + tolerance,
+        )
+        .map((x) => Math.min(piece.member.length, Math.max(0, x - piece.offset))),
+    ),
+  );
+
+  const stations: MemberStation[] = [];
+  diagrams.forEach((diagram, k) => {
+    for (const station of diagram.stations) {
+      const shifted = { ...station, x: roundToDecimalPlaces(station.x + pieces[k].offset, 3) };
+      const previous = stations[stations.length - 1];
+      // the same point from both pieces: keep one unless the forces jump there
+      const same =
+        previous !== undefined &&
+        Math.abs(previous.x - shifted.x) < 1e-3 &&
+        COMPONENTS.every((c) => previous[c] === shifted[c]);
+      if (!same) stations.push(shifted);
+    }
+  });
+
+  const extremes = {} as MemberDiagram["extremes"];
+  for (const c of COMPONENTS) {
+    const shift = (k: number, e: ExtremeValue): ExtremeValue => ({
+      value: e.value,
+      x: roundToDecimalPlaces(e.x + pieces[k].offset, 3),
+    });
+    let max = shift(0, diagrams[0].extremes[c].max);
+    let min = shift(0, diagrams[0].extremes[c].min);
+    diagrams.forEach((d, k) => {
+      if (d.extremes[c].max.value > max.value) max = shift(k, d.extremes[c].max);
+      if (d.extremes[c].min.value < min.value) min = shift(k, d.extremes[c].min);
+    });
+    extremes[c] = { max, min };
+  }
+
+  return { memberId: id, length, stations, extremes };
 };

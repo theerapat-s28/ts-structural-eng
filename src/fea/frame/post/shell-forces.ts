@@ -117,6 +117,7 @@ export const presentShellForces = (
   const t = shell.section.thickness;
   return {
     shellId: shell.id,
+    areaId: shell.areaId,
     corners: nodeIds.map((nodeId, c) => {
       const [F11, F22, F12, M11, M22, M12, V13, V23] = raw.slice(
         SHELL_FORCE_COMPONENTS * c,

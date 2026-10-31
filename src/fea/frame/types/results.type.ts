@@ -1,5 +1,5 @@
 import type { Warnings } from "@app-core/types/output-message.type";
-import type { FrameId, LoadCaseType } from "./model.type";
+import type { FrameId, FrameNode, LoadCaseType } from "./model.type";
 
 export interface NodalDisplacement {
   nodeId: FrameId;
@@ -130,10 +130,23 @@ export interface ShellCornerForces {
 /** A force or stress component of `ShellCornerForces`. */
 export type ShellForceComponent = Exclude<keyof ShellCornerForces, "nodeId">;
 
-/** Forces of one shell element at its four corners, in its `nodeIds` order. */
+/**
+ * Forces of one shell element at its four corners, in its node order. `shellId` is the shell
+ * area's id when the area is one element, and `"<areaId>:<i>,<j>"` for the elements the engine
+ * generated when it meshed the area (see `FrameResult.mesh`).
+ */
 export interface ShellElementForces {
   shellId: FrameId;
+  areaId: FrameId;
   corners: ShellCornerForces[];
+}
+
+/** The shell elements analysed, and the nodes the engine generated to mesh them. */
+export interface FrameMesh {
+  /** Generated nodes, in global coordinates (mm); empty when no area was subdivided. */
+  nodes: FrameNode[];
+  /** Every shell element, in model order of their areas, with its four corner nodes. */
+  shells: { id: FrameId; areaId: FrameId; nodeIds: FrameId[] }[];
 }
 
 /** Max or min of a result across combinations, with the combination that produces it. */
@@ -192,6 +205,8 @@ export interface FrameResult {
   combinations: Record<string, FrameCaseResult>;
   /** Envelope over all combinations; absent when the model has none. */
   envelope?: FrameEnvelope;
+  /** The shell mesh; absent when the model has no shells. */
+  mesh?: FrameMesh;
   calculationDetails: {
     nodeCount: number;
     memberCount: number;

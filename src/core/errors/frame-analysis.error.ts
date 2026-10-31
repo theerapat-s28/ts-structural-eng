@@ -146,4 +146,9 @@ export const FrameErrors: Record<string, FrameAnalysisErrorType> = {
     message:
       'A node connected only to shells has a translation that nothing resists: a membrane carries no load out of its plane and a plate none in its plane. Restrain that DOF, connect a member, or use type "shell".',
   },
+  INVALID_SHELL_MESH: {
+    code: 329,
+    message:
+      "Shell areas cannot be meshed: no division counts make the meshes of areas sharing edges meet node to node, a generated element is not a valid quadrilateral, or a generated id is already in use. Divide the areas so they meet edge to edge, or change their mesh sizes.",
+  },
 };

@@ -65,7 +65,7 @@ Every feature added must conform to the following core principles:
 | [x] | 5 | Flat shell element (axes, warping, modifiers) | M | Membrane, DKQ |
 | [x] | 5 | Shells in the model (validation, assembly, loads) | L | Flat shell |
 | [x] | 5 | Shell results & first release | M | Shells in the model |
-| [ ] | 5 | Engine meshing of shell areas | L | Shell results |
+| [x] | 5 | Engine meshing of shell areas | L | Shell results |
 | [ ] | 5 | Thick plates (DKMQ or MITC4) | M | Shell results |
 | [ ] | 5 | Triangular shells & openings | L | Engine meshing |
 
@@ -396,11 +396,14 @@ Flat four-node shell elements with membrane, plate and shell behaviour, so walls
 - [ ] Release as a minor version (`update-version`, then `npm-publish`) — maintainer's call.
 
 ### 5.6 Engine Meshing
-- [ ] `ShellArea.mesh?: { maxSize } | { divisions: [n1, n2] }`; without `mesh` an area is one element.
-- [ ] Structured mapping of each area; division counts shared per chord (union-find over opposite and shared edges) so adjacent meshes conform; model nodes on area edges become hard points.
-- [ ] Members along meshed edges split internally at the mesh nodes: releases at their real ends only, member loads mapped by position, end forces and diagrams reported under the original member id.
-- [ ] Deterministic ids for generated nodes and elements; shell results grouped by area id; mesh quality checks report the area id.
-- [ ] Worked as 5.6a (meshing) and 5.6b (members on meshed edges).
+API decisions: supports along meshed edges by line restraints; members along meshed edges split internally with results under their own id; results per generated element plus `result.mesh`.
+
+- [x] 5.6a [`mesh/mesh-shells.ts`](src/fea/frame/mesh/mesh-shells.ts): `ShellArea.mesh?: { maxSize?, divisions? }`; area edges cut into segments at model nodes lying on them (hard points, T-junctions); per-segment division counts raised until opposite edges of every area add up equally (the chord rule generalised to multi-segment edges), extra divisions where elements are longest; even segment spacing and transfinite interpolation inside; ids `"<a>~<b>:<k>"`, `"<areaId>:<i>,<j>"`; an area that stays 1 × 1 keeps its id; 329 for no balance, a bad generated element or an id clash.
+- [x] [`mesh/expand-model.ts`](src/fea/frame/mesh/expand-model.ts): the analysed model (generated nodes, elements with `areaId`, `lineRestraints` spread to every node on the line, members marked with the generated nodes inside them); warning for a member node inside an area but not on its mesh. `AreaLoad` on an area loads all its elements.
+- [x] Results: displacements and reactions include generated nodes; `ShellElementForces.areaId`; `result.mesh: FrameMesh`; `calculationDetails.nodeCount` counts generated nodes, `memberCount` model members, `shellCount` elements.
+- [x] 5.6b members along meshed edges: `MemberGroup`s of pieces in [`frame-system.ts`](src/fea/frame/solver/frame-system.ts) (releases only at real ends), member loads resolved on the whole member then clipped to pieces, end forces from the first/last piece, `chainDiagram` stitches the pieces' diagrams; unsplit members take the old code path (frame-only raw results bit-for-bit identical).
+- [x] Tests in [`tests/fea/frame/shell-mesh.test.ts`](tests/fea/frame/shell-mesh.test.ts): counts and ids, generated nodes in results, equality with the same mesh entered element by element, `divisions` as a minimum, conforming T-junction with different mesh sizes, edge beams split vs split by hand (identical displacements, end forces, diagram extremes, releases), stitched and on-demand diagrams, validation (314, 302, 329), the disconnected-node warning. A 4 × 4-bay slab on beams (1 600 elements, 10 236 DOFs) analyses in about 1.1 s.
+- [x] Docs: FEA reference (meshing rules, example, `ShellMesh`, `LineRestraint`, `FrameMesh`, 329), theory page, README, CHANGELOG.
 
 ### 5.7 Thick Plates
 - [ ] `ShellArea.plateTheory?: "thin" | "thick"` (default `"thin"`), using DKMQ (reuses the DKQ code) or MITC4, chosen after 5.2.
@@ -417,6 +420,7 @@ Flat four-node shell elements with membrane, plate and shell behaviour, so walls
 - [ ] **ETABS local-axis convention check**: confirm the local 3 rule ($1 \times Z$ for non-vertical, $+X$ for vertical) matches CSI ETABS v21 documentation exactly.
 - [ ] **Cook's membrane reference**: our plane-stress set-up (E = 1, ν = 1/3, t = 1, unit uniform shear) converges to ≈ 25.2 with three element types, against the published 23.9–23.96. Find the published set-up (load distribution, ν, mesh) before quoting a value in the docs.
 - [ ] **Shell stiffness modifiers vs ETABS**: we apply f11/f22 (and m11/m22) as $\mathbf{SDS}$, so the Poisson coupling scales by $\sqrt{f_{11} f_{22}}$; confirm how ETABS treats the coupling term before documenting modifiers as ETABS-equivalent.
+- [ ] **Mesher search cost**: hard points (every node against every area edge) and member splits (every member against every generated node) are brute force; add a spatial index if large models slow down (they take about 12 ms of the 1 600-element benchmark's 1.1 s).
 - [ ] **ETABS area local-axis convention check**: confirm the shell local 1/2 default (5.3) against the CSI documentation before shells ship.
 - [ ] **ACI 318-19 Table 6.6.3.1.1 verification**: confirm the cracked moment of inertia factors before quoting them in the 1.2 docs and in [`src/rc/`](src/rc/).
 - [ ] **ACI 318-19 second-order limit**: confirm the clause number of the 1.4 × first-order moment limit used by the 3.3 warning.
@@ -448,6 +452,7 @@ Codes 301–314 are the existing validation and solver errors in [`frame-analysi
 | **326** | `INVALID_SHELL_GEOMETRY` | Shell elements *(Unreleased)* | Not 4 distinct nodes (3 allowed from 5.8), non-convex, $\det \mathbf{J} \le 0$, or warping beyond the limit |
 | **327** | `INVALID_SHELL_SECTION` | Shell elements *(Unreleased)* | Thickness or $E$ not positive, $\nu$ outside $[0, 0.5)$, or negative `unitWeight` |
 | **328** | `SHELL_DOF_UNSUPPORTED` | Shell elements *(Unreleased)* | A translation nothing resists at a node connected only to membrane (or only to plate) shells |
+| **329** | `INVALID_SHELL_MESH` | Engine meshing *(Unreleased)* | No conforming division counts, a bad generated element, or a generated id already in use |
 
 ---
 
@@ -481,7 +486,9 @@ Codes 301–314 are the existing validation and solver errors in [`frame-analysi
 | `TYPE` | `FrameModel.responseSpectra` | `ResponseSpectrum[]` | Response spectrum cases (CQC/SRSS) |
 | `TYPE` | `FrameModel.shells`, `ShellArea`, `ShellSection`, `ShellModifiers` | — | Shell areas with membrane, plate or shell behaviour |
 | `TYPE` | `FrameCaseResult.shellForces` *(Unreleased)* | `ShellElementForces[]` | Corner membrane forces, moments, shears and face stresses |
-| `TYPE` | `ShellArea.mesh` | — | Engine meshing of shell areas |
+| `TYPE` | `ShellArea.mesh`, `ShellMesh` *(Unreleased)* | — | Engine meshing of shell areas |
+| `TYPE` | `FrameModel.lineRestraints`, `LineRestraint` *(Unreleased)* | — | Fixed DOFs along a line, generated nodes included |
+| `TYPE` | `FrameResult.mesh`, `FrameMesh` *(Unreleased)* | — | Generated nodes and shell elements |
 | `TYPE` | `ShellArea.plateTheory` | `"thin" \| "thick"` | Thick-plate formulation |
 
 ---

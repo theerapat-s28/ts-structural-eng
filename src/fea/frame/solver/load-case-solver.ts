@@ -3,7 +3,7 @@ import { FrameAnalysisError, FrameErrors } from "@app-core/errors/frame-analysis
 import { matVec, type Matrix } from "@app-utils/matrix";
 import { skylineSolve } from "@app-utils/skyline";
 
-import { fixedEndForces, type LocalMemberLoad } from "../elements/fixed-end-forces";
+import { fixedEndForces, loadIntensity, type LocalMemberLoad } from "../elements/fixed-end-forces";
 import { shellRawForces } from "../post/shell-forces";
 import type { AreaLoad, LoadCase, LoadDirection, MemberLoad, NodalLoad } from "../types/model.type";
 import { frameIssue, throwIssues } from "../validation/validate-model";
@@ -71,6 +71,44 @@ const toLocalLoads = (load: MemberLoad, lambda: Matrix, L: number): LocalMemberL
 };
 
 /**
+ * The part of a member's local loads that falls on one of its pieces, `[offset, offset + L]`,
+ * in the piece's own positions. A distributed load or torque is cut at the piece ends; a point
+ * load goes to the piece it lies in (at an interior node, to the piece that starts there).
+ */
+const clipLoads = (
+  loads: LocalMemberLoad[],
+  offset: number,
+  L: number,
+  last: boolean,
+): LocalMemberLoad[] => {
+  const end = offset + L;
+  const tolerance = 1e-9 * end;
+  const out: LocalMemberLoad[] = [];
+  for (const load of loads) {
+    if (load.type === "point") {
+      const inside = load.a >= offset - tolerance && (load.a < end - tolerance || last);
+      if (inside) out.push({ ...load, a: Math.min(L, Math.max(0, load.a - offset)) });
+      continue;
+    }
+    const from = Math.max(load.start, offset);
+    const to = Math.min(load.end, end);
+    if (to - from <= tolerance) continue;
+    if (load.type === "torque") {
+      out.push({ ...load, start: from - offset, end: to - offset });
+    } else {
+      out.push({
+        ...load,
+        w1: loadIntensity(load, from),
+        w2: loadIntensity(load, to),
+        start: from - offset,
+        end: to - offset,
+      });
+    }
+  }
+  return out;
+};
+
+/**
  * Solves one load case against the prepared, factorised system.
  *
  * Self-weight is `selfWeight · unitWeight · A` per unit member length along global −Z.
@@ -98,16 +136,19 @@ export const solveLoadCase = (
   const { members, dofCount, boundary, equation, free, factor, nodeIndex, memberIndex } = system;
   const F = new Array<number>(dofCount).fill(0);
 
-  const loadsByMember: MemberLoad[][] = members.map(() => []);
+  const groups = system.memberGroups;
+  const loadsByMember: MemberLoad[][] = groups.map(() => []);
   for (const load of loads.memberLoads) {
     loadsByMember[memberIndex.get(load.memberId) as number].push(load);
   }
 
   const selfWeight = loadCase.selfWeight ?? 0;
-  const memberLoads: LocalMemberLoad[][] = members.map((member, m) => {
-    const memberLoadsHere = [...loadsByMember[m]];
+  // local loads of each model member, then of each piece it is analysed as
+  const memberLoads: LocalMemberLoad[][] = members.map(() => []);
+  groups.forEach((group, g) => {
+    const memberLoadsHere = [...loadsByMember[g]];
     if (selfWeight !== 0) {
-      const { unitWeight, A } = member.section;
+      const { unitWeight, A } = group.section;
       if (unitWeight === undefined) throw new FrameAnalysisError(FrameErrors.MISSING_UNIT_WEIGHT);
       // kN/m³ · m² = kN/m
       const w = -selfWeight * unitWeight * A * 1e-6;
@@ -115,13 +156,21 @@ export const solveLoadCase = (
         memberLoadsHere.push({
           loadCase: loadCase.id,
           type: "udl",
-          memberId: member.id,
+          memberId: group.id,
           direction: "Z",
           w,
         });
       }
     }
-    return memberLoadsHere.flatMap((load) => toLocalLoads(load, member.lambda, member.length));
+    const local = memberLoadsHere.flatMap((load) => toLocalLoads(load, group.lambda, group.length));
+    if (group.pieces.length === 1) {
+      memberLoads[group.pieces[0]] = local;
+      return;
+    }
+    group.pieces.forEach((p, k) => {
+      const piece = members[p];
+      memberLoads[p] = clipLoads(local, piece.offset, piece.length, k === group.pieces.length - 1);
+    });
   });
 
   const fixed = members.map((member, m) => {
@@ -133,14 +182,16 @@ export const solveLoadCase = (
   // Shell surface loads, kN/m² as a global vector per shell, then N at the corners
   const shellPressure = system.shells.map((): [number, number, number] => [0, 0, 0]);
   for (const load of loads.shellLoads ?? []) {
-    const s = system.shellIndex.get(load.areaId) as number;
-    const normal = system.shells[s].element.axes.lambda[2];
-    const e = load.direction === "3" ? normal : GLOBAL_DIRECTIONS[load.direction];
-    // per projected area → per true area: Aproj / A = |n · e|
-    const q = load.projected
-      ? load.q * Math.abs(normal[0] * e[0] + normal[1] * e[1] + normal[2] * e[2])
-      : load.q;
-    for (let k = 0; k < 3; k++) shellPressure[s][k] += q * e[k];
+    // every element of the area
+    for (const s of system.shellsByArea.get(load.areaId) ?? []) {
+      const normal = system.shells[s].element.axes.lambda[2];
+      const e = load.direction === "3" ? normal : GLOBAL_DIRECTIONS[load.direction];
+      // per projected area → per true area: Aproj / A = |n · e|
+      const q = load.projected
+        ? load.q * Math.abs(normal[0] * e[0] + normal[1] * e[1] + normal[2] * e[2])
+        : load.q;
+      for (let k = 0; k < 3; k++) shellPressure[s][k] += q * e[k];
+    }
   }
   system.shells.forEach((shell, s) => {
     if (selfWeight !== 0) {

@@ -13,7 +13,7 @@ import type {
   MemberEndForce,
   ReleaseDeformation,
 } from "../types/results.type";
-import { memberDiagram } from "./member-diagram";
+import { chainDiagram, memberDiagram } from "./member-diagram";
 import { presentShellForces } from "./shell-forces";
 
 const FORCE_DECIMALS = 4;
@@ -92,7 +92,8 @@ const equilibrium = (system: FrameSystem, state: RawState) => {
 };
 
 /**
- * The presented diagram of member `m` in a raw state.
+ * The presented diagram of model member `g` (an index into `system.memberGroups`) in a raw
+ * state, stitched from its pieces when the shell mesh splits it.
  *
  * @param stations - Evenly spaced stations
  * @param withStations - false keeps only the extremes (empty `stations`)
@@ -100,15 +101,32 @@ const equilibrium = (system: FrameSystem, state: RawState) => {
 export const presentMemberDiagram = (
   system: FrameSystem,
   state: RawState,
-  m: number,
+  g: number,
   stations?: number,
   withStations = true,
 ): MemberDiagram => {
-  return memberDiagram(
-    system.members[m],
-    state.memberForces[m].slice(0, 6),
-    memberEnd(system, state, m).own,
-    state.memberLoads[m],
+  const group = system.memberGroups[g];
+  if (group.pieces.length === 1) {
+    const m = group.pieces[0];
+    return memberDiagram(
+      system.members[m],
+      state.memberForces[m].slice(0, 6),
+      memberEnd(system, state, m).own,
+      state.memberLoads[m],
+      stations,
+      withStations,
+    );
+  }
+  return chainDiagram(
+    group.id,
+    group.length,
+    group.pieces.map((m) => ({
+      member: system.members[m],
+      offset: system.members[m].offset,
+      startForce: state.memberForces[m].slice(0, 6),
+      endDisplacements: memberEnd(system, state, m).own,
+      loads: state.memberLoads[m],
+    })),
     stations,
     withStations,
   );
@@ -156,25 +174,29 @@ export const presentState = (
       my: roundForce(R[6 * n + 4], 1e-6),
       mz: roundForce(R[6 * n + 5], 1e-6),
     })),
-    memberEndForces: system.members.map((member, m) => ({
-      memberId: member.id,
-      start: endForce(state.memberForces[m].slice(0, 6)),
-      end: endForce(state.memberForces[m].slice(6, 12)),
+    // a member split by the shell mesh: its start is its first piece's, its end its last's
+    memberEndForces: system.memberGroups.map(({ id, pieces }) => ({
+      memberId: id,
+      start: endForce(state.memberForces[pieces[0]].slice(0, 6)),
+      end: endForce(state.memberForces[pieces[pieces.length - 1]].slice(6, 12)),
     })),
-    releaseDeformations: system.members.flatMap((member, m) => {
-      if (!member.hasReleases) return [];
-      const { node, own } = memberEnd(system, state, m);
-      const jump = node.map((v, i) => v - own[i]);
+    releaseDeformations: system.memberGroups.flatMap(({ id, pieces }) => {
+      const [first, last] = [pieces[0], pieces[pieces.length - 1]];
+      if (!system.members[first].hasReleases && !system.members[last].hasReleases) return [];
+      const jump = (m: number) => {
+        const { node, own } = memberEnd(system, state, m);
+        return node.map((v, i) => v - own[i]);
+      };
       return [
         {
-          memberId: member.id,
-          start: releaseDeformation(jump.slice(0, 6)),
-          end: releaseDeformation(jump.slice(6, 12)),
+          memberId: id,
+          start: releaseDeformation(jump(first).slice(0, 6)),
+          end: releaseDeformation(jump(last).slice(6, 12)),
         },
       ];
     }),
-    memberDiagrams: system.members.map((_, m) =>
-      presentMemberDiagram(system, state, m, diagram.stations, diagram.withStations ?? true),
+    memberDiagrams: system.memberGroups.map((_, g) =>
+      presentMemberDiagram(system, state, g, diagram.stations, diagram.withStations ?? true),
     ),
     shellForces: system.shells.map((shell, s) =>
       presentShellForces(
