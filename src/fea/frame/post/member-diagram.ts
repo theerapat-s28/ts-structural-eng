@@ -1,9 +1,9 @@
 import type { SectionProperties } from "@app-core/types/section-properties.type";
+import type { FrameId } from "@app-fea/shared/types/model.type";
 import { roundToDecimalPlaces } from "@app-utils/math";
 import type { Matrix } from "@app-utils/matrix";
 
 import type { LocalMemberLoad } from "../elements/fixed-end-forces";
-import type { FrameId } from "../types/model.type";
 import type {
   ExtremeValue,
   MemberDiagram,

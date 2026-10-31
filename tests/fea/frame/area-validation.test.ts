@@ -1,5 +1,6 @@
-import type { FrameModel, NullArea } from "@app-fea/frame/types/model.type";
-import { validateFrameModel } from "@app-fea/frame/validation/validate-model";
+import type { NullArea } from "@app-fea/frame/types/model.type";
+import type { FrameModel } from "@app-fea/analysis/types/model.type";
+import { validateFrameModel } from "@app-fea/analysis/validation/validate-model";
 
 const sec = { E: 200000, G: 80000, A: 5000, I22: 8e7, I33: 8e7, J: 1e7 };
 const fixed = { ux: true, uy: true, uz: true, rx: true, ry: true, rz: true };

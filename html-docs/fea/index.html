@@ -677,7 +677,7 @@
 
     <!-- ══════════════ Null areas ══════════════ -->
     <div class="section" id="null-areas">
-      <div class="section__title">Null areas <code style="font-size:13px">area/</code></div>
+      <div class="section__title">Null areas <code style="font-size:13px">frame/area/</code></div>
       <p>
         A <strong>null area</strong> is a 3- or 4-node area that exists only to carry an area load (kN/m²) to the
         members along its edges. It adds no stiffness, no degrees of freedom and no diaphragm: the area loads are
@@ -837,7 +837,7 @@
 
     <!-- ══════════════ Shell areas ══════════════ -->
     <div class="section" id="shell-areas">
-      <div class="section__title">Shell areas <code style="font-size:13px">elements/shell/</code></div>
+      <div class="section__title">Shell areas <code style="font-size:13px">shell/</code></div>
       <p>
         A <strong>shell area</strong> is a four-node flat shell element with its own stiffness, for walls, cores,
         transfer slabs and mats where the surface's stiffness matters. Unlike a null area it adds stiffness and
@@ -2451,7 +2451,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>memberEndForces</td><td>MemberEndForces[]</td><td>kN, kN·m</td><td>f1, f2, f3, m1, m2, m3 that the node exerts on each member end, local axes, right-hand; see <a href="#member-end-forces" style="color:var(--accent)">MemberEndForces</a></td></tr>
               <tr><td>releaseDeformations</td><td>MemberReleaseDeformations[]</td><td>mm, rad</td><td>Node-minus-member displacement across every released or spring end DOF, for each member that has any (model order); see <a href="#member-release-deformations" style="color:var(--accent)">MemberReleaseDeformations</a></td></tr>
               <tr><td>memberDiagrams</td><td>MemberDiagram[]</td><td>kN, kN·m, mm</td><td><code>{ memberId, length, stations, extremes }</code>: forces N, V2, V3, T, M2, M3 and displacements u1, u2, u3 (local) and ux, uy, uz (global) at stations along the member, and each component's <code>{ max, min }</code> as <code>{ value, x }</code>; see <a href="#member-diagram" style="color:var(--accent)">MemberDiagram</a> and <a href="#member-diagrams" style="color:var(--accent)">Member diagrams</a></td></tr>
-              <tr><td>shellForces</td><td>ShellElementForces[]</td><td>kN/m, kN·m/m, MPa</td><td>Per shell area (model order), forces per unit width and face stresses at its corners; empty without shells. See <a href="#shell-element-forces" style="color:var(--accent)">ShellElementForces</a></td></tr>
+              <tr><td>shellForces</td><td>ShellElementForces[]</td><td>kN/m, kN·m/m, MPa</td><td>Per shell element, area by area in model order (one per area that is not meshed), forces per unit width and face stresses at its corners; empty without shells. See <a href="#shell-element-forces" style="color:var(--accent)">ShellElementForces</a></td></tr>
               <tr><td>equilibriumResidual</td><td>{ force, moment }</td><td>kN, kN·m</td><td>Global equilibrium residual of applied loads plus reactions</td></tr>
               <tr><td>warnings</td><td>Warnings</td><td>—</td><td>Warnings of this case or combination</td></tr>
             </tbody>

@@ -1,16 +1,13 @@
 import { FrameAnalysisError } from "@app-core/errors/frame-analysis.error";
-import { distributeAreaLoads } from "@app-fea/frame/area/distribute-area-loads";
-import { analyzeFrame } from "@app-fea/frame/solver/analyze-frame";
-import type {
-  AreaLoad,
-  FrameModel,
-  NullArea,
-  TrapezoidalMemberLoad,
-} from "@app-fea/frame/types/model.type";
-import type { FrameCaseResult } from "@app-fea/frame/types/results.type";
-import { validateFrameModel } from "@app-fea/frame/validation/validate-model";
+import { distributeAreaLoads } from "@app-fea/analysis/solver/distribute-area-loads";
+import { analyzeFrame } from "@app-fea/analysis/solver/analyze-frame";
+import type { NullArea, TrapezoidalMemberLoad } from "@app-fea/frame/types/model.type";
+import type { FrameModel } from "@app-fea/analysis/types/model.type";
+import type { AreaLoad } from "@app-fea/shared/types/model.type";
+import type { FrameCaseResult } from "@app-fea/analysis/types/results.type";
+import { validateFrameModel } from "@app-fea/analysis/validation/validate-model";
 
-import { analyzeSingleCase, type UntaggedMemberLoad } from "./single-case";
+import { analyzeSingleCase, type UntaggedMemberLoad } from "../analysis/single-case";
 
 type V3 = [number, number, number];
 const sec = { E: 200000, G: 80000, A: 5000, I22: 8e7, I33: 8e7, J: 1e7 };

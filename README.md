@@ -143,17 +143,35 @@ src/
 │   └── rc-beam-side-plate-shear.ts       # Shear capacity before/after bolted side plates (two models)
 ├── fea/                  # Finite-element analysis
 │   ├── index.ts
-│   └── frame/            # 3D frame analysis (direct stiffness method)
+│   ├── shared/           # The base every part builds on
+│   │   ├── index.ts
+│   │   ├── types/            # Nodes, restraints, area loads
+│   │   ├── solver/           # Generic element assembly, boundary conditions, automatic restraint
+│   │   └── validation/       # Issue helpers shared by the model checks
+│   ├── frame/            # Frame members (3D beam element) and null areas
+│   │   ├── index.ts
+│   │   ├── area/             # Null areas: geometry, edge-member chains, area-load distribution
+│   │   ├── elements/         # Reference beam stiffness matrix, fixed-end forces, end releases and partial-fixity condensation
+│   │   ├── transformation/   # ETABS-style local axes and the 12×12 transformation
+│   │   ├── solver/           # Member pieces, member-load resolution, member assembly helpers
+│   │   ├── validation/       # Checks on members, member loads and null areas
+│   │   ├── post/             # Member force diagrams
+│   │   └── types/            # Member, member-load and null-area types; member result types
+│   ├── shell/            # Flat shell element (drilling membrane + DKQ plate)
+│   │   ├── index.ts
+│   │   ├── elements/         # Membrane, DKQ plate, flat shell, local axes, warping links, quad geometry
+│   │   ├── mesh/             # Shell-area meshing
+│   │   ├── solver/           # Shell elements of the system and their surface-load vectors
+│   │   ├── post/             # Shell forces and stresses
+│   │   ├── validation/       # Checks on shell areas
+│   │   └── types/            # Shell-area model and result types
+│   └── analysis/         # The whole model, members and shells together (direct stiffness method)
 │       ├── index.ts
-│       ├── area/             # Null areas: geometry, edge-member chains, area-load distribution
-│       ├── mesh/             # Shell-area meshing, line restraints, member splitting at mesh nodes
-│       ├── elements/         # Reference beam stiffness matrix, fixed-end forces, end releases and partial-fixity condensation;
-│       │                     #   shell/: flat shell element (drilling membrane + DKQ plate), local axes, warping links
-│       ├── transformation/   # ETABS-style local axes and the 12×12 transformation
-│       ├── solver/           # System build (with automatic joint restraint) + skyline factorisation, per-case solve, combinations, analyzeFrame
+│       ├── mesh/             # The analysed model: shell mesh, line restraints, member splitting at mesh nodes
+│       ├── solver/           # System build + skyline factorisation, per-case solve, combinations, analyzeFrame, distributeAreaLoads
 │       ├── validation/       # validateFrameModel: every input problem, with its location
-│       ├── post/             # Result presentation, member force diagrams, envelopes, design demands
-│       └── types/            # Model (incl. null areas, shell areas, load cases, combinations) and result types
+│       ├── post/             # Result presentation, envelopes, design demands
+│       └── types/            # FrameModel (load cases, combinations, nodal loads, line restraints) and FrameResult
 ├── core/                 # Shared infrastructure
 │   ├── index.ts
 │   ├── constants/        # RC design constants (ACI 318) and frame-analysis tolerances
@@ -170,7 +188,10 @@ examples/
 tests/
 ├── rc/                   # Tests for RC module
 ├── strengthening/        # Tests for strengthening module
-├── fea/frame/            # Tests for frame analysis
+├── fea/frame/            # Tests for members and null areas
+├── fea/shell/            # Tests for shell elements, meshing and shell results
+├── fea/shared/           # Tests for element assembly and automatic restraint
+├── fea/analysis/         # Tests for analyzeFrame, combinations, validation, errors and RC integration
 └── utils/                # Tests for utilities
 html-docs/                # HTML API reference, deployed to GitHub Pages
 ├── DESIGN.md             # Style guide for the doc pages

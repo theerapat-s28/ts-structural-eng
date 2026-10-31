@@ -1,6 +1,6 @@
 import type { SectionProperties } from "@app-core/types/section-properties.type";
 import type { MemberStation } from "@app-fea/frame/types/results.type";
-import { analyzeSingleCase, type SingleCaseModel } from "./single-case";
+import { analyzeSingleCase, type SingleCaseModel } from "../analysis/single-case";
 
 const E = 200000; // MPa
 const I33 = 8e7; // mm⁴

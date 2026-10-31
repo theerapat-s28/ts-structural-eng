@@ -1,6 +1,7 @@
 import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/frame.constant";
+import type { FrameId } from "@app-fea/shared/types/model.type";
 
-import type { FrameId, Member } from "../types/model.type";
+import type { Member } from "../types/model.type";
 import type { Vec3 } from "./area-geometry";
 
 /** The members meeting at each node, with the node at their other end. */

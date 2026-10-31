@@ -1,11 +1,12 @@
 import type { SectionProperties } from "@app-core/types/section-properties.type";
 import { beam3dLocalStiffnessRightHanded } from "@app-fea/frame/elements/beam-3d-stiffness";
 import { condenseMember } from "@app-fea/frame/elements/static-condensation";
-import { analyzeFrame } from "@app-fea/frame/solver/analyze-frame";
-import { validateFrameModel } from "@app-fea/frame/validation/validate-model";
-import type { MemberEndRelease, Restraint } from "@app-fea/frame/types/model.type";
-import type { FrameCaseResult } from "@app-fea/frame/types/results.type";
-import { analyzeSingleCase, toLoadCaseModel, type SingleCaseModel } from "./single-case";
+import { analyzeFrame } from "@app-fea/analysis/solver/analyze-frame";
+import { validateFrameModel } from "@app-fea/analysis/validation/validate-model";
+import type { MemberEndRelease } from "@app-fea/frame/types/model.type";
+import type { Restraint } from "@app-fea/shared/types/model.type";
+import type { FrameCaseResult } from "@app-fea/analysis/types/results.type";
+import { analyzeSingleCase, toLoadCaseModel, type SingleCaseModel } from "../analysis/single-case";
 
 const E = 200000; // MPa
 const G = 80000; // MPa
