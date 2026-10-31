@@ -33,3 +33,11 @@ export const AREA_GEOMETRY_TOLERANCE = 1e-6;
  * well under 1 % for γ between 0.01 G and 100 G.
  */
 export const DRILLING_PENALTY_RATIO = 1;
+
+/**
+ * Largest warping of a shell element accepted, as the distance of its corners from their mean
+ * plane relative to √A (A = projected area). Warped elements are built flat on the mean plane
+ * and linked rigidly to their corners, which is accurate for mild warping (the MacNeal–Harder
+ * twisted beam, 0.024, is within 0.5 %); beyond this the element is rejected (326).
+ */
+export const SHELL_WARPING_LIMIT = 0.1;

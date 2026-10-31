@@ -4,10 +4,10 @@ import { matVec, type Matrix } from "@app-utils/matrix";
 import { skylineSolve } from "@app-utils/skyline";
 
 import { fixedEndForces, type LocalMemberLoad } from "../elements/fixed-end-forces";
-import type { LoadCase, LoadDirection, MemberLoad, NodalLoad } from "../types/model.type";
+import type { AreaLoad, LoadCase, LoadDirection, MemberLoad, NodalLoad } from "../types/model.type";
 import { frameIssue, throwIssues } from "../validation/validate-model";
 import type { FrameSystem } from "./frame-system";
-import { memberDofs, scatterMemberForces } from "./global-assembly";
+import { elementDofs, memberDofs, scatterMemberForces } from "./global-assembly";
 
 /**
  * Unrounded result of one load case or combination, in N and mm. Every field is linear in the
@@ -76,6 +76,14 @@ const toLocalLoads = (load: MemberLoad, lambda: Matrix, L: number): LocalMemberL
  * @param loadCase - The load case (id and self-weight multiplier)
  * @param loads - The nodal and member loads tagged with this load case
  *
+ * Shell areas take `selfWeight · unitWeight · thickness · modifiers.weight` per unit area along
+ * −Z and their `AreaLoad`s as forces at their corners, each corner the share `∫ Nᵢ dA` of the
+ * element's area on its mean plane (no corner moments, so a warped element's offsets do not load
+ * the rotations auto-restraint holds).
+ *
+ * @param loads - The nodal and member loads tagged with this load case, and its area loads on
+ *   shell areas
+ *
  * @throws {FrameAnalysisError} 304 if a load has a moment about a joint rotation that nothing
  *   resists (an auto-restrained axis), 308 for a load outside its member, 313 if self-weight is
  *   requested for a member without `unitWeight`
@@ -83,7 +91,7 @@ const toLocalLoads = (load: MemberLoad, lambda: Matrix, L: number): LocalMemberL
 export const solveLoadCase = (
   system: FrameSystem,
   loadCase: LoadCase,
-  loads: { nodalLoads: NodalLoad[]; memberLoads: MemberLoad[] },
+  loads: { nodalLoads: NodalLoad[]; memberLoads: MemberLoad[]; shellLoads?: AreaLoad[] },
 ): RawState => {
   const { members, dofCount, boundary, equation, free, factor, nodeIndex, memberIndex } = system;
   const F = new Array<number>(dofCount).fill(0);
@@ -118,6 +126,33 @@ export const solveLoadCase = (
     const condensed = member.condenseFixedEndForces(fixedEndForces(memberLoads[m], member.length));
     scatterMemberForces(F, member, condensed, -1);
     return condensed;
+  });
+
+  // Shell surface loads, kN/m² as a global vector per shell, then N at the corners
+  const shellPressure = system.shells.map((): [number, number, number] => [0, 0, 0]);
+  for (const load of loads.shellLoads ?? []) {
+    const s = system.shellIndex.get(load.areaId) as number;
+    const normal = system.shells[s].element.axes.lambda[2];
+    const e = load.direction === "3" ? normal : GLOBAL_DIRECTIONS[load.direction];
+    // per projected area → per true area: Aproj / A = |n · e|
+    const q = load.projected
+      ? load.q * Math.abs(normal[0] * e[0] + normal[1] * e[1] + normal[2] * e[2])
+      : load.q;
+    for (let k = 0; k < 3; k++) shellPressure[s][k] += q * e[k];
+  }
+  system.shells.forEach((shell, s) => {
+    if (selfWeight !== 0) {
+      // kN/m³ · mm · 10⁻³ = kN/m²
+      const { unitWeight = 0, thickness } = shell.section;
+      shellPressure[s][2] -=
+        selfWeight * unitWeight * thickness * (shell.modifiers.weight ?? 1) * 1e-3;
+    }
+    const p = shellPressure[s];
+    if (p[0] === 0 && p[1] === 0 && p[2] === 0) return;
+    shell.nodeIndices.forEach((node, i) => {
+      // kN/m² = 10⁻³ N/mm², times mm²
+      for (let k = 0; k < 3; k++) F[6 * node + k] += p[k] * 1e-3 * shell.cornerAreas[i];
+    });
   });
 
   for (const load of loads.nodalLoads) {
@@ -165,6 +200,14 @@ export const solveLoadCase = (
     scatterMemberForces(KU, member, elastic, 1);
     return elastic.map((v, i) => v + fixed[m][i]);
   });
+  for (const shell of system.shells) {
+    const dofs = elementDofs(shell.nodeIndices);
+    const forces = matVec(
+      shell.element.kGlobal,
+      dofs.map((d) => U[d]),
+    );
+    dofs.forEach((d, a) => (KU[d] += forces[a]));
+  }
   const R = KU.map((v, i) => (boundary.restrained[i] ? v - F[i] : 0));
 
   return { U, R, F, memberForces, memberLoads };

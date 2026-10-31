@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **Shell areas** (`model.shells`): four-node flat shell elements with their own stiffness, for walls, cores, transfer slabs and mats where a surface's stiffness matters; null areas are unchanged. Each `ShellArea` (`{ id, nodeIds, type?, section, angle?, modifiers? }`) combines a drilling-rotation membrane, so a beam framing into a wall in its plane transfers its moment, with a thin (DKQ) plate; `type` `"membrane"` or `"plate"` keeps only one part. Slightly warped quads are built on their mean plane and linked to their corners. Local axes follow ETABS: local 3 by the right-hand rule around `nodeIds`, local 2 up on walls, local 1 = +X on horizontal shells, rotated by `angle`. One shell area is one element, so meshes come from the caller.
+- `ShellSection` (`thickness`, `E`, `nu`, `unitWeight?`) and `ShellModifiers` (`f11`, `f22`, `f12`, `m11`, `m22`, `m12`, `weight`) for cracked-section stiffness, e.g. ACI 318-19 6.6.3.1.1 values entered by the user.
+- `AreaLoad` can load a shell area by its id (area ids are shared by null areas and shells), and self-weight acts on shells as `selfWeight · unitWeight · thickness` per unit area; both act as forces at the shell's corners.
+- Errors 326 (`INVALID_SHELL_GEOMETRY`), 327 (`INVALID_SHELL_SECTION`) and 328 (`SHELL_DOF_UNSUPPORTED`: a translation that nothing resists at a node connected only to membrane or plate shells, with `nodeId`, `shellId` and `dof`), and `FrameErrorDetails.shellId`.
+- Types `ShellArea`, `ShellSection`, `ShellModifiers` and `ShellType`, exported from `/fea` and the package root; constant `SHELL_WARPING_LIMIT` (0.1), exported from `/core`.
+- A theory page for the shell element, `html-docs/shell-element.html`.
+
+Shell internal forces and stresses are not reported yet; nodal displacements, reactions and member results include the shells' stiffness.
+
+### Changed
+
+- Error 303 also covers an area id used by both a null area and a shell, and 313 also covers a shell section without `unitWeight`; their messages say so.
+
 ## [2.3.0] — 2026-10-24
 
 ### Added

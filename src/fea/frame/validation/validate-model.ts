@@ -5,7 +5,7 @@ import {
   type FrameModelIssue,
 } from "@app-core/errors/frame-analysis.error";
 
-import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/frame.constant";
+import { AREA_GEOMETRY_TOLERANCE, SHELL_WARPING_LIMIT } from "@app-core/constants/frame.constant";
 
 import {
   areaPlane,
@@ -19,6 +19,8 @@ import {
 import { edgeMemberChain, memberAdjacency } from "../area/edge-members";
 import { beam3dLocalStiffnessRightHanded } from "../elements/beam-3d-stiffness";
 import { memberEndReleases, RELEASE_KEYS } from "../elements/end-releases";
+import { quadJacobian } from "../elements/shell/quad-geometry";
+import { shellAxes } from "../elements/shell/shell-axes";
 import { condenseMember } from "../elements/static-condensation";
 import { resolveCombinations } from "../solver/combinations";
 import type {
@@ -27,6 +29,7 @@ import type {
   FrameModel,
   LoadCaseType,
   NullArea,
+  ShellType,
 } from "../types/model.type";
 
 const DOF_KEYS = ["ux", "uy", "uz", "rx", "ry", "rz"] as const;
@@ -41,6 +44,9 @@ const AREA_DIRECTIONS: Record<string, Vec3 | "normal"> = {
   Z: [0, 0, 1],
 };
 const AREA_DISTRIBUTIONS = new Set<AreaDistribution>(["twoWay", "oneWay", "cantilever"]);
+const SHELL_TYPES = new Set<ShellType>(["shell", "membrane", "plate"]);
+const SHELL_SECTION_KEYS = ["thickness", "E"] as const;
+const SHELL_MODIFIER_KEYS = ["f11", "f22", "f12", "m11", "m22", "m12"] as const;
 const LOAD_CASE_TYPES = new Set<LoadCaseType>([
   "dead",
   "superDead",
@@ -54,11 +60,54 @@ const LOAD_CASE_TYPES = new Set<LoadCaseType>([
 
 const isFiniteNumber = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
+/**
+ * Whether four corners make a valid shell element: no repeated corner, a non-degenerate
+ * convex quadrilateral in order around it (det J > 0 at every corner of the bilinear map), and
+ * no corner farther than `SHELL_WARPING_LIMIT · √A` from the mean plane.
+ */
+const shellGeometryOk = (points: Vec3[]): boolean => {
+  const size = Math.max(
+    ...points.map((p, i) => {
+      const q = points[(i + 1) % 4];
+      return Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
+    }),
+  );
+  const tolerance = AREA_GEOMETRY_TOLERANCE * size;
+  for (let i = 0; i < 4; i++) {
+    for (let j = i + 1; j < 4; j++) {
+      const [p, q] = [points[i], points[j]];
+      if (!(Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) > tolerance)) return false;
+    }
+  }
+  const d1 = [0, 1, 2].map((k) => points[2][k] - points[0][k]);
+  const d2 = [0, 1, 2].map((k) => points[3][k] - points[1][k]);
+  const area =
+    Math.hypot(
+      d1[1] * d2[2] - d1[2] * d2[1],
+      d1[2] * d2[0] - d1[0] * d2[2],
+      d1[0] * d2[1] - d1[1] * d2[0],
+    ) / 2;
+  if (!(area > tolerance * size)) return false;
+  const axes = shellAxes(points);
+  for (const [xi, eta] of [
+    [-1, -1],
+    [1, -1],
+    [1, 1],
+    [-1, 1],
+  ]) {
+    if (!(quadJacobian(axes.corners, xi, eta).detJ > (AREA_GEOMETRY_TOLERANCE * area) / 4)) {
+      return false;
+    }
+  }
+  return Math.max(...axes.offsets.map(Math.abs)) <= SHELL_WARPING_LIMIT * Math.sqrt(area);
+};
+
 const describe = (d: FrameErrorDetails): string => {
   const parts: string[] = [];
   if (d.nodeId !== undefined) parts.push(`node "${String(d.nodeId)}"`);
   if (d.memberId !== undefined) parts.push(`member "${String(d.memberId)}"`);
   if (d.areaId !== undefined) parts.push(`area "${String(d.areaId)}"`);
+  if (d.shellId !== undefined) parts.push(`shell "${String(d.shellId)}"`);
   if (d.edge !== undefined) parts.push(`edge ${d.edge}`);
   if (d.loadCaseId !== undefined) parts.push(`load case "${d.loadCaseId}"`);
   if (d.combinationId !== undefined) parts.push(`combination "${d.combinationId}"`);
@@ -82,10 +131,11 @@ export const throwIssues = (issues: FrameModelIssue[]): never => {
 /**
  * Checks a frame model without analysing it and returns every problem found, each with the
  * node, member, load case, combination and field it concerns. An empty array means the
- * model can be analysed, apart from an unstable structure (304), which only the solve detects.
+ * model can be analysed, apart from an unstable structure (304) and a translation that nothing
+ * resists at a node connected only to shells (328), which only assembling the stiffness detects.
  *
  * @param model - The model to check
- * @returns Every problem found (codes 301–303 and 305–317), in model order
+ * @returns Every problem found (codes 301–303, 305–317, 326 and 327), in model order
  */
 export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
   const issues: FrameModelIssue[] = [];
@@ -100,6 +150,7 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
   const nodalLoads = Array.isArray(model.nodalLoads) ? model.nodalLoads : [];
   const memberLoads = Array.isArray(model.memberLoads) ? model.memberLoads : [];
   const areas = Array.isArray(model.areas) ? model.areas : [];
+  const shells = Array.isArray(model.shells) ? model.shells : [];
   const areaLoads = Array.isArray(model.areaLoads) ? model.areaLoads : [];
 
   // ---- Ids -------------------------------------------------------------------------
@@ -112,6 +163,14 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
   }
   for (const areaId of new Set(duplicates(areas.map((a) => a.id)))) {
     add(FrameErrors.DUPLICATE_ID, { areaId, field: "id" });
+  }
+  // shells share the area id namespace: a duplicate within shells or with a null area
+  const nullAreaIds = new Set(areas.map((a) => a.id));
+  for (const shellId of new Set([
+    ...duplicates(shells.map((sh) => sh.id)),
+    ...shells.map((sh) => sh.id).filter((id) => nullAreaIds.has(id)),
+  ])) {
+    add(FrameErrors.DUPLICATE_ID, { shellId, field: "id" });
   }
   for (const nodeId of new Set(duplicates(restraints.map((r) => r.nodeId)))) {
     add(FrameErrors.DUPLICATE_ID, { nodeId, field: "restraints" });
@@ -248,6 +307,15 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
           add(FrameErrors.MISSING_UNIT_WEIGHT, { ...at, memberId: member.id, field: "unitWeight" });
         }
       }
+      for (const shell of shells) {
+        if (shell.section?.unitWeight === undefined) {
+          add(FrameErrors.MISSING_UNIT_WEIGHT, {
+            ...at,
+            shellId: shell.id,
+            field: "section.unitWeight",
+          });
+        }
+      }
     }
   }
 
@@ -367,7 +435,60 @@ export const validateFrameModel = (model: FrameModel): FrameModelIssue[] => {
     areaInfo.set(area.id, { area, plane, supports });
   }
 
-  const areaIds = new Set(areas.map((a) => a.id));
+  // ---- Shells ----------------------------------------------------------------------
+  for (const shell of shells) {
+    const at = { shellId: shell.id };
+    if (shell.type !== undefined && !SHELL_TYPES.has(shell.type)) {
+      add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "type" });
+    }
+    if (shell.angle !== undefined && !isFiniteNumber(shell.angle)) {
+      add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "angle" });
+    }
+
+    const section = shell.section ?? ({} as typeof shell.section);
+    for (const field of SHELL_SECTION_KEYS) {
+      if (!isFiniteNumber(section[field]) || section[field] <= 0) {
+        add(FrameErrors.INVALID_SHELL_SECTION, { ...at, field: `section.${field}` });
+      }
+    }
+    if (!isFiniteNumber(section.nu) || section.nu < 0 || section.nu >= 0.5) {
+      add(FrameErrors.INVALID_SHELL_SECTION, { ...at, field: "section.nu" });
+    }
+    if (
+      section.unitWeight !== undefined &&
+      (!isFiniteNumber(section.unitWeight) || section.unitWeight < 0)
+    ) {
+      add(FrameErrors.INVALID_SHELL_SECTION, { ...at, field: "section.unitWeight" });
+    }
+
+    const modifiers = shell.modifiers ?? {};
+    for (const key of SHELL_MODIFIER_KEYS) {
+      const v: unknown = modifiers[key];
+      if (v !== undefined && !(isFiniteNumber(v) && v > 0)) {
+        add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: `modifiers.${key}` });
+      }
+    }
+    const weight: unknown = modifiers.weight;
+    if (weight !== undefined && !(isFiniteNumber(weight) && weight >= 0)) {
+      add(FrameErrors.INVALID_INPUT_VALUE, { ...at, field: "modifiers.weight" });
+    }
+
+    const ids = Array.isArray(shell.nodeIds) ? shell.nodeIds : [];
+    if (ids.length !== 4) {
+      add(FrameErrors.INVALID_SHELL_GEOMETRY, { ...at, field: "nodeIds" });
+      continue;
+    }
+    if (ids.some((id) => !nodeById.has(id))) {
+      add(FrameErrors.UNKNOWN_NODE_REFERENCE, { ...at, field: "nodeIds" });
+      continue;
+    }
+    if (!ids.every((id) => validNode.has(id))) continue; // reported on the node
+    if (!shellGeometryOk(ids.map(position))) {
+      add(FrameErrors.INVALID_SHELL_GEOMETRY, { ...at, field: "nodeIds" });
+    }
+  }
+
+  const areaIds = new Set([...areas.map((a) => a.id), ...shells.map((sh) => sh.id)]);
   for (const load of areaLoads) {
     const at = { loadCaseId: load.loadCase, areaId: load.areaId };
     if (!caseIds.has(load.loadCase))

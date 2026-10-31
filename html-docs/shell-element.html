@@ -471,7 +471,7 @@
     <div class="page-header">
       <div class="import-tag">
         <span class="label">Status</span>
-        <code>Planned for @theerapat-s28/ts-structural-eng-tools/fea — not in the package yet</code>
+        <code>@theerapat-s28/ts-structural-eng-tools/fea — shell areas in progress (unreleased)</code>
       </div>
       <h1>Shell Element — Theory Notes</h1>
       <p>How a flat four-node shell element (membrane, plate bending and drilling rotation) gets its stiffness matrix, which formulations this library will use, and how the element fits into the existing frame solver.</p>
@@ -490,7 +490,7 @@
 
       <div class="alert alert--info">
         <span>ℹ️</span>
-        <span>This is a <strong>planned feature</strong>: nothing on this page is exported yet. The element formulas were checked with a throwaway prototype outside the library. Numbers marked <em>prototype</em> come from it, not from <code>analyzeFrame</code>. The basis is the finite element method, not a code provision <span class="std-badge" title="Basis: linear-elastic finite element method — not an ACI 318-19 provision">FEM</span>.</span>
+        <span><strong>In progress.</strong> Shell areas are part of <code>analyzeFrame</code> (<code>model.shells</code>, unreleased; see the <a href="fea/#shell-areas" style="color:var(--accent)">FEA reference</a>); internal forces, engine meshing, thick plates and triangles are still to come (Roadmap Phase 5). Numbers on this page come from the library's tests unless marked <em>prototype</em>, which were checked with a throwaway prototype before the code existed. The basis is the finite element method, not a code provision <span class="std-badge" title="Basis: linear-elastic finite element method — not an ACI 318-19 provision">FEM</span>.</span>
       </div>
 
       <div class="sub-label">Basis</div>
@@ -1131,8 +1131,8 @@
           <tr><td>Square plate, uniform load</td><td>Simply supported / clamped, mesh convergence, t/a down to 1/1000</td><td>w<sub>c</sub> = 0.00406 / 0.00126 qa⁴/D; SS M<sub>c</sub> = 0.0479 qa²</td><td>Timoshenko &amp; Woinowsky-Krieger</td></tr>
           <tr><td>Square plate, centre point load</td><td>Simply supported</td><td>w<sub>c</sub> = 0.01160 Pa²/D</td><td>Timoshenko &amp; Woinowsky-Krieger</td></tr>
           <tr><td>Twisted beam</td><td>Every element warped (twisted 7.5°); in-plane and out-of-plane tip loads, t = 0.32 and 0.0032</td><td>5.424·10⁻³ / 1.754·10⁻³; 5.256·10⁻³ / 1.294·10⁻³ (P = 10⁻⁶)</td><td>MacNeal &amp; Harder 1985</td></tr>
-          <tr><td>Scordelis–Lo roof</td><td>Membrane–bending interaction in a curved shell of flat facets</td><td>0.3024 (mid free edge, vertical)</td><td>MacNeal &amp; Harder 1985</td></tr>
-          <tr><td>Pinched cylinder with end diaphragms</td><td>Inextensional bending, the hardest common shell test</td><td>1.8248 × 10⁻⁵ under the load</td><td>Belytschko et al. 1985</td></tr>
+          <tr><td>Scordelis–Lo roof</td><td>Membrane–bending interaction in a curved shell of flat facets</td><td>0.3024 (mid free edge, vertical); engine 0.4208 / 0.3175 / 0.3041 on 4 / 8 / 16 per side, from above</td><td>MacNeal &amp; Harder 1985</td></tr>
+          <tr><td>Pinched cylinder with end diaphragms</td><td>Inextensional bending, the hardest common shell test</td><td>1.8248 × 10⁻⁵ under the load; engine 1.727 / 1.852 / 1.849 × 10⁻⁵ on 8 / 16 / 24 per side of an octant</td><td>Belytschko et al. 1985</td></tr>
           <tr><td>Beam into wall, in-plane</td><td>Drilling stiffness transfers moment: finite tip deflection that approaches the fixed-end value as the wall stiffens</td><td>Beam theory</td><td>Own</td></tr>
           <tr><td>Wall vs wide column</td><td>A finely meshed wall agrees with a column element that includes shear deformation (Roadmap 2.2)</td><td>Beam theory</td><td>Own</td></tr>
         </tbody>

@@ -146,13 +146,63 @@ export interface NullArea {
   supportEdges?: number[];
 }
 
+/**
+ * How a shell area carries load: in its plane and in bending (`"shell"`), in its plane only
+ * (`"membrane"`: u1, u2 and the rotation about local 3), or in bending only (`"plate"`: u3 and
+ * the rotations about local 1 and 2).
+ */
+export type ShellType = "shell" | "membrane" | "plate";
+
+/** Material and thickness of a shell area. */
+export interface ShellSection {
+  thickness: number; // mm
+  E: number; // MPa
+  nu: number; // Poisson's ratio, 0 ≤ nu < 0.5
+  unitWeight?: number; // kN/m³, needed for self-weight
+}
+
+/**
+ * Stiffness modifiers of a shell area along its local axes 1 and 2 (default 1 each), e.g. for
+ * cracked walls and slabs: f11, f22, f12 scale the membrane rigidity and m11, m22, m12 the
+ * bending rigidity (each matrix becomes S·D·S, S = diag(√f11, √f22, √f12)); weight scales the
+ * self-weight only.
+ */
+export interface ShellModifiers {
+  f11?: number;
+  f22?: number;
+  f12?: number;
+  m11?: number;
+  m22?: number;
+  m12?: number;
+  weight?: number;
+}
+
+/**
+ * A four-node flat shell element with its own stiffness: a drilling-rotation membrane and a
+ * thin (DKQ) plate, built on the mean plane of its corners. Local axis 3 is the normal by the
+ * right-hand rule around `nodeIds`; local 2 is +Z projected onto the plane (upward on a wall)
+ * and local 1 = 2 × 3 is horizontal, except on a horizontal shell, where local 1 = +X.
+ * `angle` rotates local 1 and 2 about local 3. Its id shares one namespace with null areas, so
+ * `AreaLoad` can load it.
+ */
+export interface ShellArea {
+  id: FrameId;
+  nodeIds: FrameId[]; // 4 corner nodes, in order around the area
+  type?: ShellType; // default "shell"
+  section: ShellSection;
+  angle?: number; // rad, rotation of local 1 and 2 about local 3 (right-hand rule); default 0
+  modifiers?: ShellModifiers;
+}
+
 /** Area load direction: the area's local normal "3" or a global axis. */
 export type AreaLoadDirection = "3" | "X" | "Y" | "Z";
 
 /**
- * Uniform load on a null area. `q` is per unit true area, or with `projected: true` (global
- * directions only) per unit area projected onto the plane normal to `direction`, e.g. per
- * plan area on a ramp; it is then applied as `q · |n · direction|` on the true area.
+ * Uniform load on a null area or a shell area. `q` is per unit true area, or with
+ * `projected: true` (global directions only) per unit area projected onto the plane normal to
+ * `direction`, e.g. per plan area on a ramp; it is then applied as `q · |n · direction|` on
+ * the true area. A null area sends it to the members along its edges; a shell area takes it
+ * as forces at its corners, each corner the share `∫ Nᵢ dA` of its area.
  */
 export interface AreaLoad {
   loadCase: string; // id of the load case this load belongs to
@@ -184,7 +234,8 @@ export interface LoadCase {
   type?: LoadCaseType;
   /**
    * Self-weight multiplier (1 = full self-weight). Applies `selfWeight · unitWeight · A` per unit
-   * length of every member along global −Z. Default 0.
+   * length of every member and `selfWeight · unitWeight · thickness` (times `modifiers.weight`)
+   * per unit area of every shell, along global −Z. Default 0.
    */
   selfWeight?: number;
 }
@@ -212,6 +263,8 @@ export interface FrameModel {
   memberLoads?: MemberLoad[];
   /** Null areas that distribute `areaLoads` to the members along their edges. */
   areas?: NullArea[];
+  /** Shell areas: four-node flat shell elements with membrane and/or plate stiffness. */
+  shells?: ShellArea[];
   /** Area loads of every load case, each tagged with its `loadCase`. */
   areaLoads?: AreaLoad[];
   combinations?: LoadCombination[];

@@ -4,7 +4,7 @@ import { roundToDecimalPlaces } from "@app-utils/math";
 import { areaMemberLoads } from "../area/distribute-area-loads";
 import { buildEnvelope } from "../post/envelope";
 import { presentMemberDiagram, presentState } from "../post/present-state";
-import type { FrameId, FrameModel, MemberLoad, NodalLoad } from "../types/model.type";
+import type { AreaLoad, FrameId, FrameModel, MemberLoad, NodalLoad } from "../types/model.type";
 import type {
   AutoRestrainedDof,
   FrameCaseResult,
@@ -78,8 +78,9 @@ const groupByCase = <T extends { loadCase: string }>(loads: T[] = []): Map<strin
  *   null areas, and combinations
  * @param options - Diagram station count and detail
  * @returns `{ result, memberDiagram }`
- * @throws {FrameAnalysisError} 301–317 for an invalid model (with `details` and every problem in
- *   `issues`), 304 for an unstable structure
+ * @throws {FrameAnalysisError} 301–317, 326 and 327 for an invalid model (with `details` and
+ *   every problem in `issues`), 328 for a translation nothing resists at a node connected only
+ *   to shells, 304 for an unstable structure
  */
 export const createFrameAnalysis = (
   model: FrameModel,
@@ -101,10 +102,15 @@ export const createFrameAnalysis = (
     ...(model.memberLoads ?? []),
     ...fromAreas.memberLoads,
   ]);
+  // area loads on shells load the shell elements; those on null areas became member loads
+  const shellByCase = groupByCase<AreaLoad>(
+    (model.areaLoads ?? []).filter((load) => system.shellIndex.has(load.areaId)),
+  );
   for (const loadCase of model.loadCases) {
     const state = solveLoadCase(system, loadCase, {
       nodalLoads: nodalByCase.get(loadCase.id) ?? [],
       memberLoads: memberByCase.get(loadCase.id) ?? [],
+      shellLoads: shellByCase.get(loadCase.id) ?? [],
     });
     states.set(loadCase.id, state);
     cases[loadCase.id] = presentState(
@@ -190,6 +196,8 @@ export const createFrameAnalysis = (
  *
  * Area loads on null areas (`areas`, `areaLoads`) are first turned into member loads on the
  * members along each area's edges (see `distributeAreaLoads`); the areas add no stiffness.
+ * Shell areas (`shells`) are four-node flat shell elements with their own stiffness; area loads
+ * and self-weight on them act as forces at their corners.
  *
  * Model and result are plain data (JSON-serialisable), so the analysis can run in a Web Worker.
  *
@@ -198,8 +206,9 @@ export const createFrameAnalysis = (
  * @param options - Diagram station count and detail
  * @returns `cases` and `combinations` keyed by id, `envelope` over the combinations,
  *   `calculationDetails`, `units` and `warnings`
- * @throws {FrameAnalysisError} 301–317 for an invalid model (with `details` and every problem in
- *   `issues`), 304 for an unstable structure
+ * @throws {FrameAnalysisError} 301–317, 326 and 327 for an invalid model (with `details` and
+ *   every problem in `issues`), 328 for a translation nothing resists at a node connected only
+ *   to shells, 304 for an unstable structure
  */
 export const analyzeFrame = (model: FrameModel, options: AnalyzeFrameOptions = {}): FrameResult =>
   createFrameAnalysis(model, options).result;

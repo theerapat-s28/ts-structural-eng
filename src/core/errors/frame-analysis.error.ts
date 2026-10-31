@@ -5,6 +5,7 @@ export interface FrameErrorDetails {
   nodeId?: string | number;
   memberId?: string | number;
   areaId?: string | number;
+  shellId?: string | number;
   /** For an area: the edge index, edge i running from `nodeIds[i]` to `nodeIds[i + 1]`. */
   edge?: number;
   loadCaseId?: string;
@@ -62,7 +63,7 @@ export const FrameErrors: Record<string, FrameAnalysisErrorType> = {
   DUPLICATE_ID: {
     code: 303,
     message:
-      "Node ids, member ids, area ids and restrained node ids must each be unique, and load case and combination ids must be unique across both lists.",
+      "Node ids, member ids and restrained node ids must each be unique, area ids must be unique across null areas and shells, and load case and combination ids must be unique across both lists.",
   },
   STRUCTURE_UNSTABLE: {
     code: 304,
@@ -108,7 +109,7 @@ export const FrameErrors: Record<string, FrameAnalysisErrorType> = {
   MISSING_UNIT_WEIGHT: {
     code: 313,
     message:
-      "A load case requests self-weight but a member section has no unitWeight; set unitWeight (0 for a weightless member).",
+      "A load case requests self-weight but a member or shell section has no unitWeight; set unitWeight (0 for a weightless member or shell).",
   },
   INVALID_INPUT_VALUE: {
     code: 314,
@@ -129,5 +130,20 @@ export const FrameErrors: Record<string, FrameAnalysisErrorType> = {
     code: 317,
     message:
       "An area's supportEdges do not fit its distribution: two-way takes none; one-way needs at least one edge left unsupported, with every unsupported edge parallel to the others (the span direction); cantilever needs exactly one, and its loads may not act along that edge.",
+  },
+  INVALID_SHELL_GEOMETRY: {
+    code: 326,
+    message:
+      "A shell area must have 4 distinct nodes, listed in order around it, forming a convex quadrilateral that is close to flat (each corner within 0.1·√A of the mean plane).",
+  },
+  INVALID_SHELL_SECTION: {
+    code: 327,
+    message:
+      "A shell section's thickness and E must be positive, nu must be at least 0 and below 0.5, and unitWeight, when given, must not be negative.",
+  },
+  SHELL_DOF_UNSUPPORTED: {
+    code: 328,
+    message:
+      'A node connected only to shells has a translation that nothing resists: a membrane carries no load out of its plane and a plate none in its plane. Restrain that DOF, connect a member, or use type "shell".',
   },
 };

@@ -117,3 +117,62 @@ export const findAutoRestraints = (
   });
   return restraints;
 };
+
+/** A translation direction at a node that nothing resists. */
+export interface UnresistedTranslation {
+  node: number; // node index
+  axis: [number, number, number]; // unit vector, global
+}
+
+/**
+ * Finds the translations that nothing resists at the given nodes: the null directions of each
+ * node's free translational block (3×3, global) of the assembled element stiffness plus
+ * translational springs, by the same eigen-decomposition as `findAutoRestraints`. Such a
+ * direction is decoupled from every other DOF, so the structure is a mechanism there.
+ *
+ * @param nodes - Node indices to check, e.g. nodes connected only to shells
+ * @param elements - Node indices and global stiffness (6 DOFs per node) of every element
+ * @param boundary - Fixed DOFs and spring stiffnesses
+ */
+export const findUnresistedTranslations = (
+  nodes: Iterable<number>,
+  elements: StiffnessElement[],
+  boundary: BoundaryConditions,
+): UnresistedTranslation[] => {
+  const blocks = new Map<number, Matrix>();
+  for (const node of nodes)
+    blocks.set(
+      node,
+      [0, 1, 2].map(() => [0, 0, 0]),
+    );
+  for (const element of elements) {
+    element.nodes.forEach((node, position) => {
+      const block = blocks.get(node);
+      if (!block) return;
+      const base = 6 * position;
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) block[i][j] += element.kGlobal[base + i][base + j];
+      }
+    });
+  }
+
+  const unresisted: UnresistedTranslation[] = [];
+  blocks.forEach((block, node) => {
+    const free = [0, 1, 2].filter((i) => !boundary.fixed[6 * node + i]);
+    if (free.length === 0) return;
+    const sub = free.map((i) =>
+      free.map((j) => block[i][j] + (i === j ? boundary.spring[6 * node + i] : 0)),
+    );
+    const scale = Math.max(...sub.map((row, i) => Math.abs(row[i])));
+    const { values, vectors } = symmetricEigen(sub);
+    values.forEach((value, e) => {
+      if (scale > 0 && value > SINGULARITY_TOLERANCE * scale) return;
+      const axis: [number, number, number] = [0, 0, 0];
+      free.forEach((i, k) => (axis[i] = vectors[e][k]));
+      const lead = axis.reduce((best, c, i) => (Math.abs(c) > Math.abs(axis[best]) ? i : best), 0);
+      if (axis[lead] < 0) axis.forEach((c, i) => (axis[i] = -c));
+      unresisted.push({ node, axis });
+    });
+  });
+  return unresisted;
+};

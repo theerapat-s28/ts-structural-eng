@@ -38,7 +38,8 @@ describe("FrameAnalysisError", () => {
   it("uses the 3XX group", () => {
     const codes = Object.values(FrameErrors).map((e) => e.code);
     expect(codes).toEqual([
-      301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317,
+      301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 326, 327,
+      328,
     ]);
   });
 });

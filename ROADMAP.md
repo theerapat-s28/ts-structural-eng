@@ -63,7 +63,7 @@ Every feature added must conform to the following core principles:
 | [x] | 5 | Membrane element (drilling quad) | M | Generic assembly |
 | [x] | 5 | DKQ plate element | M | Generic assembly |
 | [x] | 5 | Flat shell element (axes, warping, modifiers) | M | Membrane, DKQ |
-| [ ] | 5 | Shells in the model (validation, assembly, loads) | L | Flat shell |
+| [x] | 5 | Shells in the model (validation, assembly, loads) | L | Flat shell |
 | [ ] | 5 | Shell results & first release | M | Shells in the model |
 | [ ] | 5 | Engine meshing of shell areas | L | Shell results |
 | [ ] | 5 | Thick plates (DKMQ or MITC4) | M | Shell results |
@@ -380,11 +380,12 @@ Flat four-node shell elements with membrane, plate and shell behaviour, so walls
 - [x] Tests in [`tests/fea/frame/shell/`](tests/fea/frame/shell/) (`shell-axes`, `flat-shell`, 6-DOF dense harness): axes for horizontal, wall, inclined and warped elements; part placement and `type` switch; symmetry; exactly 6 rigid-body modes for flat and warped elements (and a warped element without the links fails); $\mathbf{k}(R\mathbf{x}) = R\,\mathbf{k}(\mathbf{x})\,R^T$; `angle` irrelevant without modifiers, and a 90° `angle` swaps the 11 and 22 modifiers; $\mathbf{SDS}$ values; the straight cantilever as a 3D shell equals the 2D elements and is unchanged by a 3D rotation; MacNeal–Harder twisted beam within 1 % for both thicknesses and load directions.
 
 ### 5.4 Shells in the Model
-- [ ] Types: `ShellArea`, `ShellSection`, `ShellModifiers` (`f11, f22, f12, m11, m22, m12, weight`), `FrameModel.shells`.
-- [ ] Validation: geometry (4 distinct nodes, convex, $\det \mathbf{J} > 0$, warping limit) → 326; section values → 327; modifiers and options → 314; duplicate ids across `areas` and `shells` → 303; loads on shells checked like null-area loads.
-- [ ] System: shell element matrices assembled with the members; 328 for unsupported translations at membrane-only or plate-only nodes (see the API decisions).
-- [ ] Loads: `AreaLoad` on shells (local `"3"` or global, `projected`) and self-weight `selfWeight · unitWeight · t` along −Z, as equivalent nodal loads $\int N_i\,p\,dA$ per load case.
-- [ ] Benchmarks on user-meshed models: Scordelis–Lo roof (0.3024), pinched cylinder (1.8248 × 10⁻⁵), beam framing in-plane into a wall (moment transfer through the drilling DOF), finely meshed wall vs wide column, reactions equal to the applied load.
+- [x] Types `ShellArea`, `ShellSection`, `ShellModifiers` (`f11, f22, f12, m11, m22, m12, weight`), `ShellType`, `FrameModel.shells` ([`model.type.ts`](src/fea/frame/types/model.type.ts)); one shell area is one element until 5.6.
+- [x] Validation in [`validate-model.ts`](src/fea/frame/validation/validate-model.ts): geometry (4 distinct nodes, convex in order: $\det \mathbf{J} > 0$ at every corner, warping $\le$ `SHELL_WARPING_LIMIT` $= 0.1\sqrt{A}$) → 326; section → 327; `type`, `angle`, modifiers → 314; duplicate ids across `areas` and `shells` → 303; self-weight without `unitWeight` → 313; `details.shellId`.
+- [x] System ([`frame-system.ts`](src/fea/frame/solver/frame-system.ts)): `SystemShell`s assembled with the members (shell adjacency added once per pair, so member-only models are bit-identical); 328 from `findUnresistedTranslations` (eigen-check of the translational block at nodes connected only to shells, before factorisation). Unresisted rotations stay with auto-restraint.
+- [x] Loads ([`load-case-solver.ts`](src/fea/frame/solver/load-case-solver.ts)): `AreaLoad`s routed by id (shell loads to the shells; `areaMemberLoads` and `distributeAreaLoads` skip them), self-weight `selfWeight · unitWeight · thickness · weight`, all as corner forces $q \int N_i\,dA$ without offset moments; shells' $\mathbf{k u}$ added into the reactions.
+- [x] Tests in [`tests/fea/frame/shell-model.test.ts`](tests/fea/frame/shell-model.test.ts): every validation error with its location; 328 for membrane walls and plate slabs, not where two membranes meet at an angle; equilibrium of self-weight, projected and normal loads; `weight` modifier; superposition; Scordelis–Lo roof (from above, 16 × 16 within 1 % of 0.3024); pinched cylinder (16 × 16 octant within 2 %); 2 × 6 m wall within 1 % of beam theory with shear; beam framing into a near-rigid wall equals $PL^3/3EI$ (moment through the drilling DOF); simply supported plate slab within 0.2 % of Timoshenko, 4× softer with $m = 0.25$.
+- [x] Docs: FEA reference (shell section, types, conventions, errors), README, CHANGELOG (Unreleased), theory page status.
 
 ### 5.5 Shell Results & First Release
 - [ ] `FrameCaseResult.shellForces`: per element, corner values of F11, F22, F12 (kN/m), M11, M22, M12 (kN·m/m, positive for sagging with local 3 up) and V13, V23 (kN/m), from the 2×2 Gauss points extrapolated to the corners; top and bottom face stresses (MPa).
@@ -443,9 +444,9 @@ Codes 301–314 are the existing validation and solver errors in [`frame-analysi
 | **323** | `GEOMETRIC_INSTABILITY` | Linearized P-Δ | $\mathbf{K} + \mathbf{K}_g$ not positive definite |
 | **324** | `NO_MASS` | Modal analysis | No mass on any free DOF |
 | **325** | `EIGEN_NOT_CONVERGED` | Modal, buckling | Eigensolver did not converge within the iteration limit |
-| **326** | `INVALID_SHELL_GEOMETRY` | Shell elements | Not 4 distinct nodes (3 allowed from 5.8), non-convex, $\det \mathbf{J} \le 0$, or warping beyond the limit |
-| **327** | `INVALID_SHELL_SECTION` | Shell elements | Thickness or $E$ not positive, $\nu$ outside $[0, 0.5)$, or negative `unitWeight` |
-| **328** | `SHELL_DOF_UNSUPPORTED` | Shell elements | A translation nothing resists at a node connected only to membrane (or only to plate) shells |
+| **326** | `INVALID_SHELL_GEOMETRY` | Shell elements *(Unreleased)* | Not 4 distinct nodes (3 allowed from 5.8), non-convex, $\det \mathbf{J} \le 0$, or warping beyond the limit |
+| **327** | `INVALID_SHELL_SECTION` | Shell elements *(Unreleased)* | Thickness or $E$ not positive, $\nu$ outside $[0, 0.5)$, or negative `unitWeight` |
+| **328** | `SHELL_DOF_UNSUPPORTED` | Shell elements *(Unreleased)* | A translation nothing resists at a node connected only to membrane (or only to plate) shells |
 
 ---
 

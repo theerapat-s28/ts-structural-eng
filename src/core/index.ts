@@ -46,6 +46,7 @@ export {
   SINGULARITY_TOLERANCE,
   EQUILIBRIUM_TOLERANCE,
   AREA_GEOMETRY_TOLERANCE,
+  SHELL_WARPING_LIMIT,
 } from "./constants/frame.constant";
 
 // Errors
