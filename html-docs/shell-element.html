@@ -692,7 +692,7 @@
         in-plane form of locking.
       </p>
       <table class="summary-table">
-        <thead><tr><th>Prototype: MacNeal–Harder straight cantilever, in-plane tip shear, 6 elements</th><th>Tip deflection</th><th>÷ reference</th></tr></thead>
+        <thead><tr><th>MacNeal–Harder straight cantilever, in-plane tip shear, 6 regular elements</th><th>Tip deflection</th><th>÷ reference</th></tr></thead>
         <tbody>
           <tr><td>Bilinear Q4</td><td>0.0101</td><td>0.09</td></tr>
           <tr><td>Drilling quad (next section)</td><td>0.0977</td><td>0.90</td></tr>
@@ -908,21 +908,24 @@
         The geometry map stays bilinear, because the mid-side nodes lie at the edge midpoints. Only the rotation field uses the serendipity functions.
       </p>
 
-      <div class="sub-label">Prototype check</div>
+      <div class="sub-label">Results of the element (Roadmap 5.2 tests)</div>
       <table class="summary-table">
-        <thead><tr><th>Square plate, uniform load, n × n mesh</th><th>Simply supported: w<sub>c</sub> D / (q a⁴)</th><th>Clamped: w<sub>c</sub> D / (q a⁴)</th></tr></thead>
+        <thead><tr><th>Square plate, ν = 0.3, n × n mesh</th><th>SS, uniform: w<sub>c</sub> D / (q a⁴)</th><th>Clamped, uniform: w<sub>c</sub> D / (q a⁴)</th><th>SS, centre load: w<sub>c</sub> D / (P a²)</th></tr></thead>
         <tbody>
-          <tr><td>2 × 2</td><td>0.003785</td><td>0.001562</td></tr>
-          <tr><td>4 × 4</td><td>0.004046</td><td>0.001461</td></tr>
-          <tr><td>8 × 8</td><td>0.004060</td><td>0.001319</td></tr>
-          <tr><td>16 × 16</td><td>0.004062</td><td>0.001279</td></tr>
-          <tr><td>Timoshenko &amp; Woinowsky-Krieger</td><td>0.00406</td><td>0.00126</td></tr>
+          <tr><td>2 × 2</td><td>0.003785</td><td>0.001563</td><td>0.015139</td></tr>
+          <tr><td>4 × 4</td><td>0.004046</td><td>0.001461</td><td>0.012693</td></tr>
+          <tr><td>8 × 8</td><td>0.004060</td><td>0.001319</td><td>0.011937</td></tr>
+          <tr><td>16 × 16</td><td>0.004062</td><td>0.001279</td><td>0.011701</td></tr>
+          <tr><td>Timoshenko &amp; Woinowsky-Krieger</td><td>0.00406</td><td>0.00126</td><td>0.01160</td></tr>
         </tbody>
       </table>
       <p>
-        The setup was ν = 0.3, with the load lumped as qA/4 at each corner's w. Simply supported edges held w, plus the rotation that w = 0 along the edge implies
-        (θx on edges x = const, θy on edges y = const). The same prototype had exactly three zero-energy modes on a distorted quad
-        (rigid body: w = 1, w = x, w = y) and reproduced the MacNeal–Harder plate patch test to 10⁻¹³.
+        Uniform loads are lumped as ∫N<sub>i</sub> q dA at each corner's w. Simply supported edges hold w, plus the rotation that w = 0 along the edge implies
+        (θx on edges x = const, θy on edges y = const). On the 16 × 16 mesh the centre moment M<sub>x</sub>, averaged over the four elements at the centre node, is
+        0.0480 qa² simply supported (reference 0.0479) and 0.0233 qa² clamped (0.0231). The deflection is identical for t/a = 0.01 and 0.3, as thin-plate theory requires.
+        On the MacNeal–Harder strip the out-of-plane tip deflection is 0.4263, 0.4266 and 0.4261 on the regular, trapezoidal and parallelogram meshes (reference 0.4321),
+        so distortion barely matters. The element has exactly three zero-energy modes (w = 1, w = x, w = y) for rectangles and distorted quads, and reproduces the
+        MacNeal–Harder plate patch test exactly, moments included.
       </p>
       <div class="alert alert--info">
         <span>ℹ️</span>

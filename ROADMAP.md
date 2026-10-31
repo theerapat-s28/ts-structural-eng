@@ -61,7 +61,7 @@ Every feature added must conform to the following core principles:
 | [ ] | 4 | Response spectrum analysis | L | Modal, combination types |
 | [x] | 5 | Generic element assembly (refactor) | S | — |
 | [x] | 5 | Membrane element (drilling quad) | M | Generic assembly |
-| [ ] | 5 | DKQ plate element | M | Generic assembly |
+| [x] | 5 | DKQ plate element | M | Generic assembly |
 | [ ] | 5 | Flat shell element (axes, warping, modifiers) | M | Membrane, DKQ |
 | [ ] | 5 | Shells in the model (validation, assembly, loads) | L | Flat shell |
 | [ ] | 5 | Shell results & first release | M | Shells in the model |
@@ -369,8 +369,9 @@ Flat four-node shell elements with membrane, plate and shell behaviour, so walls
 - [x] Tests in [`tests/fea/frame/shell/`](tests/fea/frame/shell/) (dense-solve harness, no model integration): symmetry, exactly 3 rigid-body modes (rectangle and distorted), tensor transformation and corner-order invariance; MacNeal–Harder patch test (exact field, θ = ω, $\sigma_x = \sigma_y = 1333.3$, $\tau_{xy} = 400$); straight cantilever 0.0977 / 0.0931 / 0.0829 (regular / parallelogram / trapezoidal, reference 0.1081 — a flipped edge-term sign gives 0.0031); penalty insensitivity; Cook's membrane converging from below to ≈ 25.2, where a bilinear quad and an independent 9-node element also converge; this is above the 23.9–23.96 usually quoted for the problem, a difference not yet explained (see Technical Debt).
 
 ### 5.2 DKQ Plate Element
-- [ ] `elements/shell/dkq-plate.ts`: Batoz–Ben Tahar discrete Kirchhoff quadrilateral, 12×12 over $w, \theta_x, \theta_y$.
-- [ ] Tests: exactly 3 rigid-body modes; MacNeal–Harder plate patch test; square plate under uniform load, simply supported and clamped ($w_c = 0.00406$ and $0.00126\,qa^4/D$) with mesh convergence; centre point load ($0.01160\,Pa^2/D$); straight cantilever, out-of-plane shear (0.4321).
+- [x] [`elements/shell/dkq-plate.ts`](src/fea/frame/elements/shell/dkq-plate.ts): Batoz–Ben Tahar discrete Kirchhoff quadrilateral, 12×12 over $w, \theta_x, \theta_y$ ($\theta_x = w_{,y}$, $\theta_y = -w_{,x}$), 2×2 Gauss; curvature rows exposed for moment recovery (5.5).
+- [x] [`quad-geometry.ts`](src/fea/frame/elements/shell/quad-geometry.ts) gains the 8-node serendipity functions and `cornerAreas` ($\int N_i\,dA$, for the load vectors of 5.4).
+- [x] Tests in [`tests/fea/frame/shell/dkq-plate.test.ts`](tests/fea/frame/shell/dkq-plate.test.ts): symmetry; exactly 3 rigid-body modes (rectangle and distorted); tensor transformation, corner-order invariance, $t^3$ scaling; MacNeal–Harder plate patch test (exact field and moments); square plate, simply supported uniform ($w_c$ 0.003785 → 0.004062 for 2–16 elements per side, $M_c$ within 0.5 % of $0.0479\,qa^2$), clamped uniform (from above, within 2 % of $0.00126\,qa^4/D$, $M_c$ within 1 % of $0.0231\,qa^2$), centre point load (within 1 % of $0.0116\,Pa^2/D$); no locking ($w_c$ identical for $t/a = 0.01$ and $0.3$); straight cantilever, out-of-plane shear 0.4263 / 0.4266 / 0.4261 (regular / trapezoidal / parallelogram, reference 0.4321).
 
 ### 5.3 Flat Shell Element
 - [ ] `elements/shell/shell-axes.ts`: local 3 normal by the right-hand rule around the nodes (as for null areas); local 2 = +Z projected onto the plane for non-horizontal elements, local 1 = +X for horizontal ones; optional `angle`.
