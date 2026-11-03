@@ -4,6 +4,8 @@ export type { AnalyzeOptions, Analysis } from "./solver/analyze";
 export { validateModel } from "./validation/validate-model";
 export { distributeAreaLoads } from "./solver/distribute-area-loads";
 export { memberDemandEnvelope } from "./post/demand-envelope";
+export { memberConnectivity } from "./mesh/member-connectivity";
+export type { MemberConnectivity } from "./mesh/member-connectivity";
 export type { MemberDemandEnvelope, DemandEnvelopeOptions } from "./post/demand-envelope";
 export type {
   LineRestraint,

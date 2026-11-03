@@ -2,6 +2,8 @@ import type { Warnings } from "@app-core/types/output-message.type";
 import type {
   MemberDiagram,
   MemberEndForces,
+  MemberIntermediateNode,
+  MemberNearMissNode,
   MemberReleaseDeformations,
   StationComponent,
 } from "@app-fea/frame/types/results.type";
@@ -112,6 +114,16 @@ export interface FeaResult {
     combinationCount: number;
     /** Joint rotations held because every member there releases them (e.g. truss joints). */
     autoRestrainedDofs: AutoRestrainedDof[];
+    /**
+     * Model nodes lying on a member between its ends that were connected to it (see
+     * `Member.connectIntermediateNodes`), member by member from its start.
+     */
+    intermediateNodes: MemberIntermediateNode[];
+    /**
+     * Model nodes close to a member but not on it, so not connected to it, each with a
+     * "Member connectivity" warning; same order.
+     */
+    nearMissNodes: MemberNearMissNode[];
   };
   units: {
     force: "kN";

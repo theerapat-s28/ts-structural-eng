@@ -11,7 +11,8 @@ import type { AssemblyMember } from "./member-assembly";
 
 /**
  * A member, or a piece of one, with everything that does not depend on the loads. A member is
- * cut into pieces where generated shell-mesh nodes lie inside it; otherwise it is one piece.
+ * cut into pieces where nodes lie inside it (model nodes on it, generated shell-mesh nodes);
+ * otherwise it is one piece.
  */
 export interface SystemMember extends AssemblyMember {
   id: FeaId; // the model member's id
@@ -28,7 +29,7 @@ export interface SystemMember extends AssemblyMember {
   memberEndDisplacements: CondensedMember["memberEndDisplacements"];
 }
 
-/** A model member and the pieces it is analysed as (one unless the shell mesh splits it). */
+/** A model member and the pieces it is analysed as (one unless nodes lie inside it). */
 export interface MemberGroup {
   id: FeaId;
   /** Indices of its pieces among all pieces, from the member's start to its end. */
@@ -41,10 +42,10 @@ export interface MemberGroup {
 /**
  * Builds the pieces of every member of a model that passed `validateModel`: local axes,
  * transformation and local stiffness condensed for the end releases, which apply only at the
- * member's own ends. A member is one piece unless mesh nodes lie inside it.
+ * member's own ends. A member is one piece unless nodes lie inside it.
  *
- * @param members - Members, in model order; after `expandModel` each lists the generated nodes
- *   it passes through, in order from its start
+ * @param members - Members, in model order; after `expandModel` each lists the model and
+ *   generated nodes it passes through, in order from its start
  * @param nodes - The analysed nodes, generated mesh nodes included
  * @param nodeIndex - Map from node id to index into `nodes`
  * @returns `pieces` to assemble, and one `group` per member indexing its pieces
@@ -60,7 +61,7 @@ export const prepareSystemMembers = (
   };
   const systemMembers: SystemMember[] = [];
   const memberGroups: MemberGroup[] = members.map((member) => {
-    // pieces between the member's ends and the mesh nodes inside it (see `expandModel`)
+    // pieces between the member's ends and the nodes inside it (see `expandModel`)
     const chain = [member.startNodeId, ...(member.through ?? []), member.endNodeId];
     const whole = memberAxes(point(member.startNodeId), point(member.endNodeId), member.angle ?? 0);
     const { E, G, A, I22, I33, J } = member.section;

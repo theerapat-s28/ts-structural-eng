@@ -41,7 +41,7 @@ export interface AnalysisSystem {
   memberIndex: Map<FeaId, number>;
   /** Model members, in model order. */
   memberGroups: MemberGroup[];
-  /** The pieces that are assembled: one per member unless the shell mesh splits it. */
+  /** The pieces that are assembled: one per member unless nodes inside it split it. */
   members: SystemMember[];
   shellIndex: Map<FeaId, number>;
   /** Element indices of each shell area. */

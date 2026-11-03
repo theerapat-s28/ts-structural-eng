@@ -22,6 +22,7 @@ export {
   beam3dLocalStiffnessRightHanded,
   memberAxes,
   memberDemandEnvelope,
+  memberConnectivity,
 } from "./fea";
 export type {
   AnalyzeOptions,
@@ -66,6 +67,9 @@ export type {
   StationComponent,
   ExtremeValue,
   MemberDiagram,
+  MemberIntermediateNode,
+  MemberNearMissNode,
+  MemberConnectivity,
   ShellCornerForces,
   ShellForceComponent,
   ShellElementForces,
@@ -154,6 +158,8 @@ export {
   EQUILIBRIUM_TOLERANCE,
   AREA_GEOMETRY_TOLERANCE,
   SHELL_WARPING_LIMIT,
+  NODE_NEAR_MEMBER_RATIO,
+  NODE_NEAR_MEMBER_MAX_DISTANCE,
   RCDesignError,
   Errors,
   FeaError,

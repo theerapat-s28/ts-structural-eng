@@ -400,7 +400,7 @@ export const memberDiagram = (
   return { memberId: member.id, length: L, stations, extremes };
 };
 
-/** One piece of a member split by shell-mesh nodes, with what its diagram needs. */
+/** One piece of a member split at nodes inside it, with what its diagram needs. */
 export interface DiagramPiece {
   member: DiagramMember; // the piece: its own length and axes, the member's id and section
   offset: number; // mm from the member's start
@@ -410,10 +410,10 @@ export interface DiagramPiece {
 }
 
 /**
- * The diagram of a member analysed as several pieces (split where shell-mesh nodes lie inside
- * it), stitched along its full length. The evenly spaced stations are taken along the whole
- * member and each is evaluated in the piece it falls in; at a piece end where the shells
- * deliver a force, both sides are reported, as at a point load. Extremes are the extremes of
+ * The diagram of a member analysed as several pieces (split where model or shell-mesh nodes lie
+ * inside it), stitched along its full length. The evenly spaced stations are taken along the
+ * whole member and each is evaluated in the piece it falls in; at a piece end where a framing
+ * member, a support or the shells deliver a force, both sides are reported, as at a point load. Extremes are the extremes of
  * the pieces.
  *
  * @param id - The member's id

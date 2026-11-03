@@ -12,8 +12,8 @@ const DIRECTIONS = new Set(["1", "2", "3", "X", "Y", "Z"]);
 const GLOBAL_DIRECTIONS = new Set(["X", "Y", "Z"]);
 
 /**
- * Checks each member on its own: its end nodes, section, `angle` and release values, a
- * non-zero length, and end releases that leave it stable. Ends at nodes with invalid
+ * Checks each member on its own: its end nodes, section, `angle`, `connectIntermediateNodes`
+ * and release values, a non-zero length, and end releases that leave it stable. Ends at nodes with invalid
  * coordinates are not checked further; those are reported on the node.
  *
  * @param members - The model's members
@@ -61,6 +61,13 @@ export const validateMembers = (
 
     if (member.angle !== undefined && !isFiniteNumber(member.angle)) {
       add(FeaErrors.INVALID_INPUT_VALUE, { ...at, field: "angle" });
+    }
+
+    if (
+      member.connectIntermediateNodes !== undefined &&
+      typeof member.connectIntermediateNodes !== "boolean"
+    ) {
+      add(FeaErrors.INVALID_INPUT_VALUE, { ...at, field: "connectIntermediateNodes" });
     }
 
     // each release value: true/false, or a spring stiffness ≥ 0 (0 = full release)

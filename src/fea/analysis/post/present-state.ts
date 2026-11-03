@@ -93,7 +93,7 @@ const equilibrium = (system: AnalysisSystem, state: RawState) => {
 
 /**
  * The presented diagram of model member `g` (an index into `system.memberGroups`) in a raw
- * state, stitched from its pieces when the shell mesh splits it.
+ * state, stitched from its pieces when nodes inside it split it.
  *
  * @param stations - Evenly spaced stations
  * @param withStations - false keeps only the extremes (empty `stations`)
@@ -174,7 +174,7 @@ export const presentState = (
       my: roundForce(R[6 * n + 4], 1e-6),
       mz: roundForce(R[6 * n + 5], 1e-6),
     })),
-    // a member split by the shell mesh: its start is its first piece's, its end its last's
+    // a member split at nodes inside it: its start is its first piece's, its end its last's
     memberEndForces: system.memberGroups.map(({ id, pieces }) => ({
       memberId: id,
       start: endForce(state.memberForces[pieces[0]].slice(0, 6)),

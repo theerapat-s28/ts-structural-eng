@@ -25,6 +25,12 @@ export interface Member {
   section: SectionProperties;
   angle?: number; // rad, rotation of local 2 and 3 about local 1 (right-hand rule); default 0
   releases?: { start?: MemberEndRelease; end?: MemberEndRelease };
+  /**
+   * Connect the member to every model node lying on it between its ends (a beam framing in,
+   * a column landing mid-span), as if it were split there; it stays one member in the results.
+   * Default true. Each connection is listed in `calculationDetails.intermediateNodes`.
+   */
+  connectIntermediateNodes?: boolean;
 }
 
 /** Load direction: local member axes "1", "2", "3" or global axes "X", "Y", "Z". */

@@ -72,3 +72,25 @@ export interface MemberDiagram {
   stations: MemberStation[];
   extremes: Record<StationComponent, { max: ExtremeValue; min: ExtremeValue }>;
 }
+
+/**
+ * A model node lying on a member between its ends, which `analyze` connected to the member
+ * (see `Member.connectIntermediateNodes`).
+ */
+export interface MemberIntermediateNode {
+  memberId: FeaId;
+  nodeId: FeaId;
+  x: number; // mm from the member start
+}
+
+/**
+ * A model node close to a member but not on it, so not connected to it: within
+ * `NODE_NEAR_MEMBER_RATIO` of the member's length (at most `NODE_NEAR_MEMBER_MAX_DISTANCE`) of
+ * its axis, between its ends. Probably meant to be on the member.
+ */
+export interface MemberNearMissNode {
+  memberId: FeaId;
+  nodeId: FeaId;
+  x: number; // mm from the member start, of the node's projection on the member axis
+  distance: number; // mm from the member axis
+}

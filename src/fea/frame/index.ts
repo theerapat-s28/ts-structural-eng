@@ -26,4 +26,6 @@ export type {
   StationComponent,
   ExtremeValue,
   MemberDiagram,
+  MemberIntermediateNode,
+  MemberNearMissNode,
 } from "./types/results.type";

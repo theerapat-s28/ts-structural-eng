@@ -11335,7 +11335,9 @@
     "profileSize": 1017,
     "loadCaseCount": 2,
     "combinationCount": 1,
-    "autoRestrainedDofs": []
+    "autoRestrainedDofs": [],
+    "intermediateNodes": [],
+    "nearMissNodes": []
   },
   "units": {
     "force": "kN",

@@ -163,6 +163,8 @@ export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): A
       loadCaseCount: model.loadCases.length,
       combinationCount: combinations.length,
       autoRestrainedDofs: autoRestrainedDofs(system),
+      intermediateNodes: expanded.connectivity.intermediateNodes,
+      nearMissNodes: expanded.connectivity.nearMissNodes,
     },
     units: {
       force: "kN",
@@ -203,6 +205,12 @@ export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): A
  * and kN/m; springs in kN/mm and kN·m/rad; unit weight in kN/m³. Results are in kN, kN·m, mm
  * and rad. Global axes X, Y, Z are right-handed with Z up; members use ETABS-style local axes
  * 1, 2, 3 (see `memberAxes`). Member end forces and diagrams use right-hand rotations.
+ *
+ * A member is connected to every model node lying on it between its ends, as if it were split
+ * there, unless it sets `connectIntermediateNodes: false`; it is still reported as one member.
+ * The connections are listed in `calculationDetails.intermediateNodes`; a node close to a
+ * member but not on it is not connected, and is listed in `calculationDetails.nearMissNodes`
+ * with a warning. `memberConnectivity` makes the same check without analysing.
  *
  * Area loads on null areas (`areas`, `areaLoads`) are first turned into member loads on the
  * members along each area's edges (see `distributeAreaLoads`); the areas add no stiffness.

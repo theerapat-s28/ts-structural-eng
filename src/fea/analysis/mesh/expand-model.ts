@@ -1,5 +1,6 @@
 import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/frame.constant";
 import type { Warnings } from "@app-core/types/output-message.type";
+import { nodesAlongMembers } from "@app-fea/frame/solver/nodes-along-members";
 import type { Member } from "@app-fea/frame/types/model.type";
 import type { FeaId, FeaNode, Restraint } from "@app-fea/shared/types/model.type";
 import { shellAxes, type Vec3 } from "@app-fea/shell/elements/shell-axes";
@@ -7,24 +8,27 @@ import { meshShells, pointOnSegment, type ShellElement } from "@app-fea/shell/me
 import type { FeaMesh } from "@app-fea/shell/types/results.type";
 
 import type { FeaModel } from "../types/model.type";
+import { findMemberConnectivity, type MemberConnectivity } from "./member-connectivity";
 
 const DOF_KEYS = ["ux", "uy", "uz", "rx", "ry", "rz"] as const;
 
-/** A member with the generated mesh nodes lying inside it, where the solver splits it. */
+/** A member with the nodes lying inside it, where the solver splits it. */
 export interface SplitMember extends Member {
-  /** Generated node ids strictly between its ends, in order from the start. */
+  /** Model and generated node ids strictly between its ends, in order from the start. */
   through?: FeaId[];
 }
 
 /** The model the solver analyses: shells meshed, line restraints spread to their nodes. */
 export interface ExpandedModel {
   /**
-   * Nodes include the generated ones; `shells` are the elements; members list the generated
-   * nodes they pass through; restraints include the lines.
+   * Nodes include the generated ones; `shells` are the elements; members list the nodes they
+   * pass through; restraints include the lines.
    */
   model: FeaModel & { shells: ShellElement[]; members: SplitMember[] };
   /** The shell mesh for the result; undefined without shells. */
   mesh: FeaMesh | undefined;
+  /** Model nodes connected to members, and those that just miss one (see `memberConnectivity`). */
+  connectivity: MemberConnectivity;
   warnings: Warnings;
 }
 
@@ -91,65 +95,57 @@ const disconnectedNodes = (model: FeaModel, meshNodes: Set<FeaId>): Warnings => 
 };
 
 /**
- * The generated nodes lying strictly inside each member (a beam along a meshed edge), so the
- * member can be split there and share them with the shells.
+ * The nodes lying strictly inside each member, where the solver splits it: the generated mesh
+ * nodes (a beam along a meshed edge, so it shares them with the shells) and the model nodes it
+ * connects to (see `findMemberConnectivity`).
  */
-const splitMembers = (model: FeaModel, generated: FeaNode[]): SplitMember[] => {
+const splitMembers = (
+  model: FeaModel,
+  generated: FeaNode[],
+): { members: SplitMember[]; connectivity: MemberConnectivity } => {
   const members = model.members ?? [];
-  if (generated.length === 0) return members;
+  const { connected, connectivity } = findMemberConnectivity(model);
   const position = new Map<FeaId, Vec3>(model.nodes.map((n) => [n.id, [n.x, n.y, n.z]]));
-  return members.map((member) => {
-    const [P, Q] = [position.get(member.startNodeId)!, position.get(member.endNodeId)!];
-    const lo = [0, 1, 2].map((k) => Math.min(P[k], Q[k]));
-    const hi = [0, 1, 2].map((k) => Math.max(P[k], Q[k]));
-    const slack = AREA_GEOMETRY_TOLERANCE * Math.hypot(Q[0] - P[0], Q[1] - P[1], Q[2] - P[2]);
-    const through: { id: FeaId; t: number }[] = [];
-    for (const node of generated) {
-      const x: Vec3 = [node.x, node.y, node.z];
-      if (x.some((v, k) => v < lo[k] - slack || v > hi[k] + slack)) continue;
-      const t = pointOnSegment(x, P, Q);
-      if (t !== null) through.push({ id: node.id, t });
-    }
-    return through.length === 0
-      ? member
-      : { ...member, through: through.sort((a, b) => a.t - b.t).map((h) => h.id) };
+  const meshed = nodesAlongMembers(
+    members,
+    (id) => position.get(id)!,
+    generated,
+    (_, L) => AREA_GEOMETRY_TOLERANCE * L,
+  );
+  const split = members.map((member, i) => {
+    const through = [...connected[i], ...meshed[i]].sort((a, b) => a.x - b.x).map((h) => h.nodeId);
+    return through.length === 0 ? member : { ...member, through };
   });
+  return { members: split, connectivity };
 };
 
 /**
- * Meshes a valid model's shell areas, spreads its line restraints and marks the members that
- * generated nodes split (see `meshShells`).
- * Without shells and line restraints the model is returned as it is.
+ * Meshes a valid model's shell areas, spreads its line restraints and marks where each member
+ * is split: at the generated mesh nodes and at the model nodes on it (see `meshShells` and
+ * `splitMembers`).
  */
 export const expandModel = (model: FeaModel): ExpandedModel => {
   const shells = model.shells ?? [];
-  if (shells.length === 0) {
-    return {
-      model: {
-        ...model,
-        members: model.members ?? [],
-        shells: [],
-        restraints: spreadLineRestraints(model, model.nodes),
-      },
-      mesh: undefined,
-      warnings: [],
-    };
-  }
-  const meshed = meshShells(model.nodes, shells);
-  const nodes = [...model.nodes, ...meshed.nodes];
-  const meshNodes = new Set(meshed.elements.flatMap((e) => e.nodeIds));
+  const meshed = shells.length > 0 ? meshShells(model.nodes, shells) : undefined;
+  const nodes = meshed ? [...model.nodes, ...meshed.nodes] : model.nodes;
+  const split = splitMembers(model, meshed?.nodes ?? []);
+  const meshNodes = new Set(meshed?.elements.flatMap((e) => e.nodeIds));
   return {
     model: {
       ...model,
       nodes,
-      members: splitMembers(model, meshed.nodes),
-      shells: meshed.elements,
+      members: split.members,
+      shells: meshed?.elements ?? [],
       restraints: spreadLineRestraints(model, nodes),
     },
-    mesh: {
+    mesh: meshed && {
       nodes: meshed.nodes,
       shells: meshed.elements.map(({ id, areaId, nodeIds }) => ({ id, areaId, nodeIds })),
     },
-    warnings: disconnectedNodes(model, meshNodes),
+    connectivity: split.connectivity,
+    warnings: [
+      ...split.connectivity.warnings,
+      ...(meshed ? disconnectedNodes(model, meshNodes) : []),
+    ],
   };
 };

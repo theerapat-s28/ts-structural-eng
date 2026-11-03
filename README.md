@@ -229,6 +229,7 @@ Linear-elastic 3D analysis by the direct stiffness method, from `@theerapat-s28/
 - **`createAnalysis(model, options?)`** — The same analysis, keeping the solution: returns `{ result, memberDiagram(resultId, memberId, stations?) }` to compute a member's full diagram on demand.
 - **`validateModel(model)`** — Checks a model without analysing it and returns every problem, each with `details` (`nodeId`, `memberId`, `areaId`, `shellId`, `edge`, `loadCaseId`, `combinationId`, `field`, `dof`) for highlighting in a UI. `analyze` runs it first and throws the first problem as a `FeaError` whose `issues` lists all of them.
 - **`distributeAreaLoads(model)`** — Returns `{ memberLoads, warnings }`: the member loads that the model's null areas send to their edge members, exactly what `analyze` adds, for checking or previewing. Loads on shells act on the shells and are not included.
+- **`memberConnectivity(model)`** — Returns `{ intermediateNodes, nearMissNodes, warnings }`: the model nodes each member is connected to and the nodes that just miss a member, the same check `analyze` makes, without analysing. It doesn't throw for a model that is still being edited, so a frontend can mark the points on every edit. It also reports a near miss that leaves the model unstable, when `analyze` throws 304 and returns no result.
 - **`memberDemandEnvelope(result, memberId, options?)`** — Reduces a member's diagrams to `MuPositive`, `MuNegative`, `Vu` (optionally from distance `d` off the supports) and `Nu`, enveloped over all combinations (or the `combinations` / `cases` you select), with the `governing` combination of each, for the RC capacity functions.
 - **`rectBeamToSectionProperties(section, options?)`** (from `rc`) — Converts a rectangular RC section into `SectionProperties` (`E`, `G`, `A`, `I22`, `I33`, `J`, `unitWeight`) with the ACI 318-19 6.6.3.1.1 inertia modifiers (0.35 beams, 0.70 columns) and a unit weight for self-weight (default 24 kN/m³, common practice rather than an ACI value).
 - **`beam3dLocalStiffness(E, G, A, I22, I33, J, L)`** — The 12×12 local stiffness matrix exactly as in the reference "Complete Beam Stiffness Matrix". Its bending rotations R2 and R3 follow the opposite sign to the right-hand rule; **`beam3dLocalStiffnessRightHanded`** returns the right-handed form that `analyze` uses.
@@ -241,7 +242,7 @@ A `FeaModel` is plain data. Every load names its `loadCase`, so loads are flat t
 | Field | What it holds |
 | --- | --- |
 | `nodes` | `{ id, x, y, z }` in mm; ids are strings or numbers |
-| `members` | `{ id, startNodeId, endNodeId, section, angle?, releases? }`, with `section` a `SectionProperties`; omit for a model of shells only |
+| `members` | `{ id, startNodeId, endNodeId, section, angle?, releases?, connectIntermediateNodes? }`, with `section` a `SectionProperties`; omit for a model of shells only |
 | `restraints` | Per node, each DOF `ux` … `rz` fixed (`true`) or a spring (kN/mm, kN·m/rad) |
 | `lineRestraints` | `{ nodeIds: [a, b], ux? … rz? }`: fixes those DOFs at every node on the line from `a` to `b`, generated mesh nodes included, e.g. a wall base |
 | `loadCases` | `{ id, name?, type?, selfWeight? }`; `selfWeight: 1` applies the full self-weight of members and shells |
@@ -255,6 +256,8 @@ A `FeaModel` is plain data. Every load names its `loadCase`, so loads are flat t
 #### Members
 
 End releases on any of the six end DOFs, full (`true`) or partial fixity (a spring stiffness in series with the member end), with the deformation across each release reported in `releaseDeformations`. Supports are fixed or springs. Joint rotations that no member resists, as at pin-jointed truss joints, are held automatically and listed in `calculationDetails.autoRestrainedDofs`.
+
+Draw a girder once, from support to support: a model node lying on a member between its ends, such as where a beam frames in or a column lands mid-span, is connected to it automatically. The member is split there internally and still reported as one member. Each connection is listed in `calculationDetails.intermediateNodes`. A node within 1 % of the member length (at most 100 mm) of a member, but not on it, is not connected: it is listed in `calculationDetails.nearMissNodes` and gets a "Member connectivity" warning, which catches a node that was meant to snap to the member but didn't. Draw both lists in their own colours so users can see that the model connects the way they think, and call `memberConnectivity(model)` to get them while the user draws, without analysing. Set `connectIntermediateNodes: false` on a member to connect it only at its ends.
 
 #### Null areas or shells
 
@@ -271,7 +274,7 @@ Both are areas that take `areaLoads`, and they share one id namespace.
 | `cases`, `combinations` | Results keyed by id, each with `nodalDisplacements`, `reactions`, `memberEndForces`, `releaseDeformations`, `memberDiagrams` (`N`, `V2`, `V3`, `T`, `M2`, `M3` and deflections `u1`–`u3` local, `ux`–`uz` global, along each member), `shellForces`, an `equilibriumResidual` check and `warnings` |
 | `envelope` | Max and min of every result over the combinations, with the governing combination; absent without combinations |
 | `mesh` | The generated nodes and every shell element with its nodes; absent without shells |
-| `calculationDetails` | Node (generated included), member, shell-element, DOF, load case and combination counts, `profileSize` and `autoRestrainedDofs` |
+| `calculationDetails` | Node (generated included), member, shell-element, DOF, load case and combination counts, `profileSize`, `autoRestrainedDofs`, `intermediateNodes` and `nearMissNodes` |
 | `units`, `warnings` | The unit of each kind of result, and the warnings of every case and combination |
 
 Invalid models and unstable structures throw `FeaError`, described under [Errors and warnings](#errors-and-warnings-from-core).
@@ -370,7 +373,7 @@ src/
 │   │   ├── area/             # Null areas: geometry, edge-member chains, area-load distribution
 │   │   ├── elements/         # Reference beam stiffness matrix, fixed-end forces, end releases and partial-fixity condensation
 │   │   ├── transformation/   # ETABS-style local axes and the 12×12 transformation
-│   │   ├── solver/           # Member pieces, member-load resolution, member assembly helpers
+│   │   ├── solver/           # Member pieces, nodes along members, member-load resolution, member assembly helpers
 │   │   ├── validation/       # Checks on members, member loads and null areas
 │   │   ├── post/             # Member force diagrams
 │   │   └── types/            # Member, member-load and null-area types; member result types
@@ -384,7 +387,7 @@ src/
 │   │   └── types/            # Shell-area model and result types
 │   └── analysis/         # The whole model, members and shells together (direct stiffness method)
 │       ├── index.ts
-│       ├── mesh/             # The analysed model: shell mesh, line restraints, member splitting at mesh nodes
+│       ├── mesh/             # The analysed model: shell mesh, line restraints, member splitting at model and mesh nodes
 │       ├── solver/           # System build + skyline factorisation, per-case solve, combinations, analyze, distributeAreaLoads
 │       ├── validation/       # validateModel: every input problem, with its location
 │       ├── post/             # Result presentation, envelopes, design demands

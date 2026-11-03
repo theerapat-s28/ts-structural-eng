@@ -62,6 +62,21 @@ describe("input values a form can produce", () => {
       { memberId: "m", field: "angle" },
     ],
     [
+      "non-boolean connectIntermediateNodes",
+      model({
+        members: [
+          {
+            id: "m",
+            startNodeId: 1,
+            endNodeId: 2,
+            section: sec,
+            connectIntermediateNodes: bad<boolean>("no"),
+          },
+        ],
+      }),
+      { memberId: "m", field: "connectIntermediateNodes" },
+    ],
+    [
       "NaN uniform load",
       model({
         memberLoads: [{ loadCase: "D", type: "udl", memberId: "m", direction: "Z", w: Number.NaN }],

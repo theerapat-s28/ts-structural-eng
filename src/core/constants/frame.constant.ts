@@ -41,3 +41,13 @@ export const DRILLING_PENALTY_RATIO = 1;
  * twisted beam, 0.024, is within 0.5 %); beyond this the element is rejected (326).
  */
 export const SHELL_WARPING_LIMIT = 0.1;
+
+/**
+ * A model node that lies off a member's axis, between its ends, by no more than this fraction
+ * of the member's length (and at most `NODE_NEAR_MEMBER_MAX_DISTANCE`), but not on it, gets a
+ * warning: it is probably meant to be on the member, yet it is not connected to it.
+ */
+export const NODE_NEAR_MEMBER_RATIO = 0.01;
+
+/** Upper bound (mm) of the near-miss distance given by `NODE_NEAR_MEMBER_RATIO`. */
+export const NODE_NEAR_MEMBER_MAX_DISTANCE = 100;

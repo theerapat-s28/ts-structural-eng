@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **Members connect to the nodes lying on them.** A model node on a member between its ends, such as where a beam frames into a girder or a column lands mid-span, is now connected to the member. You no longer need to split the member there. The member is still one member in every result: one set of end forces, one diagram over its full length, and one envelope row. Member loads keep their positions along the whole member. Each connection is listed in the new `calculationDetails.intermediateNodes` (`{ memberId, nodeId, x }[]`, type `MemberIntermediateNode`), so a frontend can mark these points. Set `connectIntermediateNodes: false` on a member to connect it only at its ends; any value other than a boolean is rejected with error 314.
+- **Near misses are reported.** A model node that is close to a member but not on it is not connected. It is now listed in the new `calculationDetails.nearMissNodes` (`{ memberId, nodeId, x, distance }[]`, type `MemberNearMissNode`) and gets a "Member connectivity" warning naming the node, the member and the distance. Close means within 1 % of the member length and at most 100 mm (`NODE_NEAR_MEMBER_RATIO` and `NODE_NEAR_MEMBER_MAX_DISTANCE`, exported from `core`).
+- **`memberConnectivity(model)`** returns the same connected nodes and near misses without analysing (type `MemberConnectivity`). It is cheap and doesn't throw for a model that is still being edited, so a frontend can show the points while the user draws. It also reports a near miss that leaves the model unstable, when `analyze` throws 304 and returns no result.
+
+### Changed
+
+- **Results change for models with a node on a member's span that was not connected before.** Such a node used to be ignored by the member. A load or support on it then either went nowhere (an unstable structure, error 304) or acted on a separate frame. Now it acts on the member. To keep the old behaviour for a member, set `connectIntermediateNodes: false` on it. Models where every node on a member is the end of one of its pieces give the same results as before.
+
 ## [3.2.0] — 2026-10-31
 
 **The analysis exports lose "Frame" from their names.** A model can be members, shells or both, so `analyzeFrame` is now `analyze`, `FrameModel` is `FeaModel`, `FrameAnalysisError` is `FeaError`, and so on, and a model of shells only, such as a mat foundation, no longer needs a `members` list. Nothing breaks: the old names still work as deprecated aliases until 4.0.0, and every result is identical to 3.1.0.
