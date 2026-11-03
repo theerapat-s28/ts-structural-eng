@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [3.3.0] — 2026-11-03
+
+**Members connect to the nodes lying on them.** Draw a girder once, from support to support, and the beams framing into it and the columns landing on it are connected without splitting it by hand. The girder stays one member in the results. Nodes that just miss a member are reported, and the new `memberConnectivity` returns both lists while the user draws, so a frontend can show what is connected. Results change only for models that had a node on a member's span that the member ignored; see Changed.
+
 ### Added
 
 - **Members connect to the nodes lying on them.** A model node on a member between its ends, such as where a beam frames into a girder or a column lands mid-span, is now connected to the member. You no longer need to split the member there. The member is still one member in every result: one set of end forces, one diagram over its full length, and one envelope row. Member loads keep their positions along the whole member. Each connection is listed in the new `calculationDetails.intermediateNodes` (`{ memberId, nodeId, x }[]`, type `MemberIntermediateNode`), so a frontend can mark these points. Set `connectIntermediateNodes: false` on a member to connect it only at its ends; any value other than a boolean is rejected with error 314.
@@ -255,7 +259,8 @@ Maintenance release with no changes to the library code.
 
 First version, under the unscoped name `ts-structural-eng-tools`: `rectBeamMomentCapacity` (singly and doubly reinforced rectangular beams per ACI 318-19), steel plate jacketing, and concrete property helpers.
 
-[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.2.0...HEAD
+[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.3.0...HEAD
+[3.3.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.2.0...v3.3.0
 [3.2.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v2.3.0...v3.0.0
