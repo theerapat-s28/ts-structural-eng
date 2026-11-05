@@ -6,6 +6,7 @@ export interface FeaErrorDetails {
   memberId?: string | number;
   areaId?: string | number;
   shellId?: string | number;
+  stripId?: string | number;
   /** For an area: the edge index, edge i running from `nodeIds[i]` to `nodeIds[i + 1]`. */
   edge?: number;
   loadCaseId?: string;
@@ -63,7 +64,7 @@ export const FeaErrors: Record<string, FeaErrorType> = {
   DUPLICATE_ID: {
     code: 303,
     message:
-      "Node ids, member ids and restrained node ids must each be unique, area ids must be unique across null areas and shells, and load case and combination ids must be unique across both lists.",
+      "Node ids, member ids and restrained node ids must each be unique, area ids must be unique across null areas and shells, strip ids must be unique, and load case and combination ids must be unique across both lists.",
   },
   STRUCTURE_UNSTABLE: {
     code: 304,
@@ -150,6 +151,11 @@ export const FeaErrors: Record<string, FeaErrorType> = {
     code: 329,
     message:
       "Shell areas cannot be meshed: no division counts make the meshes of areas sharing edges meet node to node, a generated element is not a valid quadrilateral, or a generated id is already in use. Divide the areas so they meet edge to edge, or change their mesh sizes.",
+  },
+  INVALID_STRIP_GEOMETRY: {
+    code: 330,
+    message:
+      "A strip needs at least 2 points in one plane normal to its normal (default +Z), with no zero-length segment and no segment turning straight back on the previous one; its normal must not be zero, its widths must not be negative, and they must not both be zero.",
   },
 };
 

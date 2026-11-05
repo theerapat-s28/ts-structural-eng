@@ -13,6 +13,7 @@ import {
 import type { FeaId } from "@app-fea/shared/types/model.type";
 import { modelIssue, isFiniteNumber } from "@app-fea/shared/validation/issues";
 import { validateShellMesh, validateShells } from "@app-fea/shell/validation/validate-shells";
+import { validateStrips } from "@app-fea/shell/validation/validate-strips";
 
 import { resolveCombinations } from "../solver/combinations";
 import type { FeaModel, LoadCaseType } from "../types/model.type";
@@ -44,7 +45,7 @@ const LOAD_CASE_TYPES = new Set<LoadCaseType>([
  * resists at a node connected only to shells (328), which only assembling the stiffness detects.
  *
  * @param model - The model to check
- * @returns Every problem found (codes 301–303, 305–317 and 326–327, 329), in model order
+ * @returns Every problem found (codes 301–303, 305–317, 326–327, 329 and 330), in model order
  */
 export const validateModel = (model: FeaModel): FeaModelIssue[] => {
   const issues: FeaModelIssue[] = [];
@@ -62,6 +63,7 @@ export const validateModel = (model: FeaModel): FeaModelIssue[] => {
   const shells = Array.isArray(model.shells) ? model.shells : [];
   const lineRestraints = Array.isArray(model.lineRestraints) ? model.lineRestraints : [];
   const areaLoads = Array.isArray(model.areaLoads) ? model.areaLoads : [];
+  const strips = Array.isArray(model.strips) ? model.strips : [];
 
   // ---- Ids -------------------------------------------------------------------------
   const duplicates = <T>(ids: T[]) => ids.filter((id, i) => ids.indexOf(id) !== i);
@@ -206,6 +208,12 @@ export const validateModel = (model: FeaModel): FeaModelIssue[] => {
   if (shells.length > 0 && !shellProblem && !nodeProblem) {
     issues.push(...validateShellMesh(nodes, shells));
   }
+
+  // ---- Strips ----------------------------------------------------------------------
+  if (model.strips !== undefined && !Array.isArray(model.strips)) {
+    add(FeaErrors.INVALID_INPUT_VALUE, { field: "strips" });
+  }
+  issues.push(...validateStrips(strips));
 
   const areaIds = new Set([...areas.map((a) => a.id), ...shells.map((sh) => sh.id)]);
   for (const load of areaLoads) {

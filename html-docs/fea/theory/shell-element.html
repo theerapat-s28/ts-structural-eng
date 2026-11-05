@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shell Element — Theory Notes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #f0f2f6;
+      --border: #e2e5ec;
+      --accent: #3b63d8;
+      --accent-dim: rgba(59, 99, 216, 0.08);
+      --green: #1f9d63;
+      --green-dim: rgba(31, 157, 99, 0.10);
+      --red: #d9463c;
+      --red-dim: rgba(217, 70, 60, 0.08);
+      --yellow: #b97d0a;
+      --yellow-dim: rgba(230, 160, 30, 0.12);
+      --purple: #8a4fd0;
+      --purple-dim: rgba(138, 79, 208, 0.10);
+      --text: #1f2430;
+      --text-muted: #5c6474;
+      --text-dim: #8a90a0;
+      --code-bg: #f8f9fb;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ─────────────────────────────────────── */
+    .sidebar {
+      width: 252px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px 40px;
+    }
+    .sidebar__brand { padding: 0 10px 18px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .brand-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .sidebar__brand h2 { font-size: 13.5px; font-weight: 600; }
+    .nav-section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      padding: 0 10px;
+      margin-bottom: 6px;
+    }
+    .nav-section-label + .nav-section-label,
+    nav a + .nav-section-label { margin-top: 8px; }
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      margin-bottom: 2px;
+    }
+    nav a:hover { background: var(--accent-dim); color: var(--text); }
+
+    /* ── Kind badges ─────────────────────────────────── */
+    .mbadge, .kind {
+      font-family: var(--mono);
+      font-weight: 700;
+      border-radius: 5px;
+      flex-shrink: 0;
+    }
+    .mbadge { font-size: 9.5px; padding: 2px 6px; min-width: 34px; text-align: center; }
+    .kind { font-size: 11.5px; padding: 3px 9px; }
+    .m-fn { color: var(--green); background: var(--green-dim); }
+    .m-type { color: var(--accent); background: var(--accent-dim); }
+    .m-const { color: var(--yellow); background: var(--yellow-dim); }
+    .m-error { color: var(--red); background: var(--red-dim); }
+
+    /* ── Scope badges ────────────────────────────────── */
+    .scope-badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .s-public { color: var(--accent); background: var(--accent-dim); }
+    .s-internal { color: var(--purple); background: var(--purple-dim); }
+
+    .std-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+      color: var(--yellow);
+      background: var(--yellow-dim);
+    }
+
+    /* ── Main ────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 40px 48px 120px;
+      min-width: 0;
+    }
+
+    .page-header { margin-bottom: 36px; }
+    .import-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .import-tag .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+    }
+    .import-tag code { background: none; padding: 0; font-size: 12.5px; }
+    .page-header h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+    .page-header p { color: var(--text-muted); max-width: 640px; }
+
+    .section { margin-bottom: 44px; scroll-margin-top: 24px; }
+    .section__title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section p { color: var(--text-muted); margin-bottom: 12px; }
+
+    /* ── Export cards ────────────────────────────────── */
+    .export-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 20px;
+      overflow: hidden;
+      scroll-margin-top: 24px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .export-card__header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .ex-sig { font-family: var(--mono); font-size: 13.5px; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+    .export-card__body { padding: 18px 20px 20px; }
+    .ex-desc { color: var(--text-muted); margin-bottom: 16px; }
+    .sub-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin: 18px 0 8px;
+    }
+    .sub-label:first-of-type { margin-top: 0; }
+
+    /* ── Code blocks ─────────────────────────────────── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .code-block__label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .code-block pre {
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .k { color: #0e7490; }
+    .s { color: #2f7d32; }
+    .n { color: var(--yellow); }
+    .b { color: var(--purple); }
+    .nl { color: var(--text-dim); }
+    .c { color: var(--text-dim); font-style: italic; }
+    .u { color: var(--accent); }
+
+    /* ── Inline code ─────────────────────────────────── */
+    code {
+      font-family: var(--mono);
+      font-size: 0.86em;
+      background: var(--surface-2);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+    pre code { background: none; padding: 0; color: inherit; }
+
+    /* ── Tables ──────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 13.5px; }
+    th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      font-weight: 600;
+      padding: 8px 12px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      color: var(--text-muted);
+    }
+    tr:last-child td { border-bottom: none; }
+    .param-table, .summary-table {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: block;
+      overflow-x: auto;
+    }
+    .param-table td:first-child {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .param-table td:nth-child(2) { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+    .req { color: var(--red); font-size: 12px; font-weight: 500; }
+    .opt { color: var(--text-dim); font-size: 12px; }
+    .summary-table .path-cell { font-family: var(--mono); font-size: 12.5px; color: var(--text); white-space: nowrap; }
+
+    /* ── Alerts ──────────────────────────────────────── */
+    .alert {
+      display: flex;
+      gap: 10px;
+      padding: 11px 14px;
+      border-radius: var(--radius);
+      font-size: 13.5px;
+      margin-bottom: 10px;
+      border: 1px solid;
+      color: var(--text-muted);
+    }
+    .alert strong { color: var(--text); }
+    .alert--error { background: var(--red-dim); border-color: rgba(217, 70, 60, 0.25); }
+    .alert--warn { background: var(--yellow-dim); border-color: rgba(185, 125, 10, 0.25); }
+    .alert--info { background: var(--accent-dim); border-color: rgba(59, 99, 216, 0.25); }
+
+    /* ── Flow steps ──────────────────────────────────── */
+    .flow-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 12px; }
+    .flow-step {
+      display: flex;
+      gap: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .step-num {
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-body { color: var(--text-muted); font-size: 13.5px; }
+    .step-body strong { color: var(--text); }
+
+    /* ── Model grid ──────────────────────────────────── */
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .model-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .model-card__title { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    .model-card__desc { font-size: 12.5px; color: var(--text-muted); }
+    /* ── Theory notes: lists, equations, matrices, figures ── */
+    .section ul, .section ol { color: var(--text-muted); margin: 0 0 12px 22px; }
+    .section li { margin-bottom: 6px; }
+    .section li strong, .section p strong { color: var(--text); }
+
+    .eq {
+      font-family: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', 'Times New Roman', serif;
+      font-size: 16.5px;
+      line-height: 2.1;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      margin-bottom: 12px;
+      overflow-x: auto;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .eq + .eq { margin-top: -4px; }
+    .eq .note { font-family: 'Inter', sans-serif; font-size: 12.5px; color: var(--text-dim); margin-left: 14px; }
+    .mat {
+      display: inline-grid;
+      vertical-align: middle;
+      column-gap: 14px;
+      padding: 2px 10px;
+      margin: 0 3px;
+      position: relative;
+      text-align: center;
+      line-height: 1.55;
+    }
+    .mat::before, .mat::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+      border: 1.4px solid var(--text);
+    }
+    .mat::before { left: 0; border-right: none; }
+    .mat::after { right: 0; border-left: none; }
+    .mat.c1 { grid-template-columns: auto; }
+    .mat.c2 { grid-template-columns: repeat(2, auto); }
+    .mat.c3 { grid-template-columns: repeat(3, auto); }
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      vertical-align: middle;
+      text-align: center;
+      line-height: 1.3;
+      margin: 0 3px;
+    }
+    .frac > span + span { border-top: 1px solid var(--text); }
+
+    .figure {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 16px 12px;
+      margin-bottom: 12px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .figure svg { max-width: 100%; height: auto; }
+    .figure figcaption { font-size: 12.5px; color: var(--text-muted); margin-top: 6px; }
+    .dg-edge { fill: var(--accent-dim); stroke: var(--text); stroke-width: 1.5; }
+    .dg-dash { fill: none; stroke: var(--text-dim); stroke-width: 1; stroke-dasharray: 4 3; }
+    .dg-arrow { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+    .dg-arrowhead { fill: var(--accent); }
+    .dg-node { fill: var(--accent); }
+    .dg-mid { fill: var(--surface); stroke: var(--yellow); stroke-width: 1.8; }
+    .dg-gauss { fill: var(--green); }
+    .dg-text { font-family: 'Inter', sans-serif; font-size: 12px; fill: var(--text-muted); }
+    .dg-label { font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; fill: var(--text); }
+    .dg-math { font-family: 'STIX Two Math', 'Cambria Math', 'Times New Roman', serif; font-size: 14px; font-style: italic; fill: var(--text); }
+
+
+    @media (max-width: 800px) {
+      .sidebar { display: none; }
+      .main { padding: 24px 20px 80px; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ══════════════ Sidebar ══════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <div class="brand-label">Theory Notes</div>
+      <h2>Shell Element</h2>
+    </div>
+    <nav>
+      <a href="../../"><span style="font-size:14px">←</span> All modules</a>
+
+      <div class="nav-section-label">Getting Started</div>
+      <a href="#overview"><span style="font-size:14px">◈</span> Overview</a>
+      <a href="#decisions"><span style="font-size:14px">✓</span> Decisions</a>
+      <a href="#beam-to-shell"><span style="font-size:14px">⇄</span> From beam to shell</a>
+
+      <div class="nav-section-label">Element Theory</div>
+      <a href="#isoparametric"><span style="font-size:14px">◇</span> Isoparametric quad</a>
+      <a href="#membrane"><span style="font-size:14px">▭</span> Membrane</a>
+      <a href="#drilling"><span style="font-size:14px">↻</span> Drilling rotation</a>
+      <a href="#plate-theory"><span style="font-size:14px">▱</span> Plate theory</a>
+      <a href="#dkq"><span style="font-size:14px">▦</span> DKQ plate</a>
+      <a href="#thick-plates"><span style="font-size:14px">▤</span> Thick plates</a>
+      <a href="#flat-shell"><span style="font-size:14px">◫</span> Flat shell</a>
+
+      <div class="nav-section-label">In the Engine</div>
+      <a href="#loads"><span style="font-size:14px">↓</span> Loads</a>
+      <a href="#results"><span style="font-size:14px">∿</span> Results</a>
+      <a href="#meshing"><span style="font-size:14px">⊞</span> Meshing</a>
+      <a href="#engine-integration"><span style="font-size:14px">⚙</span> Engine integration</a>
+
+      <div class="nav-section-label">Plan</div>
+      <a href="#verification"><span style="font-size:14px">✔</span> Verification</a>
+      <a href="#implementation-order"><span style="font-size:14px">▶</span> Implementation order</a>
+
+      <div class="nav-section-label">Reference</div>
+      <a href="#references"><span style="font-size:14px">☷</span> References</a>
+      <a href="#summary"><span style="font-size:14px">☰</span> Summary</a>
+    </nav>
+  </aside>
+
+  <!-- ══════════════ Main ══════════════ -->
+  <main class="main">
+
+    <div class="page-header">
+      <div class="import-tag">
+        <span class="label">Status</span>
+        <code>@theerapat-s28/ts-structural-eng-tools/fea — shell areas since 3.0.0; thick plates and triangles to come</code>
+      </div>
+      <h1>Shell Element — Theory Notes</h1>
+      <p>How a flat four-node shell element (membrane, plate bending and drilling rotation) gets its stiffness matrix, which formulations this library will use, and how the element fits into the existing frame solver.</p>
+    </div>
+
+    <!-- ══════════════ Overview ══════════════ -->
+    <div class="section" id="overview">
+      <div class="section__title">Overview</div>
+      <p>
+        The frame solver currently has one element: the 12-DOF prismatic beam. Slabs are
+        <a href="../#null-areas" style="color:var(--accent)">null areas</a>, which only distribute load, and walls are modelled as
+        wide columns. A shell element adds stiffness to surfaces: shear walls and cores in their own plane, slabs
+        and mats in bending, or both at once. These notes settle the theory and the formulations before any code is
+        written, so the implementation has a reference to check against.
+      </p>
+
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span><strong>Implemented in 3.0.0</strong> (flat four-node shells, membrane and thin plate, engine meshing, forces): shell areas are part of <code>analyze</code> (<code>model.shells</code>, <code>shellForces</code>; see the <a href="../#shell-areas" style="color:var(--accent)">FEA reference</a>). Thick plates and triangular elements are still to come (Roadmap Phase 5). Numbers on this page come from the library's tests unless marked <em>prototype</em>, which were checked with a throwaway prototype before the code existed. The basis is the finite element method, not a code provision <span class="std-badge" title="Basis: linear-elastic finite element method — not an ACI 318-19 provision">FEM</span>.</span>
+      </div>
+
+      <div class="sub-label">Basis</div>
+      <table class="summary-table">
+        <thead><tr><th>Part</th><th>Formulation</th><th>Source</th><th>Code or adaptation</th></tr></thead>
+        <tbody>
+          <tr><td>Membrane (in-plane)</td><td>4-node quad with drilling rotations: Allman-type edge interpolation plus a penalty term tying the drilling DOF to the in-plane rotation</td><td>Ibrahimbegovic, Taylor &amp; Wilson (1990); Hughes &amp; Brezzi (1989)</td><td>Adaptation (finite element method)</td></tr>
+          <tr><td>Plate, thin (first)</td><td>Discrete Kirchhoff quadrilateral, DKQ</td><td>Batoz &amp; Ben Tahar (1982)</td><td>Adaptation</td></tr>
+          <tr><td>Plate, thick (later)</td><td>MITC4 or DKMQ (Mindlin–Reissner with assumed shear strains)</td><td>Bathe &amp; Dvorkin (1985); Katili (1993)</td><td>Adaptation</td></tr>
+          <tr><td>Shell</td><td>Flat facet: membrane and plate side by side in the element's local axes, uncoupled</td><td>Standard practice</td><td>Adaptation</td></tr>
+          <tr><td>Warped quads</td><td>Projection onto the mean plane plus rigid links to the real nodes</td><td>Standard practice</td><td>Adaptation</td></tr>
+          <tr><td>Analysis</td><td>Linear elastic, small displacements; cases combined by superposition, as for frames</td><td>—</td><td>Adaptation</td></tr>
+          <tr><td>Cracked stiffness</td><td>Walls 0.70 I<sub>g</sub> uncracked or 0.35 I<sub>g</sub> cracked; flat plates and flat slabs 0.25 I<sub>g</sub></td><td>ACI 318-19, 6.6.3.1.1 (Table 6.6.3.1.1(a))</td><td>Code, entered as stiffness modifiers</td></tr>
+        </tbody>
+      </table>
+
+      <div class="sub-label" style="margin-top:20px">One element, three behaviours</div>
+      <div class="model-grid">
+        <div class="model-card"><div class="model-card__title">Membrane</div><div class="model-card__desc">In-plane only: u, v and the drilling rotation θz. Shear walls in their plane, diaphragm action.</div></div>
+        <div class="model-card"><div class="model-card__title">Plate</div><div class="model-card__desc">Bending only: w, θx, θy. Slabs and mats where in-plane action is ignored.</div></div>
+        <div class="model-card"><div class="model-card__title">Shell</div><div class="model-card__desc">Membrane and plate together, 6 DOF per node. Walls and cores, slabs with membrane action.</div></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ Decisions ══════════════ -->
+    <div class="section" id="decisions">
+      <div class="section__title">Decisions</div>
+      <table class="summary-table">
+        <thead><tr><th>Question</th><th>Decision</th><th>What it means</th></tr></thead>
+        <tbody>
+          <tr><td>Which behaviours?</td><td>Membrane, plate and shell</td><td>One element class. Membrane and plate are the shell with one part switched off (see <a href="#flat-shell" style="color:var(--accent)">Flat shell</a>).</td></tr>
+          <tr><td>Who meshes?</td><td>The engine</td><td>The user models a shell area by its corners plus <code>mesh</code>, and the engine generates the elements (see <a href="#meshing" style="color:var(--accent)">Meshing</a>).</td></tr>
+          <tr><td>Supports along meshed edges?</td><td>Line restraints</td><td><code>lineRestraints: { nodeIds: [a, b], ux?…rz? }</code> fix every node on the line, generated nodes included.</td></tr>
+          <tr><td>Beams along meshed edges?</td><td>Split internally</td><td>Results, diagrams and design demands stay under the member's id.</td></tr>
+          <tr><td>Results of a meshed area?</td><td>Per element</td><td><code>shellForces</code> per generated element with its <code>areaId</code>; <code>result.mesh</code> lists the generated nodes and elements.</td></tr>
+          <tr><td>Thin or thick plates?</td><td>Both, DKQ (thin) first</td><td>Thick plates follow as an option with the same inputs (see <a href="#thick-plates" style="color:var(--accent)">Thick plates</a>).</td></tr>
+          <tr><td>Null areas?</td><td>Unchanged</td><td>Null areas keep distributing load to frames. Shells are opt-in, used only where the surface's stiffness matters (walls, cores, transfer slabs, mats). One model can mix both.</td></tr>
+          <tr><td>Where is the behaviour chosen?</td><td>On the shell area</td><td><code>type?: "shell" | "membrane" | "plate"</code>, default <code>"shell"</code>.</td></tr>
+          <tr><td>How is the section given?</td><td>Inline on each area</td><td><code>section: { thickness, E, nu, unitWeight? }</code>, like <code>Member.section</code>. A reference by id follows with the shared sections list (Roadmap 1.1), for members and shells together.</td></tr>
+          <tr><td>How are shells loaded?</td><td>Through <code>AreaLoad</code></td><td><code>areaId</code> names a null area or a shell area (one id namespace). The kind of area decides the route: null-area loads go to the edge members as today, shell loads become nodal loads on the shell elements.</td></tr>
+          <tr><td>Unsupported DOFs at membrane- or plate-only nodes?</td><td>Error, not auto-fixed</td><td>An unresisted translation throws 328 with a message explaining the behaviour, so the user decides how to support it (see <a href="#flat-shell" style="color:var(--accent)">Flat shell</a>).</td></tr>
+        </tbody>
+      </table>
+
+      <div class="sub-label">Still open</div>
+      <ul>
+        <li><strong>A null area resting on a shell edge</strong> (a slab on a wall with no beam): null areas need frame members on their supporting edges. Should a meshed shell edge also count as a support, with the line load turned into nodal loads along the mesh edge?</li>
+        <li><strong>Frames along meshed edges</strong>: split the member at the mesh nodes inside the engine, or tie it to the edge with constraints (Roadmap 3.1)? See <a href="#meshing" style="color:var(--accent)">Meshing</a>.</li>
+        <li><strong>Offsets</strong> between a slab's mid-surface and a beam's centroid: these need rigid offsets (Roadmap 2.1).</li>
+        <li>The phases are tracked in <strong>Phase 5 of <code>ROADMAP.md</code></strong> (5.0–5.8).</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ Beam to shell ══════════════ -->
+    <div class="section" id="beam-to-shell">
+      <div class="section__title">From beam to shell</div>
+      <p>
+        Every element stiffness matrix comes from one formula. Write the strains inside the element in terms of the
+        nodal displacements <strong>d</strong> as ε = <strong>B d</strong>, and the stresses as σ = <strong>D</strong> ε. The strain energy
+        is then ½ <strong>d</strong><sup>T</sup>(∫ <strong>B</strong><sup>T</sup><strong>D B</strong> dV) <strong>d</strong>, so
+      </p>
+      <div class="eq"><strong>k</strong> = ∫<sub>V</sub> <strong>B</strong><sup>T</sup> <strong>D</strong> <strong>B</strong> dV</div>
+      <p>
+        The beam matrix in <code>beam-3d-stiffness.ts</code> is this integral worked out by hand. As an example, take the transverse
+        displacement at the start node. Its cubic Hermite shape function, and the curvature it produces, are
+      </p>
+      <div class="eq">N<sub>2</sub>(s) = 1 − 3s² + 2s³, &nbsp; s = x / L &nbsp;&nbsp;&nbsp; B = <span class="frac"><span>d²N<sub>2</sub></span><span>dx²</span></span> = <span class="frac"><span>12s − 6</span><span>L²</span></span></div>
+      <div class="eq">k<sub>22</sub> = ∫<sub>0</sub><sup>L</sup> EI B² dx = <span class="frac"><span>EI</span><span>L³</span></span> ∫<sub>0</sub><sup>1</sup> (12s − 6)² ds = <span class="frac"><span>12 EI</span><span>L³</span></span></div>
+      <p>
+        Numerical integration gives the same number. Use two Gauss points at s = ½(1 ∓ 1/√3), each with weight ½. At both
+        points (12s − 6)² = 36/3 = 12, so the sum is ½·12 + ½·12 = 12, giving 12EI/L³ exactly. An n-point Gauss rule is exact
+        for polynomials up to degree 2n − 1, and this integrand is only quadratic.
+      </p>
+      <p>
+        That is the whole trick for shells. The formula does not change, but the integral is evaluated at a few points
+        instead of by hand.
+      </p>
+      <table class="summary-table">
+        <thead><tr><th></th><th>Frame member (today)</th><th>Four-node flat shell</th></tr></thead>
+        <tbody>
+          <tr><td>Domain</td><td>1D, length L</td><td>2D, any convex quadrilateral</td></tr>
+          <tr><td>Shape functions</td><td>Linear (axial, torsion), Hermite cubic (bending) in x</td><td>Bilinear in natural coordinates ξ, η (plus edge functions for drilling and DKQ)</td></tr>
+          <tr><td>Geometry</td><td>dx; nothing to map</td><td>Jacobian <strong>J</strong> from (ξ, η) to (x, y)</td></tr>
+          <tr><td>Integral</td><td>Closed form</td><td>Gauss points (2×2, or 3×3 for the membrane's strain energy)</td></tr>
+          <tr><td>Size</td><td>12×12 (2 nodes × 6 DOF)</td><td>24×24 (4 nodes × 6 DOF)</td></tr>
+          <tr><td>Releases</td><td>Static condensation of end DOFs</td><td>None. Condensation reappears only for internal modes (QM6).</td></tr>
+          <tr><td>Load vector</td><td>Exact fixed-end forces</td><td>Equivalent nodal loads ∫ N<sub>i</sub> p dA</td></tr>
+          <tr><td>Results</td><td>End forces and diagrams in kN, kN·m</td><td>Forces per unit width: kN/m, kN·m/m</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════ Isoparametric ══════════════ -->
+    <div class="section" id="isoparametric">
+      <div class="section__title">Isoparametric quad</div>
+      <figure class="figure">
+        <svg viewBox="0 0 640 230" role="img" aria-label="Parent square in xi-eta coordinates mapped to a distorted quadrilateral, with the four Gauss points">
+          <rect class="dg-edge" x="40" y="30" width="160" height="160" />
+          <line class="dg-dash" x1="40" y1="110" x2="200" y2="110" />
+          <line class="dg-dash" x1="120" y1="30" x2="120" y2="190" />
+          <circle class="dg-gauss" cx="73.8" cy="156.2" r="4" />
+          <circle class="dg-gauss" cx="166.2" cy="156.2" r="4" />
+          <circle class="dg-gauss" cx="166.2" cy="63.8" r="4" />
+          <circle class="dg-gauss" cx="73.8" cy="63.8" r="4" />
+          <circle class="dg-node" cx="40" cy="190" r="5" />
+          <circle class="dg-node" cx="200" cy="190" r="5" />
+          <circle class="dg-node" cx="200" cy="30" r="5" />
+          <circle class="dg-node" cx="40" cy="30" r="5" />
+          <text class="dg-label" x="22" y="208">1</text>
+          <text class="dg-label" x="208" y="208">2</text>
+          <text class="dg-label" x="208" y="24">3</text>
+          <text class="dg-label" x="22" y="24">4</text>
+          <text class="dg-math" x="204" y="114">ξ</text>
+          <text class="dg-math" x="124" y="26">η</text>
+          <text class="dg-text" x="62" y="224">parent square, −1 ≤ ξ, η ≤ 1</text>
+          <line class="dg-arrow" x1="245" y1="110" x2="322" y2="110" />
+          <polygon class="dg-arrowhead" points="330,110 320,105 320,115" />
+          <text class="dg-math" x="246" y="98">x = Σ Nᵢ xᵢ</text>
+          <polygon class="dg-edge" points="370,195 590,175 560,40 400,70" />
+          <line class="dg-dash" x1="385" y1="132.5" x2="575" y2="107.5" />
+          <line class="dg-dash" x1="480" y1="185" x2="480" y2="55" />
+          <circle class="dg-gauss" cx="420.1" cy="164.0" r="4" />
+          <circle class="dg-gauss" cx="540.0" cy="151.2" r="4" />
+          <circle class="dg-gauss" cx="529.8" cy="74.5" r="4" />
+          <circle class="dg-gauss" cx="430.3" cy="90.5" r="4" />
+          <circle class="dg-node" cx="370" cy="195" r="5" />
+          <circle class="dg-node" cx="590" cy="175" r="5" />
+          <circle class="dg-node" cx="560" cy="40" r="5" />
+          <circle class="dg-node" cx="400" cy="70" r="5" />
+          <text class="dg-label" x="352" y="210">1</text>
+          <text class="dg-label" x="598" y="190">2</text>
+          <text class="dg-label" x="568" y="34">3</text>
+          <text class="dg-label" x="384" y="64">4</text>
+          <text class="dg-text" x="420" y="224">element in its local x–y plane</text>
+        </svg>
+        <figcaption>Corners (blue) are numbered counter-clockwise about local 3. The 2×2 Gauss points (green) sit at ξ, η = ±1/√3 and move with the mapping.</figcaption>
+      </figure>
+      <p>
+        Each element is mapped from a parent square −1 ≤ ξ, η ≤ 1. The same bilinear functions interpolate both the geometry and
+        the displacements, which is what "isoparametric" means:
+      </p>
+      <div class="eq">N<sub>i</sub>(ξ, η) = ¼ (1 + ξ<sub>i</sub>ξ)(1 + η<sub>i</sub>η), &nbsp;&nbsp; (ξ<sub>i</sub>, η<sub>i</sub>) = (−1, −1), (1, −1), (1, 1), (−1, 1)</div>
+      <div class="eq">x = Σ<sub>i</sub> N<sub>i</sub> x<sub>i</sub>, &nbsp;&nbsp; y = Σ<sub>i</sub> N<sub>i</sub> y<sub>i</sub> &nbsp;&nbsp;&nbsp;&nbsp; u = Σ<sub>i</sub> N<sub>i</sub> u<sub>i</sub>, &nbsp;&nbsp; v = Σ<sub>i</sub> N<sub>i</sub> v<sub>i</sub></div>
+      <p>Strains need derivatives in x and y, but the functions are written in ξ and η. The Jacobian converts between them:</p>
+      <div class="eq">
+        <strong>J</strong> = <span class="mat c2"><span>∂x/∂ξ</span><span>∂y/∂ξ</span><span>∂x/∂η</span><span>∂y/∂η</span></span>
+        = Σ<sub>i</sub> <span class="mat c2"><span>N<sub>i,ξ</sub> x<sub>i</sub></span><span>N<sub>i,ξ</sub> y<sub>i</sub></span><span>N<sub>i,η</sub> x<sub>i</sub></span><span>N<sub>i,η</sub> y<sub>i</sub></span></span>
+        &nbsp;&nbsp;&nbsp;
+        <span class="mat c1"><span>N<sub>i,x</sub></span><span>N<sub>i,y</sub></span></span> = <strong>J</strong><sup>−1</sup> <span class="mat c1"><span>N<sub>i,ξ</sub></span><span>N<sub>i,η</sub></span></span>
+        &nbsp;&nbsp;&nbsp; dA = det <strong>J</strong> dξ dη
+      </div>
+      <p>The stiffness integral then becomes a sum over four Gauss points:</p>
+      <div class="eq"><strong>k</strong> = ∫<sub>−1</sub><sup>1</sup>∫<sub>−1</sub><sup>1</sup> <strong>B</strong><sup>T</sup><strong>D B</strong> det <strong>J</strong> dξ dη ≈ Σ<sub>g=1</sub><sup>4</sup> <strong>B</strong><sup>T</sup>(ξ<sub>g</sub>, η<sub>g</sub>) <strong>D</strong> <strong>B</strong>(ξ<sub>g</sub>, η<sub>g</sub>) det <strong>J</strong>(ξ<sub>g</sub>, η<sub>g</sub>) <span class="note">ξ<sub>g</sub>, η<sub>g</sub> = ±1/√3, all weights 1</span></div>
+      <p>In code, the integration is the same short loop for every element on this page. Only the strain matrix changes:</p>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript (sketch)</div>
+        <pre>
+<span class="b">const</span> g = <span class="n">1</span> / Math.<span class="u">sqrt</span>(<span class="n">3</span>);
+<span class="b">const</span> gaussPoints = [[-g, -g], [g, -g], [g, g], [-g, g]];  <span class="c">// weights all 1</span>
+
+<span class="b">const</span> k = <span class="u">zeros</span>(nDof, nDof);
+<span class="b">for</span> (<span class="b">const</span> [xi, eta] <span class="b">of</span> gaussPoints) {
+  <span class="b">const</span> { B, detJ } = <span class="u">strainMatrix</span>(xi, eta, corners);  <span class="c">// element-specific: membrane, DKQ, …</span>
+  <span class="u">addBtDB</span>(k, B, D, detJ);                              <span class="c">// k += Bᵀ·D·B·det J</span>
+}</pre>
+      </div>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>det <strong>J</strong> must be positive at every Gauss point. This requires the nodes to run counter-clockwise about local 3 and the quad to be convex. A reflex corner or a crossed ("bow-tie") quad makes det <strong>J</strong> ≤ 0 somewhere, so validation must reject it.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Membrane ══════════════ -->
+    <div class="section" id="membrane">
+      <div class="section__title">Membrane</div>
+      <p>
+        The membrane carries in-plane (plane stress) behaviour: shear walls in their own plane and diaphragm action in slabs.
+        Its local DOFs are u and v, plus θz (see the next section).
+      </p>
+      <div class="eq">
+        ε = <span class="mat c1"><span>ε<sub>x</sub></span><span>ε<sub>y</sub></span><span>γ<sub>xy</sub></span></span>
+        = <span class="mat c1"><span>u<sub>,x</sub></span><span>v<sub>,y</sub></span><span>u<sub>,y</sub> + v<sub>,x</sub></span></span>
+        &nbsp;&nbsp;&nbsp;
+        <strong>n</strong> = <span class="mat c1"><span>N<sub>x</sub></span><span>N<sub>y</sub></span><span>N<sub>xy</sub></span></span> = <strong>D</strong><sub>m</sub> ε
+        &nbsp;&nbsp;&nbsp;
+        <strong>D</strong><sub>m</sub> = <span class="frac"><span>E t</span><span>1 − ν²</span></span>
+        <span class="mat c3"><span>1</span><span>ν</span><span>0</span><span>ν</span><span>1</span><span>0</span><span>0</span><span>0</span><span><span class="frac"><span>1 − ν</span><span>2</span></span></span></span>
+      </div>
+      <div class="eq">
+        <strong>B</strong><sub>m,i</sub> = <span class="mat c2"><span>N<sub>i,x</sub></span><span>0</span><span>0</span><span>N<sub>i,y</sub></span><span>N<sub>i,y</sub></span><span>N<sub>i,x</sub></span></span>
+        &nbsp;&nbsp;&nbsp;
+        <strong>k</strong><sub>m</sub> = Σ<sub>g</sub> <strong>B</strong><sub>m</sub><sup>T</sup> <strong>D</strong><sub>m</sub> <strong>B</strong><sub>m</sub> det <strong>J</strong>
+        <span class="note">8×8 for u, v; <strong>n</strong> in N/mm when E is in MPa and t in mm</span>
+      </div>
+
+      <div class="sub-label">Why the plain bilinear quad is not enough</div>
+      <p>
+        In pure bending, a beam's top and bottom edges curve (v ∝ x²) while its cross-sections stay plane (u ∝ xy).
+        The bilinear quad can represent u = xy but not v = x², so its edges stay straight. To follow the bending it has to
+        shear, and the spurious γ<sub>xy</sub> stores shear energy that the real wall does not have. The element is
+        therefore too stiff, and gets worse the longer it is relative to its depth. This is <strong>parasitic shear</strong>, the
+        in-plane form of locking.
+      </p>
+      <table class="summary-table">
+        <thead><tr><th>MacNeal–Harder straight cantilever, in-plane tip shear, 6 regular elements</th><th>Tip deflection</th><th>÷ reference</th></tr></thead>
+        <tbody>
+          <tr><td>Bilinear Q4</td><td>0.0101</td><td>0.09</td></tr>
+          <tr><td>Drilling quad (next section)</td><td>0.0977</td><td>0.90</td></tr>
+          <tr><td>Reference (L = 6, depth 0.2, t = 0.1, E = 10⁷, ν = 0.3, P = 1)</td><td>0.1081</td><td>1.00</td></tr>
+        </tbody>
+      </table>
+      <p>
+        The bilinear Q4 is too stiff by a factor of ten. A wall modelled with one element through its depth would come out about ten
+        times too stiff, so the plain Q4 is not an option. There are two standard cures:
+      </p>
+      <ul>
+        <li><strong>Incompatible modes</strong> (Wilson; QM6 by Taylor, Beresford &amp; Wilson 1976). Add four internal bubble modes,
+          u += (1 − ξ²)α<sub>1</sub> + (1 − η²)α<sub>2</sub> and v += (1 − ξ²)α<sub>3</sub> + (1 − η²)α<sub>4</sub>, then condense them out per element,
+          <strong>k</strong> = <strong>k</strong><sub>dd</sub> − <strong>k</strong><sub>dα</sub> <strong>k</strong><sub>αα</sub><sup>−1</sup> <strong>k</strong><sub>αd</sub>. This is the same algebra as
+          <code>static-condensation.ts</code>. It is exact in pure bending for rectangles. QM6 evaluates the bubble derivatives with the Jacobian at the
+          element centre, so distorted elements still pass the patch test.</li>
+        <li><strong>A drilling-rotation element</strong>. Its extra edge terms remove most of the parasitic shear, and it gives θz real stiffness.</li>
+      </ul>
+      <p>
+        Chosen: the <strong>drilling quad</strong>, because the shell needs θz stiffness anyway (next section). QM6 stays useful as an
+        independent check in the tests.
+      </p>
+    </div>
+
+    <!-- ══════════════ Drilling ══════════════ -->
+    <div class="section" id="drilling">
+      <div class="section__title">Drilling rotation</div>
+      <p>
+        Plane stress has no rotational DOF, but a shell node has six. The rotation about the shell normal, θz (the
+        "drilling" rotation), needs stiffness of its own, and the frame depends on it:
+      </p>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>A beam framing into a wall <strong>in the wall's plane</strong> (a coupling beam, a spandrel, a beam into a core) delivers its end moment through θz. Without drilling stiffness the wall cannot take that moment, so the beam end acts as a <strong>pin</strong>. A small fictitious spring on θz removes the singularity but not the pin, because the moment that spring can carry is negligible.</span>
+      </div>
+
+      <div class="sub-label">Allman-type edge interpolation</div>
+      <p>
+        The drilling rotations add a quadratic bulge to each edge's normal displacement (Allman 1984; quad by Ibrahimbegovic,
+        Taylor &amp; Wilson 1990). Each mid-side function belongs to one edge, running from corner i to corner j counter-clockwise (N<sub>5</sub> to N<sub>8</sub> on edges 1→2, 2→3, 3→4, 4→1):
+      </p>
+      <div class="eq">N<sub>5</sub> = ½(1 − ξ²)(1 − η) &nbsp; N<sub>6</sub> = ½(1 + ξ)(1 − η²) &nbsp; N<sub>7</sub> = ½(1 − ξ²)(1 + η) &nbsp; N<sub>8</sub> = ½(1 − ξ)(1 − η²)</div>
+      <div class="eq">
+        u = Σ<sub>i</sub> N<sub>i</sub> u<sub>i</sub> + Σ<sub>k=5</sub><sup>8</sup> N<sub>k</sub> <span class="frac"><span>y<sub>j</sub> − y<sub>i</sub></span><span>8</span></span> (θ<sub>j</sub> − θ<sub>i</sub>)
+        &nbsp;&nbsp;&nbsp;
+        v = Σ<sub>i</sub> N<sub>i</sub> v<sub>i</sub> + Σ<sub>k=5</sub><sup>8</sup> N<sub>k</sub> <span class="frac"><span>x<sub>i</sub> − x<sub>j</sub></span><span>8</span></span> (θ<sub>j</sub> − θ<sub>i</sub>)
+      </div>
+      <p>
+        Here is where this comes from. The vector (y<sub>j</sub> − y<sub>i</sub>, x<sub>i</sub> − x<sub>j</sub>) is the edge length l times its outward unit normal. A
+        counter-clockwise rotation θ makes the edge's normal displacement change at a rate −θ along the edge. A
+        quadratic bump of height (l/8)(θ<sub>j</sub> − θ<sub>i</sub>) at mid-edge reproduces the difference between the two end slopes. The corner functions
+        N<sub>i</sub> stay bilinear.
+      </p>
+
+      <div class="sub-label">Penalty on the rotation</div>
+      <p>
+        Equal θ at every node adds nothing to u and v, so the edge terms on their own leave a zero-energy mode. The Hughes–Brezzi
+        penalty fixes this by tying θ to the material's true in-plane rotation, ω = ½(v<sub>,x</sub> − u<sub>,y</sub>):
+      </p>
+      <div class="eq">Π = ½ ∫ ε<sup>T</sup> <strong>D</strong><sub>m</sub> ε dA + ½ γ t ∫ (θ − ω)² dA, &nbsp;&nbsp; θ = Σ<sub>i</sub> N<sub>i</sub> θ<sub>i</sub></div>
+      <div class="eq"><strong>k</strong><sub>m</sub> = Σ<sub>g ∈ 3×3</sub> <strong>B</strong><sub>m</sub><sup>T</sup> <strong>D</strong><sub>m</sub> <strong>B</strong><sub>m</sub> det <strong>J</strong> + 4 γ t <strong>b</strong><sub>γ</sub><sup>T</sup> <strong>b</strong><sub>γ</sub> det <strong>J</strong> |<sub>ξ = η = 0</sub> <span class="note">12×12 over [u<sub>i</sub> v<sub>i</sub> θ<sub>i</sub>]; <strong>b</strong><sub>γ</sub> is the row giving θ − ω</span></div>
+      <p>
+        <strong>B</strong><sub>m</sub> now has 12 columns, because the edge terms put θ into u and v. γ = G (the shear modulus) is the usual choice.
+        The two terms need different integration rules. This was settled while implementing the element (Roadmap 5.1):
+      </p>
+      <table class="summary-table">
+        <thead><tr><th>Choice</th><th>What goes wrong</th><th>Used</th></tr></thead>
+        <tbody>
+          <tr><td>Strain energy at 2×2 points</td><td>A rectangular element has a fourth zero-energy mode: corner rotations alternating as 3c·ξη with corner displacements u = −cx, v = cy. Its shear strain and θ − ω vanish everywhere, and its normal strains vanish exactly at the 2×2 points, so no penalty rule removes it. It cannot spread through a mesh, but a single element can show it.</td><td>No: <strong>3×3 points</strong>, which integrate the edge terms' energy fully</td></tr>
+          <tr><td>Penalty at 2×2 points</td><td>Distorted elements lock as γ grows. MacNeal–Harder trapezoidal cantilever: 0.0877 at γ = 0.01 G, 0.0848 at G, 0.0323 at 100 G.</td><td>No: <strong>one point at the centre</strong>, which only ties each element's mean rotation to the material. The tip deflection then changes by under 0.3 % between γ = 0.01 G and 100 G on every mesh shape tried.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        With these rules the 12×12 matrix has exactly three zero-energy modes, the in-plane rigid-body motions, for rectangles and distorted quads alike. It passes the
+        MacNeal–Harder membrane patch test exactly when every boundary DOF, θ included, is prescribed; a free boundary θ lets the boundary edges bulge, so the patch is no longer held.
+        On the straight cantilever it gives 0.0977 (regular mesh), 0.0931 (parallelogram) and 0.0829 (trapezoidal) against 0.1081.
+      </p>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>The patch test cannot detect a wrong sign on the edge term. With the sign flipped, the prototype still passed the patch test exactly, but the cantilever's tip deflection dropped to 0.0031, about 30 times too stiff. Bending benchmarks are therefore part of the definition of done, not an optional extra.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Plate theory ══════════════ -->
+    <div class="section" id="plate-theory">
+      <div class="section__title">Plate theory</div>
+      <p>
+        The plate carries out-of-plane bending: slabs, mats, and walls under out-of-plane load. Its local DOFs are w, θx and θy, which are right-hand
+        rotations about local x and y, as for members.
+      </p>
+      <p>
+        <strong>Kinematics.</strong> A point at height z above the mid-surface moves u = z β<sub>x</sub>, v = z β<sub>y</sub>, where β<sub>x</sub> and β<sub>y</sub> are the
+        rotations of the normal in the x–z and y–z planes. In terms of the node rotations, β<sub>x</sub> = θ<sub>y</sub> and β<sub>y</sub> = −θ<sub>x</sub>.
+      </p>
+      <div class="eq">
+        κ = <span class="mat c1"><span>κ<sub>x</sub></span><span>κ<sub>y</sub></span><span>κ<sub>xy</sub></span></span>
+        = <span class="mat c1"><span>β<sub>x,x</sub></span><span>β<sub>y,y</sub></span><span>β<sub>x,y</sub> + β<sub>y,x</sub></span></span>
+        &nbsp;&nbsp; ε(z) = z κ
+        &nbsp;&nbsp;&nbsp;
+        <strong>m</strong> = <span class="mat c1"><span>M<sub>x</sub></span><span>M<sub>y</sub></span><span>M<sub>xy</sub></span></span> = ∫ z σ dz = <strong>D</strong><sub>b</sub> κ
+      </div>
+      <div class="eq">
+        <strong>D</strong><sub>b</sub> = <span class="frac"><span>E t³</span><span>12 (1 − ν²)</span></span>
+        <span class="mat c3"><span>1</span><span>ν</span><span>0</span><span>ν</span><span>1</span><span>0</span><span>0</span><span>0</span><span><span class="frac"><span>1 − ν</span><span>2</span></span></span></span>
+        &nbsp;&nbsp;&nbsp;
+        γ = <span class="mat c1"><span>γ<sub>xz</sub></span><span>γ<sub>yz</sub></span></span> = <span class="mat c1"><span>w<sub>,x</sub> + β<sub>x</sub></span><span>w<sub>,y</sub> + β<sub>y</sub></span></span>
+        &nbsp;&nbsp;
+        <strong>q</strong> = <span class="mat c1"><span>Q<sub>x</sub></span><span>Q<sub>y</sub></span></span> = κ<sub>s</sub> G t γ, &nbsp; κ<sub>s</sub> = 5/6
+      </div>
+      <table class="summary-table">
+        <thead><tr><th></th><th>Kirchhoff (thin plate)</th><th>Mindlin–Reissner (thick plate)</th></tr></thead>
+        <tbody>
+          <tr><td>Assumption</td><td>Normals stay normal: γ = 0, so β<sub>x</sub> = −w<sub>,x</sub>, β<sub>y</sub> = −w<sub>,y</sub></td><td>Normals stay straight but may tilt: γ ≠ 0</td></tr>
+          <tr><td>Energy</td><td>Bending only, κ = [−w<sub>,xx</sub>, −w<sub>,yy</sub>, −2w<sub>,xy</sub>]</td><td>Bending plus transverse shear</td></tr>
+          <tr><td>Continuity</td><td>C¹: w and its slopes continuous across edges, which is awkward for polynomials on a quad</td><td>C⁰: w, β<sub>x</sub>, β<sub>y</sub> independent, each simply bilinear</td></tr>
+          <tr><td>Pitfall</td><td>Conforming elements are impractical, hence the discrete Kirchhoff elements (DKT, DKQ)</td><td>Shear locking when thin</td></tr>
+          <tr><td>Use</td><td>Ordinary RC slabs and walls (span/thickness ≳ 10–20)</td><td>Transfer slabs, mats, pile caps</td></tr>
+          <tr><td>Planned element</td><td>DKQ (first)</td><td>MITC4 or DKMQ (later)</td></tr>
+        </tbody>
+      </table>
+      <p>
+        <strong>Shear locking.</strong> The shear term's stiffness is κ<sub>s</sub>Gt, while bending's is Et³/12, so for an element of size h the ratio is
+        of order (h/t)². In a thin plate, bilinear w and β cannot make γ = 0 throughout the element. The very stiff shear term then
+        absorbs the deformation, and the plate barely deflects. Reduced (1-point) integration of the shear term cures the locking but introduces
+        spurious "hourglass" modes. MITC4 cures both problems, and DKQ avoids them altogether.
+      </p>
+    </div>
+
+    <!-- ══════════════ DKQ ══════════════ -->
+    <div class="section" id="dkq">
+      <div class="section__title">DKQ plate</div>
+      <p>
+        The discrete Kirchhoff quadrilateral (Batoz &amp; Ben Tahar 1982) starts from independent rotations, as in Mindlin theory, so only first
+        derivatives (C⁰ continuity) are needed. It then imposes the Kirchhoff condition at discrete points and along the edges instead of
+        everywhere. Shear energy is never computed, so there is nothing to lock. The result is a 12-DOF element with w, θx and θy at
+        each corner.
+      </p>
+      <figure class="figure">
+        <svg viewBox="0 0 640 250" role="img" aria-label="DKQ element with four corner nodes carrying w, theta x, theta y and four mid-side nodes that are eliminated">
+          <rect class="dg-edge" x="70" y="40" width="220" height="180" />
+          <circle class="dg-node" cx="70" cy="220" r="6" />
+          <circle class="dg-node" cx="290" cy="220" r="6" />
+          <circle class="dg-node" cx="290" cy="40" r="6" />
+          <circle class="dg-node" cx="70" cy="40" r="6" />
+          <circle class="dg-mid" cx="180" cy="220" r="5.5" />
+          <circle class="dg-mid" cx="290" cy="130" r="5.5" />
+          <circle class="dg-mid" cx="180" cy="40" r="5.5" />
+          <circle class="dg-mid" cx="70" cy="130" r="5.5" />
+          <text class="dg-label" x="52" y="238">1</text>
+          <text class="dg-label" x="300" y="238">2</text>
+          <text class="dg-label" x="300" y="34">3</text>
+          <text class="dg-label" x="52" y="34">4</text>
+          <text class="dg-label" x="176" y="208">5</text>
+          <text class="dg-label" x="272" y="134">6</text>
+          <text class="dg-label" x="176" y="62">7</text>
+          <text class="dg-label" x="80" y="134">8</text>
+          <line class="dg-arrow" x1="196" y1="232" x2="230" y2="232" />
+          <polygon class="dg-arrowhead" points="236,232 228,228 228,236" />
+          <text class="dg-math" x="240" y="236">s</text>
+          <line class="dg-arrow" x1="160" y1="226" x2="160" y2="244" />
+          <polygon class="dg-arrowhead" points="160,250 156,242 164,242" />
+          <text class="dg-math" x="146" y="248">n</text>
+          <circle class="dg-node" cx="350" cy="80" r="6" />
+          <text class="dg-text" x="366" y="84">corner node: w, θx, θy — the 12 DOFs kept</text>
+          <circle class="dg-mid" cx="350" cy="116" r="5.5" />
+          <text class="dg-text" x="366" y="120">mid-side node: βx, βy — eliminated</text>
+          <text class="dg-text" x="342" y="160">along each edge (s tangent, n normal):</text>
+          <text class="dg-text" x="342" y="180">• w cubic from its corner values and slopes</text>
+          <text class="dg-text" x="342" y="200">• ∫ (w,s + βs) ds = 0 fixes βs at mid-side</text>
+          <text class="dg-text" x="342" y="220">• βn linear between the corners</text>
+        </svg>
+        <figcaption>The rotations start with 8 nodes (16 parameters). The Kirchhoff conditions leave only the 12 corner DOFs.</figcaption>
+      </figure>
+
+      <div class="flow-steps">
+        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Interpolate the rotations of the normal</strong> with the 8-node serendipity functions: β<sub>x</sub> = Σ<sub>i=1</sub><sup>8</sup> N<sub>i</sub> β<sub>xi</sub>, β<sub>y</sub> = Σ N<sub>i</sub> β<sub>yi</sub>. Corner functions: N<sub>i</sub> = ¼(1 + ξ<sub>i</sub>ξ)(1 + η<sub>i</sub>η)(ξ<sub>i</sub>ξ + η<sub>i</sub>η − 1). The mid-side N<sub>5</sub>…N<sub>8</sub> are as in the drilling section.</div></div>
+        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Kirchhoff at the corners</strong>: β<sub>x</sub> = −w<sub>,x</sub> and β<sub>y</sub> = −w<sub>,y</sub>, i.e. β<sub>xi</sub> = θ<sub>yi</sub>, β<sub>yi</sub> = −θ<sub>xi</sub> for i = 1…4.</div></div>
+        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>w is cubic along each edge</strong> in the edge coordinate s, from w and w<sub>,s</sub> at its two corners (Hermite).</div></div>
+        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Kirchhoff along each edge</strong> in the integral sense, ∫<sub>k</sub> (w<sub>,s</sub> + β<sub>s</sub>) ds = 0. Because β<sub>s</sub> is quadratic, this fixes the mid-side value at minus the cubic's mid-edge slope: β<sub>sk</sub> = −(3 / 2l)(w<sub>j</sub> − w<sub>i</sub>) + ¼(w<sub>,s i</sub> + w<sub>,s j</sub>).</div></div>
+        <div class="flow-step"><div class="step-num">5</div><div class="step-body"><strong>The normal rotation is linear along each edge</strong>: β<sub>nk</sub> = ½(β<sub>ni</sub> + β<sub>nj</sub>). Steps 4–5 eliminate the 8 mid-side parameters, leaving β<sub>x</sub> and β<sub>y</sub> as functions of the 12 corner DOFs only.</div></div>
+      </div>
+
+      <p>With <strong>U</strong> = [w<sub>1</sub> θ<sub>x1</sub> θ<sub>y1</sub> … w<sub>4</sub> θ<sub>x4</sub> θ<sub>y4</sub>]<sup>T</sup>, the elimination gives</p>
+      <div class="eq">β<sub>x</sub> = <strong>H</strong><sub>x</sub><sup>T</sup>(ξ, η) <strong>U</strong>, &nbsp;&nbsp; β<sub>y</sub> = <strong>H</strong><sub>y</sub><sup>T</sup>(ξ, η) <strong>U</strong></div>
+      <p>For mid-side k on the edge from corner i to corner j, with x<sub>ij</sub> = x<sub>i</sub> − x<sub>j</sub>, y<sub>ij</sub> = y<sub>i</sub> − y<sub>j</sub> and l<sub>ij</sub>² = x<sub>ij</sub>² + y<sub>ij</sub>²:</p>
+      <div class="eq">
+        a<sub>k</sub> = <span class="frac"><span>−x<sub>ij</sub></span><span>l<sub>ij</sub>²</span></span> &nbsp;
+        b<sub>k</sub> = <span class="frac"><span>¾ x<sub>ij</sub> y<sub>ij</sub></span><span>l<sub>ij</sub>²</span></span> &nbsp;
+        c<sub>k</sub> = <span class="frac"><span>¼ x<sub>ij</sub>² − ½ y<sub>ij</sub>²</span><span>l<sub>ij</sub>²</span></span> &nbsp;
+        d<sub>k</sub> = <span class="frac"><span>−y<sub>ij</sub></span><span>l<sub>ij</sub>²</span></span> &nbsp;
+        e<sub>k</sub> = <span class="frac"><span>¼ y<sub>ij</sub>² − ½ x<sub>ij</sub>²</span><span>l<sub>ij</sub>²</span></span>
+      </div>
+      <p>
+        For corner i, let m be the mid-side of the edge that <em>starts</em> at i and k the mid-side of the edge that <em>ends</em> at i. That gives
+        node 1: m = 5, k = 8; node 2: 6, 5; node 3: 7, 6; node 4: 8, 7. The three entries for corner i are:
+      </p>
+      <table class="summary-table">
+        <thead><tr><th>DOF</th><th>H<sub>x</sub></th><th>H<sub>y</sub></th></tr></thead>
+        <tbody>
+          <tr><td>w<sub>i</sub></td><td>1.5 (a<sub>m</sub>N<sub>m</sub> − a<sub>k</sub>N<sub>k</sub>)</td><td>1.5 (d<sub>m</sub>N<sub>m</sub> − d<sub>k</sub>N<sub>k</sub>)</td></tr>
+          <tr><td>θ<sub>xi</sub></td><td>b<sub>m</sub>N<sub>m</sub> + b<sub>k</sub>N<sub>k</sub></td><td>−N<sub>i</sub> + e<sub>m</sub>N<sub>m</sub> + e<sub>k</sub>N<sub>k</sub></td></tr>
+          <tr><td>θ<sub>yi</sub></td><td>N<sub>i</sub> − c<sub>m</sub>N<sub>m</sub> − c<sub>k</sub>N<sub>k</sub></td><td>−b<sub>m</sub>N<sub>m</sub> − b<sub>k</sub>N<sub>k</sub></td></tr>
+        </tbody>
+      </table>
+      <p>From here it is the usual recipe: curvature rows from the derivatives of <strong>H</strong> (through <strong>J</strong><sup>−1</sup>), integrated with 2×2 Gauss points.</p>
+      <div class="eq">
+        <strong>B</strong><sub>b</sub> = <span class="mat c1"><span><strong>H</strong><sub>x,x</sub><sup>T</sup></span><span><strong>H</strong><sub>y,y</sub><sup>T</sup></span><span><strong>H</strong><sub>x,y</sub><sup>T</sup> + <strong>H</strong><sub>y,x</sub><sup>T</sup></span></span>
+        &nbsp;&nbsp;&nbsp;
+        <strong>k</strong><sub>b</sub> = Σ<sub>g</sub> <strong>B</strong><sub>b</sub><sup>T</sup> <strong>D</strong><sub>b</sub> <strong>B</strong><sub>b</sub> det <strong>J</strong>
+        <span class="note">3×12 and 12×12</span>
+      </div>
+      <p>
+        The geometry map stays bilinear, because the mid-side nodes lie at the edge midpoints. Only the rotation field uses the serendipity functions.
+      </p>
+
+      <div class="sub-label">Results of the element (Roadmap 5.2 tests)</div>
+      <table class="summary-table">
+        <thead><tr><th>Square plate, ν = 0.3, n × n mesh</th><th>SS, uniform: w<sub>c</sub> D / (q a⁴)</th><th>Clamped, uniform: w<sub>c</sub> D / (q a⁴)</th><th>SS, centre load: w<sub>c</sub> D / (P a²)</th></tr></thead>
+        <tbody>
+          <tr><td>2 × 2</td><td>0.003785</td><td>0.001563</td><td>0.015139</td></tr>
+          <tr><td>4 × 4</td><td>0.004046</td><td>0.001461</td><td>0.012693</td></tr>
+          <tr><td>8 × 8</td><td>0.004060</td><td>0.001319</td><td>0.011937</td></tr>
+          <tr><td>16 × 16</td><td>0.004062</td><td>0.001279</td><td>0.011701</td></tr>
+          <tr><td>Timoshenko &amp; Woinowsky-Krieger</td><td>0.00406</td><td>0.00126</td><td>0.01160</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Uniform loads are lumped as ∫N<sub>i</sub> q dA at each corner's w. Simply supported edges hold w, plus the rotation that w = 0 along the edge implies
+        (θx on edges x = const, θy on edges y = const). On the 16 × 16 mesh the centre moment M<sub>x</sub>, averaged over the four elements at the centre node, is
+        0.0480 qa² simply supported (reference 0.0479) and 0.0233 qa² clamped (0.0231). The deflection is identical for t/a = 0.01 and 0.3, as thin-plate theory requires.
+        On the MacNeal–Harder strip the out-of-plane tip deflection is 0.4263, 0.4266 and 0.4261 on the regular, trapezoidal and parallelogram meshes (reference 0.4321),
+        so distortion barely matters. The element has exactly three zero-energy modes (w = 1, w = x, w = y) for rectangles and distorted quads, and reproduces the
+        MacNeal–Harder plate patch test exactly, moments included.
+      </p>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span><strong>What DKQ does not provide.</strong> w is not defined inside the element (only along its edges), so pressure loads go to the w DOFs through ∫ N<sub>i</sub> q dA. Transverse shear is not a strain quantity, so it is recovered from equilibrium, Q<sub>x</sub> = M<sub>x,x</sub> + M<sub>xy,y</sub> and Q<sub>y</sub> = M<sub>xy,x</sub> + M<sub>y,y</sub>, and is less accurate than the moments. There is no shear deformation, so thick plates come out too stiff.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Thick plates ══════════════ -->
+    <div class="section" id="thick-plates">
+      <div class="section__title">Thick plates</div>
+      <p>There are two candidates for the later "thick" option:</p>
+      <ul>
+        <li><strong>MITC4</strong> (Bathe &amp; Dvorkin 1985). w, β<sub>x</sub> and β<sub>y</sub> are bilinear (Mindlin), and bending comes from the gradients of β with 2×2 points. The transverse shear
+          is not taken straight from the displacement field. Instead, the covariant shear strains are sampled at the four edge midpoints and interpolated:
+          γ<sub>ξz</sub> from A (0, 1) and C (0, −1), linear in η; γ<sub>ηz</sub> from B (−1, 0) and D (1, 0), linear in ξ. They are then transformed with
+          <strong>J</strong><sup>−1</sup>. MITC4 does not lock when thin, has no spurious modes and passes the patch test. It is widely used and well tested, but it is a separate formulation from DKQ.</li>
+        <li><strong>DKMQ</strong> (Katili 1993). DKQ extended with transverse shear deformation, using the same <strong>H</strong>-function machinery. It reduces to DKQ when
+          the plate is thin, so it reuses the most code.</li>
+      </ul>
+      <p>
+        Recommendation: choose after DKQ is in place. DKMQ is the shorter path from DKQ; MITC4 is the better-established
+        element. Either way the input stays the same, apart from a plate-theory option, <code>plateTheory: "thin" | "thick"</code>.
+      </p>
+    </div>
+
+    <!-- ══════════════ Flat shell ══════════════ -->
+    <div class="section" id="flat-shell">
+      <div class="section__title">Flat shell</div>
+      <p>
+        A flat shell element is the membrane and the plate side by side in the element's local axes. For a flat element of uniform
+        section the two do not couple, so the 24×24 local matrix is just the two 12×12 matrices scattered into place:
+      </p>
+      <table class="param-table">
+        <thead><tr><th>Local DOF at node i</th><th>Index</th><th>Part</th><th>Index in that part's 12×12</th></tr></thead>
+        <tbody>
+          <tr><td>u</td><td>6i + 0</td><td>Membrane</td><td>3i + 0</td></tr>
+          <tr><td>v</td><td>6i + 1</td><td>Membrane</td><td>3i + 1</td></tr>
+          <tr><td>w</td><td>6i + 2</td><td>Plate (DKQ)</td><td>3i + 0</td></tr>
+          <tr><td>θx</td><td>6i + 3</td><td>Plate (DKQ)</td><td>3i + 1</td></tr>
+          <tr><td>θy</td><td>6i + 4</td><td>Plate (DKQ)</td><td>3i + 2</td></tr>
+          <tr><td>θz</td><td>6i + 5</td><td>Membrane (drilling)</td><td>3i + 2</td></tr>
+        </tbody>
+      </table>
+      <p>The three behaviours are then the same element with parts switched off:</p>
+      <table class="summary-table">
+        <thead><tr><th>Behaviour</th><th>Stiffness in</th><th>No stiffness in</th><th>Typical use</th></tr></thead>
+        <tbody>
+          <tr><td>Membrane</td><td>u, v, θz</td><td>w, θx, θy</td><td>Walls in their plane only, diaphragm slabs</td></tr>
+          <tr><td>Plate</td><td>w, θx, θy</td><td>u, v, θz</td><td>Slabs where in-plane action is ignored</td></tr>
+          <tr><td>Shell</td><td>All six</td><td>—</td><td>Walls and cores (proposed default), slabs with membrane action</td></tr>
+        </tbody>
+      </table>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>A membrane-only mesh has no out-of-plane stiffness: at an interior node of a membrane wall nothing resists w. The engine does not hold such a translation for the user. It throws <strong>328</strong>, naming the node, a shell and the DOF, with a message explaining that a membrane carries no out-of-plane load (and a plate no in-plane load), so the user can restrain the DOF, connect a frame, or switch the area to <code>"shell"</code>. Unresisted rotations at those nodes are held as at truss joints and reported in <code>autoRestrainedDofs</code>.</span>
+      </div>
+
+      <div class="sub-label">Local axes</div>
+      <ul>
+        <li><strong>Local 3</strong> is the normal by the right-hand rule around <code>nodeIds</code>, as for <a href="../#conventions" style="color:var(--accent)">null areas</a>. For four nodes, Newell's vector area is exactly ½ <strong>d</strong><sub>1</sub> × <strong>d</strong><sub>2</sub> (diagonals <strong>d</strong><sub>1</sub> = <strong>x</strong><sub>3</sub> − <strong>x</strong><sub>1</sub>, <strong>d</strong><sub>2</sub> = <strong>x</strong><sub>4</sub> − <strong>x</strong><sub>2</sub>), so the null-area normal and the warped-quad mean-plane normal below are the same vector.</li>
+        <li><strong>Non-horizontal element</strong>: local 2 is the projection of +Z onto the element plane (upward on a wall), and local 1 = 2 × 3 is horizontal.</li>
+        <li><strong>Horizontal element</strong>: local 1 = +X and local 2 = 3 × 1 (so local 2 = +Y when local 3 = +Z).</li>
+        <li>An optional <code>angle</code> rotates local 1 and 2 about local 3, as for members. The formulation's x, y are local 1, 2, so results come out directly in local axes.</li>
+      </ul>
+
+      <div class="sub-label">Transformation</div>
+      <p>
+        As for members, <strong>k</strong><sub>global</sub> = <strong>T</strong><sup>T</sup> <strong>k</strong><sub>local</sub> <strong>T</strong>, with <strong>T</strong> block-diagonal in the 3×3 direction cosines λ
+        (rows = local 1, 2, 3). A quad has 8 blocks instead of a member's 4. It is cheaper to transform block by block,
+        <strong>k</strong><sub>ab</sub> ← λ<sup>T</sup> <strong>k</strong><sub>ab</sub> λ for each 3×3 block, than to form the 24×24 <strong>T</strong>.
+      </p>
+
+      <div class="sub-label">Warped quads</div>
+      <p>
+        Four nodes are rarely exactly coplanar. Project them onto the mean plane through their centroid, with unit normal <strong>n</strong> ∥ <strong>d</strong><sub>1</sub> × <strong>d</strong><sub>2</sub>.
+        The nodes then sit alternately a distance h above and below that plane:
+      </p>
+      <div class="eq">h = ¼ (<strong>x</strong><sub>1</sub> − <strong>x</strong><sub>2</sub> + <strong>x</strong><sub>3</sub> − <strong>x</strong><sub>4</sub>) · <strong>n</strong>, &nbsp;&nbsp; h<sub>i</sub> = +h, −h, +h, −h</div>
+      <p>
+        Build the flat element on the projected nodes. Then connect each real node to its projection with a rigid link,
+        <strong>u</strong><sub>proj</sub> = <strong>u</strong> + h<sub>i</sub> (<strong>n</strong> × <strong>θ</strong>). With <strong>W</strong> the block matrix of these links, <strong>k</strong> = <strong>W</strong><sup>T</sup> <strong>k</strong><sub>flat</sub> <strong>W</strong>.
+        In local components the link adds −h<sub>i</sub>·r<sub>2</sub> to u<sub>1</sub> and +h<sub>i</sub>·r<sub>1</sub> to u<sub>2</sub>, so each corner's 6×6 transformation is
+        λ on translations and rotations plus those two terms; the global matrix is assembled block by block from them.
+        Member end offsets (Roadmap 2.1) need the same rigid-link algebra. Validation should warn above one
+        warping ratio and reject above a larger one, with the thresholds set from the benchmarks.
+      </p>
+      <p>
+        The links are what keep a warped element free of force under rigid-body motion: without them a rigid rotation of a warped element is resisted.
+        On the MacNeal–Harder twisted beam, where every element is warped, the element gives 5.410·10⁻³ and 1.7575·10⁻³ (references 5.424·10⁻³ and 1.754·10⁻³) for t = 0.32,
+        and 5.282·10⁻³ and 1.300·10⁻³ (5.256·10⁻³ and 1.294·10⁻³) for t = 0.0032 with P = 10⁻⁶ (Roadmap 5.3 tests).
+      </p>
+
+      <div class="sub-label">Stiffness modifiers</div>
+      <p>
+        Cracked-section stiffness per ACI 318-19 Table 6.6.3.1.1(a) (walls 0.70 I<sub>g</sub> uncracked or 0.35 I<sub>g</sub> cracked; flat plates and flat slabs 0.25 I<sub>g</sub>)
+        is applied by modifying <strong>D</strong><sub>m</sub> and <strong>D</strong><sub>b</sub> along local 1 and 2, ETABS-style: f11, f22, f12 for membrane and m11, m22, m12 for bending.
+        Each matrix becomes <strong>S·D·S</strong> with <strong>S</strong> = diag(√f<sub>11</sub>, √f<sub>22</sub>, √f<sub>12</sub>): D<sub>11</sub>, D<sub>22</sub> and D<sub>33</sub> scale by their own modifier and the
+        coupling D<sub>12</sub> by √(f<sub>11</sub>f<sub>22</sub>), so <strong>D</strong> stays symmetric and positive definite and equal modifiers scale it uniformly. The drilling penalty keeps the unmodified G.
+        The modifiers are linear, so superposition is unaffected.
+      </p>
+    </div>
+
+    <!-- ══════════════ Loads ══════════════ -->
+    <div class="section" id="loads">
+      <div class="section__title">Loads</div>
+      <p>
+        Shells have no fixed-end forces. A distributed load becomes equivalent nodal loads through the same Gauss loop,
+        <strong>f</strong><sub>i</sub> = ∫ N<sub>i</sub> <strong>p</strong> dA.
+      </p>
+      <ul>
+        <li><strong>Uniform pressure q</strong> in kN/m², along local 3 or a global axis, as for <code>AreaLoad</code>. In N and mm, 1 kN/m² = 10⁻³ N/mm². On a rectangle, each corner takes qA/4.</li>
+        <li><strong>Self-weight</strong> is unit weight × t per unit area along −Z, resolved into local components: the in-plane part goes to u, v (membrane) and the normal part to w (plate).</li>
+        <li><strong>DKQ</strong> has no interior w field, so its load vector uses the bilinear N<sub>i</sub> on the w DOFs and no nodal moments. The prototype converged to the Timoshenko values with this choice.</li>
+      </ul>
+      <p>
+        All of these are linear in the load, so each load case's vector goes through the existing per-case solve and combinations still superpose.
+        Shell loads use <code>AreaLoad</code>: <code>areaId</code> names either a null area or a shell area, in one id namespace, and the kind of
+        area decides how the load reaches the structure. Loads on null areas still go to the edge members through <code>distributeAreaLoads</code>,
+        which ignores loads on shells.
+      </p>
+    </div>
+
+    <!-- ══════════════ Results ══════════════ -->
+    <div class="section" id="results">
+      <div class="section__title">Results</div>
+      <table class="param-table">
+        <thead><tr><th>Quantity</th><th>Unit</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>F11, F22, F12</td><td>kN/m</td><td>Membrane forces <strong>n</strong> = <strong>D</strong><sub>m</sub> ε per unit width (1 N/mm = 1 kN/m)</td></tr>
+          <tr><td>M11, M22, M12</td><td>kN·m/m</td><td>Bending and twisting moments per unit width (1 kN·m/m = 1000 N·mm/mm)</td></tr>
+          <tr><td>V13, V23</td><td>kN/m</td><td>Transverse shears <code>V13 = −(∂M11/∂x₁ + ∂M12/∂x₂)</code>, <code>V23 = −(∂M12/∂x₁ + ∂M22/∂x₂)</code>; recovered from equilibrium for DKQ</td></tr>
+          <tr><td>S11, S22, S12 top / bottom</td><td>MPa</td><td>Face stresses σ = F/t ∓ 6M/t² (top = +3 face) with the moment sign below</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li><strong>Sign</strong>: M11 is positive when it puts the −3 face in tension, which is sagging for a slab with local 3 up. This matches "M3 positive for sagging" for members. With <strong>m</strong> = ∫ zσ dz as defined above, M11 = −M<sub>x</sub>; likewise the shears follow V2 = −dM3/dx.</li>
+        <li><strong>Recovery</strong>: evaluate at the 2×2 Gauss points, where gradient quantities are most accurate, and extrapolate bilinearly to the corners. Corner i sits at ±√3 in the Gauss points' own coordinates. The shears are the gradient of the bilinear field through the Gauss-point moments, taken at each corner.</li>
+        <li><strong>Per-element values</strong>: return corner values per element. Averaging across elements at a node is a display choice and belongs in the front end.</li>
+        <li><strong>Superposition</strong>: all of these are linear in the displacements, so they are computed from each raw state and rounded only in <code>present-state.ts</code>, as for members.</li>
+        <li><strong>Checks (Roadmap 5.5 tests)</strong>: on a cantilever strip M11 is linear and V13 constant exactly; on a 16 × 16 square plate (ν = 0.3) the centre moment is 0.0480 qa² simply supported (0.0479) and 0.0233 qa² clamped (0.0231), and the clamped edge moment −0.0512 qa² (−0.0513). The recovered edge shear reaches about 80 % (simply supported) and 90 % (clamped) of Timoshenko's peak, so shears are the coarsest output.</li>
+        <li><strong>Design</strong>: design quantities (for example Wood–Armer slab moments, or wall pier and spandrel forces from section cuts) belong in <code>rc/</code> or a later helper, not in the element.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ Meshing ══════════════ -->
+    <div class="section" id="meshing">
+      <div class="section__title">Meshing <code style="font-size:13px">mesh/</code></div>
+      <p>
+        The engine meshes (Roadmap 5.6). The user models a shell area by its 4 corner nodes, as for a null area, with
+        <code>mesh: { maxSize }</code> or <code>{ divisions }</code>; the engine generates the elements. One element per wall or slab
+        panel is never adequate (see the membrane table), so meshing is the normal case.
+      </p>
+      <div class="flow-steps">
+        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Edges cut at model nodes.</strong> Each area edge is cut into <em>segments</em> at the model nodes lying on it (hard points: a column, a beam end, the corner of a neighbouring area). A segment is identified by its two end nodes, so two areas sharing an edge, or meeting along part of one (a slab edge on two wall panels, a T-junction), share the same segments.</div></div>
+        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Division counts.</strong> Every segment gets a count c ≥ 1, at least ⌈length / maxSize⌉ for an area with <code>maxSize</code>. Each area needs its opposite edges to add up to the same count (and at least <code>divisions</code>): Σc over edge 0 = Σc over edge 2, and edge 1 = edge 3. The counts are raised until every area balances, each extra division going to the segment whose elements are longest. This generalises the planned "chord" rule (shared edges and opposite edges tied together) to edges made of several segments. If no balance is reached within a few passes per area, the areas get error 329.</div></div>
+        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Nodes.</strong> Segment nodes are evenly spaced and named <code>"&lt;a&gt;~&lt;b&gt;:&lt;k&gt;"</code> from its end node a to b. Inside each area, nodes come from transfinite (Coons) interpolation of its four edges, using each edge's own spacing, and are named <code>"&lt;areaId&gt;:&lt;i&gt;,&lt;j&gt;"</code>; with even spacing this is exactly the bilinear map of the area, so a planar area stays planar.</div></div>
+        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Elements and checks.</strong> Elements <code>"&lt;areaId&gt;:&lt;i&gt;,&lt;j&gt;"</code> keep the area's orientation and properties; an area that stays 1 × 1 keeps its own id. Every generated element must be a valid quadrilateral and every generated id new, otherwise 329.</div></div>
+        <div class="flow-step"><div class="step-num">5</div><div class="step-body"><strong>Members on meshed edges.</strong> A member with generated nodes inside it is split there internally, so it shares them with the shells. Releases stay at its real ends; its member loads are resolved over its whole length and then cut at the pieces; its end forces come from the first and last piece, and its diagram is stitched from the pieces' own diagrams (both sides reported where the shells feed load in). Results stay under the member's id, so envelopes and design demands are unchanged. A test against the same beams split by hand gives identical displacements, end forces and diagram extremes.</div></div>
+        <div class="flow-step"><div class="step-num">6</div><div class="step-body"><strong>Supports and warnings.</strong> <code>lineRestraints</code> fix DOFs at every node on a segment between two nodes, generated nodes included, so a wall base can be fixed along its length. A member node lying inside an area but not on its mesh is reported as a warning, because it is not connected to the shell.</div></div>
+      </div>
+      <p>
+        Triangular areas need a triangular element (DKT with an Allman triangle) or a split of each triangle into quads. Openings are handled by dividing the
+        area around them; the segment counts keep the result conforming. Both come in later phases.
+      </p>
+    </div>
+
+    <!-- ══════════════ Engine integration ══════════════ -->
+    <div class="section" id="engine-integration">
+      <div class="section__title">Engine integration</div>
+      <p>
+        The analysis stays linear, so the overall design carries over unchanged: factorise once, solve each case into a raw state, superpose
+        combinations, and round only on presentation. What changes is everything that assumes "an element has 2 nodes and 12 DOFs".
+      </p>
+      <table class="summary-table">
+        <thead><tr><th>Area</th><th>Today</th><th>With shells</th></tr></thead>
+        <tbody>
+          <tr><td>Element matrices</td><td><code>beam-3d-stiffness.ts</code>, closed-form 12×12</td><td>New membrane, DKQ and shell-assembly functions; 24×24, numerically integrated</td></tr>
+          <tr><td>Transformation</td><td><code>transformationMatrix(λ)</code>, 12×12 from 4 blocks</td><td>Block-wise λ<sup>T</sup> k<sub>ab</sub> λ for any node count</td></tr>
+          <tr><td>Assembly</td><td><code>memberDofs</code> and the 12-DOF loops in <code>global-assembly.ts</code> and <code>analysis-system.ts</code></td><td>Elements carry <code>nodeIndices[]</code> and 6n DOFs; RCM adjacency over every node pair of an element</td></tr>
+          <tr><td>Auto-restraint</td><td>Unresisted rotations at member joints</td><td>Include shell matrices; an unresisted translation at a membrane- or plate-only node throws 328 instead of being held</td></tr>
+          <tr><td>Validation</td><td><code>validate-model.ts</code></td><td>t &gt; 0, E &gt; 0, 0 ≤ ν &lt; 0.5, 3–4 distinct nodes, convex, det <strong>J</strong> &gt; 0, warping and aspect-ratio limits; issues located by a new <code>details.shellId</code> (326 geometry, 327 section)</td></tr>
+          <tr><td>Errors</td><td><code>FeaErrors</code>, 3XX</td><td>326 <code>INVALID_SHELL_GEOMETRY</code>, 327 <code>INVALID_SHELL_SECTION</code>, 328 <code>SHELL_DOF_UNSUPPORTED</code></td></tr>
+          <tr><td>Loads</td><td>Fixed-end forces per member</td><td>Equivalent nodal loads per element, per load case</td></tr>
+          <tr><td>Results</td><td><code>RawState</code> → <code>present-state.ts</code></td><td>Element corner forces from raw displacements, rounded on presentation; envelope per element corner</td></tr>
+          <tr><td>Solver</td><td>Skyline Cholesky, RCM ordering</td><td>Unchanged; no dense global matrix</td></tr>
+        </tbody>
+      </table>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>Performance: a 2D mesh widens the profile much more than a frame does. With RCM, an n × n slab mesh has about 6n² DOFs and a half-bandwidth of about 6n, so the stored factor grows roughly as n³ and the work as n⁴. That is fine for walls and floors meshed at practical sizes. A sparse ordering (AMD or nested dissection) is the next step if large slabs become slow.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Verification ══════════════ -->
+    <div class="section" id="verification">
+      <div class="section__title">Verification</div>
+      <table class="summary-table">
+        <thead><tr><th>Test</th><th>Checks</th><th>Reference value</th><th>Source</th></tr></thead>
+        <tbody>
+          <tr><td>Rigid-body modes</td><td>Zero-energy modes: 3 per 12×12 part, 6 for the 24×24 shell, no more</td><td>—</td><td>—</td></tr>
+          <tr><td>Membrane patch test</td><td>Rectangle 0.24 × 0.12, interior nodes (0.04, 0.02), (0.18, 0.03), (0.16, 0.08), (0.08, 0.08); E = 10⁶, ν = 0.25, t = 0.001; edges given u = 10⁻³(x + y/2), v = 10⁻³(y + x/2)</td><td>Exact field; σ<sub>x</sub> = σ<sub>y</sub> = 1333, τ<sub>xy</sub> = 400</td><td>MacNeal &amp; Harder 1985</td></tr>
+          <tr><td>Plate patch test</td><td>Same mesh; edges given w = 10⁻³(1 + x + 2y + x² + xy + y²)/2 with its slopes</td><td>Exact field; |M<sub>x</sub>| = |M<sub>y</sub>| = 1.111 × 10⁻⁷, |M<sub>xy</sub>| = 3.333 × 10⁻⁸</td><td>MacNeal &amp; Harder 1985</td></tr>
+          <tr><td>Straight cantilever, in-plane shear</td><td>Membrane bending, regular and distorted meshes</td><td>0.1081</td><td>MacNeal &amp; Harder 1985</td></tr>
+          <tr><td>Straight cantilever, out-of-plane shear</td><td>Plate bending of a long strip</td><td>0.4321</td><td>MacNeal &amp; Harder 1985</td></tr>
+          <tr><td>Cook's membrane</td><td>Tapered panel (0,0), (48,44), (48,60), (0,44); E = 1, ν = 1/3, t = 1, plane stress; unit total shear, uniform, on the free edge; top-corner vertical displacement</td><td>≈ 25.2 (converged, own)</td><td>A bilinear quad, the drilling quad and an independent 9-node element all converge to ≈ 25.2 for this set-up. Published values are 23.9–23.96 (e.g. Bergan &amp; Felippa 1985); the difference is not yet explained, so tests check convergence rather than that value.</td></tr>
+          <tr><td>Square plate, uniform load</td><td>Simply supported / clamped, mesh convergence, t/a down to 1/1000</td><td>w<sub>c</sub> = 0.00406 / 0.00126 qa⁴/D; SS M<sub>c</sub> = 0.0479 qa²</td><td>Timoshenko &amp; Woinowsky-Krieger</td></tr>
+          <tr><td>Square plate, centre point load</td><td>Simply supported</td><td>w<sub>c</sub> = 0.01160 Pa²/D</td><td>Timoshenko &amp; Woinowsky-Krieger</td></tr>
+          <tr><td>Twisted beam</td><td>Every element warped (twisted 7.5°); in-plane and out-of-plane tip loads, t = 0.32 and 0.0032</td><td>5.424·10⁻³ / 1.754·10⁻³; 5.256·10⁻³ / 1.294·10⁻³ (P = 10⁻⁶)</td><td>MacNeal &amp; Harder 1985</td></tr>
+          <tr><td>Scordelis–Lo roof</td><td>Membrane–bending interaction in a curved shell of flat facets</td><td>0.3024 (mid free edge, vertical); engine 0.4208 / 0.3175 / 0.3041 on 4 / 8 / 16 per side, from above</td><td>MacNeal &amp; Harder 1985</td></tr>
+          <tr><td>Pinched cylinder with end diaphragms</td><td>Inextensional bending, the hardest common shell test</td><td>1.8248 × 10⁻⁵ under the load; engine 1.727 / 1.852 / 1.849 × 10⁻⁵ on 8 / 16 / 24 per side of an octant</td><td>Belytschko et al. 1985</td></tr>
+          <tr><td>Beam into wall, in-plane</td><td>Drilling stiffness transfers moment: finite tip deflection that approaches the fixed-end value as the wall stiffens</td><td>Beam theory</td><td>Own</td></tr>
+          <tr><td>Wall vs wide column</td><td>A finely meshed wall agrees with a column element that includes shear deformation (Roadmap 2.2)</td><td>Beam theory</td><td>Own</td></tr>
+        </tbody>
+      </table>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>The patch test is necessary but not sufficient. It checks that constant-strain states are reproduced and that the element converges, but it missed the sign error described in the drilling section. Each element needs at least one bending benchmark before it counts as done.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Implementation order ══════════════ -->
+    <div class="section" id="implementation-order">
+      <div class="section__title">Implementation order</div>
+      <p>The phases match Phase 5 of <code>ROADMAP.md</code>. Each ends with lint, tests and build passing.</p>
+      <div class="flow-steps">
+        <div class="flow-step"><div class="step-num">5.0</div><div class="step-body"><strong>Generic element assembly.</strong> Refactor only: assembly, RCM adjacency, profile and auto-restraint take elements with any number of nodes. Results of existing models are identical.</div></div>
+        <div class="flow-step"><div class="step-num">5.1</div><div class="step-body"><strong>Membrane quad with drilling.</strong> Bilinear Q4 first (patch test), then the Allman edge terms and the penalty. Benchmarks: cantilever, Cook's membrane, a sign check.</div></div>
+        <div class="flow-step"><div class="step-num">5.2</div><div class="step-body"><strong>DKQ plate.</strong> Rigid-body modes, plate patch test, Timoshenko plates, cantilever strip.</div></div>
+        <div class="flow-step"><div class="step-num">5.3</div><div class="step-body"><strong>Flat shell.</strong> Local axes, 24×24 assembly, behaviour switch, modifiers, transformation, warping links.</div></div>
+        <div class="flow-step"><div class="step-num">5.4</div><div class="step-body"><strong>Shells in the model.</strong> Types, validation (326–328), assembly with the members, <code>AreaLoad</code> and self-weight on shells. Benchmarks: Scordelis–Lo, pinched cylinder, beam into wall, wall vs wide column.</div></div>
+        <div class="flow-step"><div class="step-num">5.5</div><div class="step-body"><strong>Shell results and first release.</strong> Corner forces, moments, shears and stresses; combinations and envelope; the FEA doc page, README and CHANGELOG.</div></div>
+        <div class="flow-step"><div class="step-num">5.6</div><div class="step-body"><strong>Engine meshing.</strong> Structured quads, the chord rule, hard points (5.6a); members split along meshed edges (5.6b).</div></div>
+        <div class="flow-step"><div class="step-num">5.7</div><div class="step-body"><strong>Thick plates.</strong> DKMQ or MITC4 behind <code>plateTheory: "thick"</code>.</div></div>
+        <div class="flow-step"><div class="step-num">5.8</div><div class="step-body"><strong>Triangles and openings.</strong> DKT with an Allman triangle; triangular areas in the mesher.</div></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ References ══════════════ -->
+    <div class="section" id="references">
+      <div class="section__title">References</div>
+      <ol>
+        <li>Allman, D. J. (1984). A compatible triangular element including vertex rotations for plane elasticity analysis. <em>Computers &amp; Structures</em>, 19, 1–8.</li>
+        <li>Bathe, K.-J. &amp; Dvorkin, E. N. (1985). A four-node plate bending element based on Mindlin/Reissner plate theory and a mixed interpolation. <em>Int. J. Numer. Meth. Eng.</em>, 21, 367–383.</li>
+        <li>Batoz, J.-L., Bathe, K.-J. &amp; Ho, L.-W. (1980). A study of three-node triangular plate bending elements. <em>Int. J. Numer. Meth. Eng.</em>, 15, 1771–1812.</li>
+        <li>Batoz, J.-L. &amp; Ben Tahar, M. (1982). Evaluation of a new quadrilateral thin plate bending element. <em>Int. J. Numer. Meth. Eng.</em>, 18, 1655–1677.</li>
+        <li>Belytschko, T. et al. (1985). Stress projection for membrane and shear locking in shell finite elements. <em>Comput. Methods Appl. Mech. Eng.</em>, 51, 221–258.</li>
+        <li>Bergan, P. G. &amp; Felippa, C. A. (1985). A triangular membrane element with rotational degrees of freedom. <em>Comput. Methods Appl. Mech. Eng.</em>, 50, 25–69.</li>
+        <li>Cook, R. D., Malkus, D. S., Plesha, M. E. &amp; Witt, R. J. (2002). <em>Concepts and Applications of Finite Element Analysis</em>, 4th ed. Wiley.</li>
+        <li>Hughes, T. J. R. &amp; Brezzi, F. (1989). On drilling degrees of freedom. <em>Comput. Methods Appl. Mech. Eng.</em>, 72, 105–121.</li>
+        <li>Ibrahimbegovic, A., Taylor, R. L. &amp; Wilson, E. L. (1990). A robust quadrilateral membrane finite element with drilling degrees of freedom. <em>Int. J. Numer. Meth. Eng.</em>, 30, 445–457.</li>
+        <li>Katili, I. (1993). A new discrete Kirchhoff–Mindlin element based on Mindlin–Reissner plate theory and assumed shear strain fields, Part II. <em>Int. J. Numer. Meth. Eng.</em>, 36, 1885–1908.</li>
+        <li>MacNeal, R. H. &amp; Harder, R. L. (1985). A proposed standard set of problems to test finite element accuracy. <em>Finite Elements in Analysis and Design</em>, 1, 3–20.</li>
+        <li>Taylor, R. L., Beresford, P. J. &amp; Wilson, E. L. (1976). A non-conforming element for stress analysis. <em>Int. J. Numer. Meth. Eng.</em>, 10, 1211–1219.</li>
+        <li>Timoshenko, S. P. &amp; Woinowsky-Krieger, S. (1959). <em>Theory of Plates and Shells</em>, 2nd ed. McGraw-Hill.</li>
+        <li>Wilson, E. L. (2002). <em>Three-Dimensional Static and Dynamic Analysis of Structures</em>, 3rd ed. Computers and Structures, Inc. (incompatible modes, drilling rotations, plate and shell elements as used in SAP2000/ETABS).</li>
+      </ol>
+    </div>
+
+    <!-- ══════════════ Summary ══════════════ -->
+    <div class="section" id="summary">
+      <div class="section__title">Summary</div>
+      <table class="summary-table">
+        <thead><tr><th>Part</th><th>Formulation</th><th>Local DOFs</th><th>Integration</th><th>Phase</th></tr></thead>
+        <tbody>
+          <tr><td>Membrane</td><td>Allman-type drilling quad with penalty γ = G</td><td>u, v, θz (12)</td><td>3×3 strain, 1-point penalty</td><td>5.1</td></tr>
+          <tr><td>Plate, thin</td><td>DKQ</td><td>w, θx, θy (12)</td><td>2×2</td><td>5.2</td></tr>
+          <tr><td>Shell</td><td>Flat facet: membrane + plate, warping links</td><td>All six (24)</td><td>—</td><td>5.3</td></tr>
+          <tr><td>Loads</td><td>∫ N<sub>i</sub> p dA (pressure, self-weight)</td><td>—</td><td>2×2</td><td>5.4</td></tr>
+          <tr><td>Results</td><td>F, M, V at Gauss points, extrapolated to corners</td><td>—</td><td>—</td><td>5.5</td></tr>
+          <tr><td>Meshing</td><td>Structured quads, chord rule, hard points</td><td>—</td><td>—</td><td>5.6</td></tr>
+          <tr><td>Plate, thick</td><td>MITC4 or DKMQ</td><td>w, θx, θy (12)</td><td>2×2 + tied shear</td><td>5.7</td></tr>
+          <tr><td>Triangles</td><td>DKT + Allman triangle</td><td>6 per node (18)</td><td>3-point</td><td>5.8</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+</body>
+</html>

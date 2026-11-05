@@ -1,6 +1,6 @@
 import type { Member, MemberLoad, NullArea } from "@app-fea/frame/types/model.type";
 import type { AreaLoad, FeaId, FeaNode, Restraint } from "@app-fea/shared/types/model.type";
-import type { ShellArea } from "@app-fea/shell/types/model.type";
+import type { ShellArea, ShellStrip } from "@app-fea/shell/types/model.type";
 
 /**
  * Fixed DOFs along a straight line: every node on the segment between two nodes, including the
@@ -88,4 +88,9 @@ export interface FeaModel {
   /** Area loads of every load case, each tagged with its `loadCase`. */
   areaLoads?: AreaLoad[];
   combinations?: LoadCombination[];
+  /**
+   * Design strips across the shells: `analyze` returns the forces on cuts across each strip in
+   * every load case and combination (`stripForces`). They add nothing to the analysis.
+   */
+  strips?: ShellStrip[];
 }

@@ -60,3 +60,36 @@ export interface ShellArea {
   modifiers?: ShellModifiers;
   mesh?: ShellMesh;
 }
+
+/** A point in global axes (mm). */
+export interface StripPoint {
+  x: number; // mm, global X
+  y: number; // mm, global Y
+  z: number; // mm, global Z
+}
+
+/**
+ * A design strip across shell elements, drawn as a centreline polyline with a width on each
+ * side, for which `analyze` integrates the shell forces across the strip at stations along it
+ * (see `StripForces`). The strip lies in the plane through its points normal to `normal`, and
+ * picks up every shell element in that plane (each corner within `STRIP_PLANE_TOLERANCE` of the
+ * element's longest side from it); elements off the plane, such as walls, are ignored.
+ *
+ * Strip axes, per segment: 1 along the segment, 3 = `normal` (up for a floor slab), 2 = 3 × 1
+ * across the strip, pointing to its left seen from +3. A strip adds nothing to the analysis
+ * and changes no other result.
+ */
+export interface ShellStrip {
+  id: FeaId;
+  /** Centreline points (at least 2), in order along the strip, in one plane normal to `normal`. */
+  points: StripPoint[];
+  widthLeft: number; // mm, from the centreline along +2 (left, seen from +3)
+  widthRight: number; // mm, from the centreline along −2
+  /** Strip axis 3 in global components; need not be unit. Default [0, 0, 1]. */
+  normal?: [number, number, number];
+  /**
+   * Largest distance between stations along a segment (mm). Default: each segment in
+   * `STRIP_DEFAULT_DIVISIONS` (20) equal parts.
+   */
+  maxSpacing?: number;
+}

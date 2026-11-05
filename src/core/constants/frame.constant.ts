@@ -43,6 +43,16 @@ export const DRILLING_PENALTY_RATIO = 1;
 export const SHELL_WARPING_LIMIT = 0.1;
 
 /**
+ * A shell element counts as lying in a strip's plane when each of its corners is within this
+ * fraction of the element's longest side from that plane (1 mm on a 1 m element). The strip
+ * then integrates its forces; elements off the plane, such as walls, are ignored.
+ */
+export const STRIP_PLANE_TOLERANCE = 1e-3;
+
+/** Divisions of each strip segment when the strip gives no `maxSpacing`: 21 stations. */
+export const STRIP_DEFAULT_DIVISIONS = 20;
+
+/**
  * A model node that lies off a member's axis, between its ends, by no more than this fraction
  * of the member's length (and at most `NODE_NEAR_MEMBER_MAX_DISTANCE`), but not on it, gets a
  * warning: it is probably meant to be on the member, yet it is not connected to it.
