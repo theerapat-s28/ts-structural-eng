@@ -16,6 +16,7 @@ import { matVec } from "@app-utils/matrix";
 import type { AnalysisSystem } from "../solver/analysis-system";
 import type { RawState } from "../solver/load-case-solver";
 import type { FeaCaseResult } from "../types/results.type";
+import { presentPierForces, presentSpandrelForces, type PreparedWall } from "./wall-forces";
 
 const FORCE_DECIMALS = 4;
 const DISPLACEMENT_DECIMALS = 5;
@@ -138,6 +139,7 @@ export const presentMemberDiagram = (
  *
  * @param diagram - Evenly spaced station count, and whether to return stations or only extremes
  * @param strips - The model's strips, prepared (see `prepareStrips`)
+ * @param walls - The model's piers and spandrels, prepared (see `prepareWalls`)
  */
 export const presentState = (
   system: AnalysisSystem,
@@ -145,6 +147,7 @@ export const presentState = (
   meta: Pick<FeaCaseResult, "id" | "kind" | "name" | "type">,
   diagram: { stations?: number; withStations?: boolean } = {},
   strips: PreparedStrip[] = [],
+  walls: { piers: PreparedWall[]; spandrels: PreparedWall[] } = { piers: [], spandrels: [] },
 ): FeaCaseResult => {
   const { U, R } = state;
   const warnings: Warnings = [];
@@ -209,6 +212,10 @@ export const presentState = (
       ),
     ),
     stripForces: strips.map((strip) => presentStripForces(strip, state.shellForces)),
+    pierForces: walls.piers.map((pier) => presentPierForces(system, state, pier)),
+    spandrelForces: walls.spandrels.map((spandrel) =>
+      presentSpandrelForces(system, state, spandrel),
+    ),
     equilibriumResidual: {
       force: roundToDecimalPlaces(residual.force, 8),
       moment: roundToDecimalPlaces(residual.moment, 8),

@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Piers &amp; Spandrels — Theory Notes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #f0f2f6;
+      --border: #e2e5ec;
+      --accent: #3b63d8;
+      --accent-dim: rgba(59, 99, 216, 0.08);
+      --green: #1f9d63;
+      --green-dim: rgba(31, 157, 99, 0.10);
+      --red: #d9463c;
+      --red-dim: rgba(217, 70, 60, 0.08);
+      --yellow: #b97d0a;
+      --yellow-dim: rgba(230, 160, 30, 0.12);
+      --purple: #8a4fd0;
+      --purple-dim: rgba(138, 79, 208, 0.10);
+      --text: #1f2430;
+      --text-muted: #5c6474;
+      --text-dim: #8a90a0;
+      --code-bg: #f8f9fb;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ─────────────────────────────────────── */
+    .sidebar {
+      width: 252px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px 40px;
+    }
+    .sidebar__brand { padding: 0 10px 18px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .brand-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .sidebar__brand h2 { font-size: 13.5px; font-weight: 600; }
+    .nav-section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      padding: 0 10px;
+      margin-bottom: 6px;
+    }
+    .nav-section-label + .nav-section-label,
+    nav a + .nav-section-label { margin-top: 8px; }
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      margin-bottom: 2px;
+    }
+    nav a:hover { background: var(--accent-dim); color: var(--text); }
+
+    /* ── Kind badges ─────────────────────────────────── */
+    .mbadge, .kind {
+      font-family: var(--mono);
+      font-weight: 700;
+      border-radius: 5px;
+      flex-shrink: 0;
+    }
+    .mbadge { font-size: 9.5px; padding: 2px 6px; min-width: 34px; text-align: center; }
+    .kind { font-size: 11.5px; padding: 3px 9px; }
+    .m-fn { color: var(--green); background: var(--green-dim); }
+    .m-type { color: var(--accent); background: var(--accent-dim); }
+    .m-const { color: var(--yellow); background: var(--yellow-dim); }
+    .m-error { color: var(--red); background: var(--red-dim); }
+
+    /* ── Scope badges ────────────────────────────────── */
+    .scope-badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .s-public { color: var(--accent); background: var(--accent-dim); }
+    .s-internal { color: var(--purple); background: var(--purple-dim); }
+
+    .std-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+      color: var(--yellow);
+      background: var(--yellow-dim);
+    }
+
+    /* ── Main ────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 40px 48px 120px;
+      min-width: 0;
+    }
+
+    .page-header { margin-bottom: 36px; }
+    .import-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .import-tag .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+    }
+    .import-tag code { background: none; padding: 0; font-size: 12.5px; }
+    .page-header h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+    .page-header p { color: var(--text-muted); max-width: 640px; }
+
+    .section { margin-bottom: 44px; scroll-margin-top: 24px; }
+    .section__title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section p { color: var(--text-muted); margin-bottom: 12px; }
+
+    /* ── Export cards ────────────────────────────────── */
+    .export-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 20px;
+      overflow: hidden;
+      scroll-margin-top: 24px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .export-card__header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .ex-sig { font-family: var(--mono); font-size: 13.5px; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+    .export-card__body { padding: 18px 20px 20px; }
+    .ex-desc { color: var(--text-muted); margin-bottom: 16px; }
+    .sub-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin: 18px 0 8px;
+    }
+    .sub-label:first-of-type { margin-top: 0; }
+
+    /* ── Code blocks ─────────────────────────────────── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .code-block__label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .code-block pre {
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .k { color: #0e7490; }
+    .s { color: #2f7d32; }
+    .n { color: var(--yellow); }
+    .b { color: var(--purple); }
+    .nl { color: var(--text-dim); }
+    .c { color: var(--text-dim); font-style: italic; }
+    .u { color: var(--accent); }
+
+    /* ── Inline code ─────────────────────────────────── */
+    code {
+      font-family: var(--mono);
+      font-size: 0.86em;
+      background: var(--surface-2);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+    pre code { background: none; padding: 0; color: inherit; }
+
+    /* ── Tables ──────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 13.5px; }
+    th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      font-weight: 600;
+      padding: 8px 12px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      color: var(--text-muted);
+    }
+    tr:last-child td { border-bottom: none; }
+    .param-table, .summary-table {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: block;
+      overflow-x: auto;
+    }
+    .param-table td:first-child {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .param-table td:nth-child(2) { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+    .req { color: var(--red); font-size: 12px; font-weight: 500; }
+    .opt { color: var(--text-dim); font-size: 12px; }
+    .summary-table .path-cell { font-family: var(--mono); font-size: 12.5px; color: var(--text); white-space: nowrap; }
+
+    /* ── Alerts ──────────────────────────────────────── */
+    .alert {
+      display: flex;
+      gap: 10px;
+      padding: 11px 14px;
+      border-radius: var(--radius);
+      font-size: 13.5px;
+      margin-bottom: 10px;
+      border: 1px solid;
+      color: var(--text-muted);
+    }
+    .alert strong { color: var(--text); }
+    .alert--error { background: var(--red-dim); border-color: rgba(217, 70, 60, 0.25); }
+    .alert--warn { background: var(--yellow-dim); border-color: rgba(185, 125, 10, 0.25); }
+    .alert--info { background: var(--accent-dim); border-color: rgba(59, 99, 216, 0.25); }
+
+    /* ── Flow steps ──────────────────────────────────── */
+    .flow-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 12px; }
+    .flow-step {
+      display: flex;
+      gap: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .step-num {
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-body { color: var(--text-muted); font-size: 13.5px; }
+    .step-body strong { color: var(--text); }
+
+    /* ── Model grid ──────────────────────────────────── */
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .model-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .model-card__title { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    .model-card__desc { font-size: 12.5px; color: var(--text-muted); }
+    /* ── Theory notes: lists, equations, matrices, figures ── */
+    .section ul, .section ol { color: var(--text-muted); margin: 0 0 12px 22px; }
+    .section li { margin-bottom: 6px; }
+    .section li strong, .section p strong { color: var(--text); }
+
+    .eq {
+      font-family: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', 'Times New Roman', serif;
+      font-size: 16.5px;
+      line-height: 2.1;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      margin-bottom: 12px;
+      overflow-x: auto;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .eq + .eq { margin-top: -4px; }
+    .eq .note { font-family: 'Inter', sans-serif; font-size: 12.5px; color: var(--text-dim); margin-left: 14px; }
+    .mat {
+      display: inline-grid;
+      vertical-align: middle;
+      column-gap: 14px;
+      padding: 2px 10px;
+      margin: 0 3px;
+      position: relative;
+      text-align: center;
+      line-height: 1.55;
+    }
+    .mat::before, .mat::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+      border: 1.4px solid var(--text);
+    }
+    .mat::before { left: 0; border-right: none; }
+    .mat::after { right: 0; border-left: none; }
+    .mat.c1 { grid-template-columns: auto; }
+    .mat.c2 { grid-template-columns: repeat(2, auto); }
+    .mat.c3 { grid-template-columns: repeat(3, auto); }
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      vertical-align: middle;
+      text-align: center;
+      line-height: 1.3;
+      margin: 0 3px;
+    }
+    .frac > span + span { border-top: 1px solid var(--text); }
+
+    .figure {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 16px 12px;
+      margin-bottom: 12px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .figure svg { max-width: 100%; height: auto; }
+    .figure figcaption { font-size: 12.5px; color: var(--text-muted); margin-top: 6px; }
+    .dg-edge { fill: var(--accent-dim); stroke: var(--text); stroke-width: 1.5; }
+    .dg-dash { fill: none; stroke: var(--text-dim); stroke-width: 1; stroke-dasharray: 4 3; }
+    .dg-arrow { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+    .dg-arrowhead { fill: var(--accent); }
+    .dg-node { fill: var(--accent); }
+    .dg-mid { fill: var(--surface); stroke: var(--yellow); stroke-width: 1.8; }
+    .dg-gauss { fill: var(--green); }
+    .dg-text { font-family: 'Inter', sans-serif; font-size: 12px; fill: var(--text-muted); }
+    .dg-label { font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; fill: var(--text); }
+    .dg-math { font-family: 'STIX Two Math', 'Cambria Math', 'Times New Roman', serif; font-size: 14px; font-style: italic; fill: var(--text); }
+
+
+    @media (max-width: 800px) {
+      .sidebar { display: none; }
+      .main { padding: 24px 20px 80px; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ══════════════ Sidebar ══════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <div class="brand-label">Theory Notes</div>
+      <h2>Piers &amp; Spandrels</h2>
+    </div>
+    <nav>
+      <a href="../../"><span style="font-size:14px">←</span> All modules</a>
+
+      <div class="nav-section-label">Getting Started</div>
+      <a href="#overview"><span style="font-size:14px">◈</span> Overview</a>
+      <a href="#input"><span style="font-size:14px">▭</span> Piers and spandrels</a>
+      <a href="#axes-signs"><span style="font-size:14px">◇</span> Axes &amp; signs</a>
+
+      <div class="nav-section-label">Calculation</div>
+      <a href="#cuts"><span style="font-size:14px">✂</span> Where the cuts are</a>
+      <a href="#nodal-forces"><span style="font-size:14px">⇥</span> Nodal forces</a>
+      <a href="#members"><span style="font-size:14px">│</span> Members</a>
+      <a href="#section"><span style="font-size:14px">▥</span> Section &amp; centroid</a>
+      <a href="#combinations"><span style="font-size:14px">∑</span> Combinations</a>
+
+      <div class="nav-section-label">Checks</div>
+      <a href="#verification"><span style="font-size:14px">✔</span> Verification</a>
+      <a href="#limitations"><span style="font-size:14px">⚠</span> Limitations</a>
+      <a href="#review"><span style="font-size:14px">✎</span> Points for review</a>
+
+      <div class="nav-section-label">Reference</div>
+      <a href="#references"><span style="font-size:14px">☷</span> References</a>
+      <a href="#summary"><span style="font-size:14px">☰</span> Summary</a>
+    </nav>
+  </aside>
+
+  <!-- ══════════════ Main ══════════════ -->
+  <main class="main">
+
+    <div class="page-header">
+      <div class="import-tag">
+        <span class="label">Status</span>
+        <code>@theerapat-s28/ts-structural-eng-tools/fea — model.piers, model.spandrels, unreleased</code>
+      </div>
+      <h1>Piers &amp; Spandrels — Theory Notes</h1>
+      <p>How the engine sums the forces of the shell elements and members of a wall pier or spandrel on cuts across it into one resultant per cut, with the sign conventions and the checks against statics.</p>
+    </div>
+
+    <!-- ══════════════ Overview ══════════════ -->
+    <div class="section" id="overview">
+      <div class="section__title">Overview</div>
+      <p>
+        A shear wall analysed with shell elements gives forces per unit width at the corners of every element. Walls
+        are designed section by section: the axial force, shears and moments on a horizontal cut through a
+        <strong>pier</strong> (a wall, a group of wall legs, a core, with any columns in it), and the shear and end
+        moments of a <strong>spandrel</strong> (a coupling beam over an opening). As in ETABS, the user groups the
+        areas and members into piers and spandrels; the engine cuts across each group and reports one resultant per
+        cut, about the centroid of the cut section.
+      </p>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>The basis is the equilibrium of the finite element model, not a code provision <span class="std-badge" title="Basis: element nodal forces of the linear-elastic finite element model — not an ACI 318-19 provision">FEM</span>. Pier and spandrel forces are analysis demands only; wall design (ACI 318-19 11.5, 18.10, 18.10.7) is not part of them. Every number on this page comes from the library's tests (<code>tests/fea/analysis/wall-forces.test.ts</code>) or from running the shown inputs through <code>analyze</code>.</span>
+      </div>
+
+      <div class="sub-label">Basis</div>
+      <table class="summary-table">
+        <thead><tr><th>Quantity</th><th>Basis</th><th>Code or adaptation</th></tr></thead>
+        <tbody>
+          <tr><td>Force across a cut</td><td>Nodal forces k·u − f of the elements on one side, at their nodes on the cut</td><td>Statics of a free body of the finite element model</td></tr>
+          <tr><td>Members crossing a cut</td><td>The member's internal forces at the crossing (as its diagram)</td><td>Statics of a section cut</td></tr>
+          <tr><td>Reference point</td><td>Geometric centroid of the cut: legs by length × thickness, members by A</td><td>Geometry (ETABS uses the pier section's centroid)</td></tr>
+          <tr><td>Axes, signs</td><td>Pier 1 up, spandrel 1 along it; member-diagram signs</td><td>Convention</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════ Input ══════════════ -->
+    <div class="section" id="input">
+      <div class="section__title">Piers and spandrels <code style="font-size:13px">WallPier, WallSpandrel</code></div>
+      <p>Both are plain data in <code>model.piers</code> and <code>model.spandrels</code>. They add nothing to the stiffness or the loads and change no other result.</p>
+      <table class="param-table">
+        <thead><tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td>FeaId</td><td>—</td><td><span class="req">Required</span></td><td>Unique among piers (or spandrels)</td></tr>
+          <tr><td>areaIds</td><td>FeaId[]</td><td>—</td><td>Pier: <span class="opt">Optional</span>; spandrel: <span class="req">Required</span></td><td>Shell areas. Pier areas are vertical; a spandrel's areas lie in one vertical plane</td></tr>
+          <tr><td>memberIds</td><td>FeaId[]</td><td>—</td><td><span class="opt">Optional</span></td><td>Members: columns in a pier (not horizontal), beams in a spandrel (not normal to its axis 1)</td></tr>
+          <tr><td>cuts</td><td>number[]</td><td>mm</td><td><span class="opt">Optional</span></td><td>Extra cuts: elevations for a pier, distances from the left end for a spandrel</td></tr>
+          <tr><td>angle</td><td>number</td><td>rad</td><td><span class="opt">Optional</span></td><td>Pier only: axis 2 as global X turned about +Z</td></tr>
+          <tr><td>reverse</td><td>boolean</td><td>—</td><td><span class="opt">Optional</span></td><td>Spandrel only: reverse axis 1, swapping its ends</td></tr>
+        </tbody>
+      </table>
+      <p>An area or member may be in one pier and one spandrel at the same time, as in ETABS, but not in two piers or two spandrels: each force is counted once per kind.</p>
+    </div>
+
+    <!-- ══════════════ Axes & signs ══════════════ -->
+    <div class="section" id="axes-signs">
+      <div class="section__title">Axes &amp; signs</div>
+      <table class="param-table">
+        <thead><tr><th>Group</th><th>Axis</th><th>Direction</th></tr></thead>
+        <tbody>
+          <tr><td rowspan="3">Pier</td><td>1</td><td>Global +Z, up</td></tr>
+          <tr><td>2</td><td>Horizontal: global X turned by <code>angle</code> about +Z; otherwise along the area with the largest horizontal extent, pointing toward +X (toward +Y for an area parallel to Y); global X for a pier of members only. One direction for the whole pier.</td></tr>
+          <tr><td>3</td><td>1 × 2</td></tr>
+          <tr><td rowspan="3">Spandrel</td><td>1</td><td>Horizontal along the wall plane, toward +X (+Y for a wall parallel to Y), or the other way with <code>reverse</code>. The left end is where 1 starts.</td></tr>
+          <tr><td>2</td><td>Global +Z, up</td></tr>
+          <tr><td>3</td><td>1 × 2, out of the wall plane</td></tr>
+        </tbody>
+      </table>
+      <p>
+        The resultant is the force and moment the rest of the structure exerts on the part on the
+        <strong>negative</strong> side of the cut (below a pier cut, left of a spandrel cut), across the face whose
+        outward normal is +1. In components along 1, 2, 3 this is
+        <code>P, V2, V3</code> and <code>T, M2, M3</code>: exactly the signs of a member's internal forces
+        (<code>MemberStation</code>) with the same local axes. So:
+      </p>
+      <ul>
+        <li>P is positive in tension;</li>
+        <li>a pier reads like a column of the same orientation: a vertical column has local 2 = +X and 3 = +Y, which is a pier's default with no areas;</li>
+        <li>a spandrel reads like a beam with local 2 up: M3 is positive sagging, and with no load on it <code>M3(x) = M3(0) − x·V2</code>, so <code>V2 = (M3,left − M3,right) / L</code>.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ Cuts ══════════════ -->
+    <div class="section" id="cuts">
+      <div class="section__title">Where the cuts are</div>
+      <p>Write s = e<sub>1</sub> · x for the coordinate of a point along axis 1 (the elevation z for a pier).</p>
+      <div class="flow-steps">
+        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Pier levels.</strong> The smallest and largest s of every area (over its mesh) and of every member: the bottom and top of each lift. Levels closer than the tolerance (<code>WALL_CUT_TOLERANCE</code> × the pier's height) are one level.</div></div>
+        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Faces.</strong> At each level, a <code>"top"</code> cut if something of the pier ends there from below, and a <code>"bottom"</code> cut if something starts there going up. A floor level between two lifts has both, the top first.</div></div>
+        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Spandrel ends.</strong> <code>"left"</code> at the smallest s, <code>"right"</code> at the largest.</div></div>
+        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Extra cuts</strong> from <code>cuts</code>, not at a level already cut, as <code>"cut"</code>: taken from the negative side.</div></div>
+        <div class="flow-step"><div class="step-num">5</div><div class="step-body"><strong>Mesh lines.</strong> No shell element of the group may have corners on both sides of any cut: a cut must run along element edges. Validation reports each such area and cut (331).</div></div>
+      </div>
+      <p>
+        Why a <code>"top"</code> and a <code>"bottom"</code> at the same level: the nodes there also carry the floor (slab,
+        beams) and any nodal loads. The force just below the floor and just above it differ by what the floor
+        delivers, so both are reported, as ETABS reports the top of one storey's pier and the bottom of the next.
+      </p>
+    </div>
+
+    <!-- ══════════════ Nodal forces ══════════════ -->
+    <div class="section" id="nodal-forces">
+      <div class="section__title">Nodal forces</div>
+      <p>
+        For each shell element, the forces its nodes exert on it are
+        <code>f<sub>e</sub> = k<sub>e</sub> u<sub>e</sub> − f<sub>e,load</sub></code> (global axes, 6 per corner):
+        the element stiffness times its corner displacements, minus its own surface loads and self-weight at the
+        corners. Take the group's elements on one side of the cut that reach it. Their equilibrium as one free body
+        says the force across the cut is the sum of <code>f<sub>e</sub></code> at their corners on the cut:
+      </p>
+      <div class="code-block">
+        <div class="code-block__label">Force and moment about the centroid c</div>
+        <pre>
+F = σ · Σ f<sub>e,i</sub>                    <span class="c">// i: corners on the cut of the elements on its side</span>
+M = σ · Σ ( m<sub>e,i</sub> + (x<sub>i</sub> − c) × f<sub>e,i</sub> )
+
+σ = +1 from the negative side ("top", "right", "cut")
+σ = −1 from the positive side ("bottom", "left")
+P = F·e<sub>1</sub>, V2 = F·e<sub>2</sub>, V3 = F·e<sub>3</sub>, T = M·e<sub>1</sub>, M2 = M·e<sub>2</sub>, M3 = M·e<sub>3</sub></pre>
+      </div>
+      <p>
+        From the positive side, the sum is the force on the part above (or right), and the force on the part below is
+        its opposite. This is exact equilibrium of the analysed model, whatever the mesh: a base cut always equals
+        the loads above it. It uses each element's full nodal forces, drilling moments included, so the membrane's
+        imperfect stress field does not enter, unlike integrating stresses along the cut (strips).
+      </p>
+    </div>
+
+    <!-- ══════════════ Members ══════════════ -->
+    <div class="section" id="members">
+      <div class="section__title">Members</div>
+      <ul>
+        <li><strong>Ending on the cut</strong> (at a node there, e.g. a column split at the wall's mesh nodes): its piece on the cut's side adds its end force (the force the node exerts on the piece, rotated to global axes), with the same σ.</li>
+        <li><strong>Crossing the cut</strong> between its nodes: it adds its internal force at the crossing, from the free body of the piece from its start, as its diagram (point loads exactly at the crossing not yet included), with sign +1 when the piece starts on the negative side and −1 otherwise.</li>
+        <li><strong>Lying in the cut plane</strong> (both ends on it): ignored. Validation rejects horizontal pier members and spandrel members normal to axis 1.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ Section ══════════════ -->
+    <div class="section" id="section">
+      <div class="section__title">Section &amp; centroid</div>
+      <p>
+        Each area with elements on the cut's side gives one <strong>leg</strong>: the segment through its corners on the
+        cut, along e<sub>1</sub> × n (n the area's normal), from the smallest to the largest coordinate, oriented up
+        (spandrel) or toward +X (+Y if parallel to Y). Each member on the cut gives a <strong>point</strong> with its
+        section area A. Separate legs (walls either side of a door) are simply more legs: they are summed together,
+        as ETABS does.
+      </p>
+      <div class="code-block">
+        <div class="code-block__label">Centroid</div>
+        <pre>
+c = ( Σ L<sub>j</sub> t<sub>j</sub> x<sub>mid,j</sub> + Σ A<sub>k</sub> x<sub>k</sub> ) / ( Σ L<sub>j</sub> t<sub>j</sub> + Σ A<sub>k</sub> )</pre>
+      </div>
+      <p>
+        The centroid is geometric (not weighted by E), and it is the cut's own: the top and bottom of a lift, or
+        cuts through a changing section, can have different centroids. A cut touched only at element corners has no
+        length; its centroid is the mean of those points.
+      </p>
+    </div>
+
+    <!-- ══════════════ Combinations ══════════════ -->
+    <div class="section" id="combinations">
+      <div class="section__title">Combinations</div>
+      <p>
+        Every term is linear in the displacements, the element loads and the member forces, which are linear in the
+        loads; the cuts and centroids do not depend on the loads. A combination's state is the factored sum of its
+        cases' states, so its pier and spandrel forces are the factored sums of theirs, exactly.
+        <code>envelope.piers</code> and <code>envelope.spandrels</code> give the max and min of each resultant at every
+        cut over all combinations, with the governing combination.
+      </p>
+    </div>
+
+    <!-- ══════════════ Verification ══════════════ -->
+    <div class="section" id="verification">
+      <div class="section__title">Verification</div>
+      <p>Walls 200 mm thick, E = 30 000 MPa, ν = 0.2, fixed along their base. Library values from <code>analyze</code> against statics:</p>
+      <table class="summary-table">
+        <thead><tr><th>Case</th><th>Cut</th><th>Quantity</th><th>Statics</th><th>Library</th></tr></thead>
+        <tbody>
+          <tr><td rowspan="3">Planar wall 3 m wide, two 3 m lifts, 50 kN along +X and 100 kN down at each top corner; one element per area and 6 × 6 per area</td><td>z = 0, bottom</td><td>P, V2, M3</td><td>−200 kN, 100 kN, 600 kN·m</td><td>−200, 100, 600</td></tr>
+          <tr><td>z = 3 m, top and bottom</td><td>M3</td><td>300 kN·m</td><td>300</td></tr>
+          <tr><td>z = 6 m, top</td><td>M3</td><td>0</td><td>0</td></tr>
+          <tr><td>Same wall, also 50 kN down at (0, 0, 3 m)</td><td>z = 3 m</td><td>P, M3 top / bottom</td><td>−250, 225 / −200, 300</td><td>−250, 225 / −200, 300</td></tr>
+          <tr><td>Same wall, self-weight 24 kN/m³ (43.2 kN per lift)</td><td>z = 0 / 3 m top / 3 m bottom / 6 m</td><td>P</td><td>−86.4 / −43.2 / −43.2 / 0</td><td>−86.4 / −43.2 / −43.2 / 0</td></tr>
+          <tr><td>Same wall, a vertical strip over the full width</td><td>z = 1.5 m</td><td>P, V2, M3 against the strip's P, Vp, Mp</td><td>−200, 100, 450</td><td>pier −200, 100, 450; strip −199.8161, 100.7142, 449.7967</td></tr>
+          <tr><td>L-shaped core: legs 2 m along X and Y from (0, 0), 3 m high; loads at the top (0, 10, −20) kN at (2, 0), (20, 0, 0) at (0, 2), (5, −8, −30) at (0, 0)</td><td>z = 0, bottom; centroid (0.5, 0.5, 0) m</td><td>P, V2, V3, T, M2, M3</td><td>−50, 25, 2 kN; −8.5, 19, 90 kN·m</td><td>−50, 25, 2, −8.5, 19, 90</td></tr>
+          <tr><td rowspan="3">Coupled walls: two 1 m walls 3 m high, a 1 × 0.6 m spandrel over a 2.4 m opening, 40 kN along +X at each top corner, mesh ≤ 250 mm</td><td>Spandrel left / middle / right</td><td>V2</td><td>constant</td><td>50.8538 at all three</td></tr>
+          <tr><td>Spandrel</td><td>M3 left, right; (M3,L − M3,R) / L</td><td>antisymmetric; = V2</td><td>25.4269, −25.4269; 50.8538</td></tr>
+          <tr><td>Pier bases</td><td>2·M3 + P·(2 m arm)</td><td>2 × 40 × 3 = 240 kN·m</td><td>2 × 69.1462 + 50.8538 × 2 = 240</td></tr>
+        </tbody>
+      </table>
+      <p>The tests also check that:</p>
+      <ul>
+        <li>two separate legs in one pier give the sum of the two single-leg piers moved to the common centroid;</li>
+        <li>a boundary column adds its A to the section and its forces to the cut, which still matches statics;</li>
+        <li>a pier made only of a column gives the column's own diagram values, at its ends and at a cut between its nodes;</li>
+        <li><code>angle</code> = 90° turns the base shear into V3 = −100 kN and the moment into M2 = 600 kN·m;</li>
+        <li><code>reverse</code> swaps a spandrel's ends;</li>
+        <li>combinations superpose, and the envelope names the governing combination at each cut;</li>
+        <li>validation (331) catches each wrong input, including lifts broken at different elevations (3.0 m and 3.2 m).</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ Limitations ══════════════ -->
+    <div class="section" id="limitations">
+      <div class="section__title">Limitations</div>
+      <ul>
+        <li><strong>Cuts follow the mesh.</strong> A cut must lie on element edges of every area it meets. Lifts of different legs broken at different elevations need those areas divided; the engine does not add mesh lines.</li>
+        <li><strong>Element nodal forces, not stresses.</strong> The resultant is exact for the model, but how it is shared along the section (the stress distribution) is not reported; use <code>shellForces</code> for that.</li>
+        <li><strong>One group per kind.</strong> An area is in at most one pier, so the same wall cannot be reported both as separate legs and as one pier in one analysis.</li>
+        <li><strong>Vertical piers, planar spandrels.</strong> Sloped walls are not piers; a spandrel lies in one vertical plane.</li>
+        <li><strong>No design.</strong> Boundary elements, P–M interaction and coupling-beam detailing are not part of these results.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ Points for review ══════════════ -->
+    <div class="section" id="review">
+      <div class="section__title">Points for review</div>
+      <p>Decisions taken while implementing, for the maintainer to confirm or change:</p>
+      <table class="summary-table">
+        <thead><tr><th>Topic</th><th>Chosen</th><th>Alternative</th></tr></thead>
+        <tbody>
+          <tr><td>Method</td><td>Nodal forces k·u − f at the cut: exact equilibrium</td><td>Integrating element stresses along the cut (as strips)</td></tr>
+          <tr><td>Pier axis 2</td><td>One direction per pier, from its longest area</td><td>Per cut, or the principal axes of each cut</td></tr>
+          <tr><td>Extra cut at a level with floors</td><td>Taken from below (the lift's top side)</td><td>From above, or both</td></tr>
+          <tr><td>Centroid</td><td>Geometric, members by A</td><td>Weighted by E (transformed section)</td></tr>
+          <tr><td>Cut tolerance</td><td>10⁻⁶ of the group's extent along axis 1</td><td>Relative to each element's size</td></tr>
+          <tr><td>Members in the cut plane</td><td>Ignored (and rejected for piers)</td><td>Included as part of the section</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════ References ══════════════ -->
+    <div class="section" id="references">
+      <div class="section__title">References</div>
+      <ol>
+        <li>Computers and Structures, Inc. <em>ETABS Shear Wall Design Manual</em> and <em>CSI Analysis Reference Manual</em>: pier and spandrel labels, section cuts and their forces (the model this feature follows).</li>
+        <li>Cook, R. D., Malkus, D. S., Plesha, M. E. &amp; Witt, R. J. (2002). <em>Concepts and Applications of Finite Element Analysis</em>, 4th ed. Wiley. (Element nodal forces and reactions.)</li>
+        <li>ACI 318-19, Chapters 11 and 18: wall and coupling-beam design that uses these forces (not applied here).</li>
+      </ol>
+    </div>
+
+    <!-- ══════════════ Summary ══════════════ -->
+    <div class="section" id="summary">
+      <div class="section__title">Summary</div>
+      <table class="summary-table">
+        <thead><tr><th>Resultant</th><th>From F and M (about the cut's centroid)</th><th>Unit</th></tr></thead>
+        <tbody>
+          <tr><td>P</td><td>F · e<sub>1</sub>, positive in tension</td><td>kN</td></tr>
+          <tr><td>V2, V3</td><td>F · e<sub>2</sub>, F · e<sub>3</sub></td><td>kN</td></tr>
+          <tr><td>T</td><td>M · e<sub>1</sub></td><td>kN·m</td></tr>
+          <tr><td>M2, M3</td><td>M · e<sub>2</sub>, M · e<sub>3</sub></td><td>kN·m</td></tr>
+        </tbody>
+      </table>
+      <p>See the <a href="../#piers" style="color:var(--accent)">FEA reference</a> for the input and result types.</p>
+    </div>
+
+  </main>
+</div>
+</body>
+</html>

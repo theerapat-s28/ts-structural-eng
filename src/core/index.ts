@@ -46,6 +46,8 @@ export {
   SINGULARITY_TOLERANCE,
   EQUILIBRIUM_TOLERANCE,
   AREA_GEOMETRY_TOLERANCE,
+  WALL_VERTICAL_TOLERANCE,
+  WALL_CUT_TOLERANCE,
 } from "./constants/fea.constant";
 export { NODE_NEAR_MEMBER_RATIO, NODE_NEAR_MEMBER_MAX_DISTANCE } from "./constants/frame.constant";
 export {

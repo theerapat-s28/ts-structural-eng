@@ -368,6 +368,7 @@
       <a href="#null-areas"><span style="font-size:14px">▱</span> Null areas</a>
       <a href="#shell-areas"><span style="font-size:14px">◫</span> Shell areas</a>
       <a href="#strips"><span style="font-size:14px">≡</span> Strip forces</a>
+      <a href="#piers"><span style="font-size:14px">▥</span> Piers &amp; spandrels</a>
       <a href="#end-releases"><span style="font-size:14px">⊸</span> End releases &amp; springs</a>
       <a href="#intermediate-nodes"><span style="font-size:14px">⋯</span> Nodes on members</a>
       <a href="#member-diagrams"><span style="font-size:14px">∿</span> Member diagrams</a>
@@ -405,6 +406,8 @@
       <a href="#line-restraint"><span class="mbadge m-type">TYPE</span> LineRestraint</a>
       <a href="#shell-strip"><span class="mbadge m-type">TYPE</span> ShellStrip</a>
       <a href="#strip-point"><span class="mbadge m-type">TYPE</span> StripPoint</a>
+      <a href="#wall-pier"><span class="mbadge m-type">TYPE</span> WallPier</a>
+      <a href="#wall-spandrel"><span class="mbadge m-type">TYPE</span> WallSpandrel</a>
       <div class="nav-section-label">Types — Loads</div>
       <a href="#load-case"><span class="mbadge m-type">TYPE</span> LoadCase</a>
       <a href="#load-case-type"><span class="mbadge m-type">TYPE</span> LoadCaseType</a>
@@ -444,6 +447,12 @@
       <a href="#strip-station"><span class="mbadge m-type">TYPE</span> StripStation</a>
       <a href="#strip-resultants"><span class="mbadge m-type">TYPE</span> StripResultants</a>
       <a href="#strip-extreme-value"><span class="mbadge m-type">TYPE</span> StripExtremeValue</a>
+      <a href="#pier-forces"><span class="mbadge m-type">TYPE</span> PierForces</a>
+      <a href="#pier-cut"><span class="mbadge m-type">TYPE</span> PierCut</a>
+      <a href="#spandrel-forces"><span class="mbadge m-type">TYPE</span> SpandrelForces</a>
+      <a href="#spandrel-cut"><span class="mbadge m-type">TYPE</span> SpandrelCut</a>
+      <a href="#wall-resultants"><span class="mbadge m-type">TYPE</span> WallResultants</a>
+      <a href="#wall-cut-section"><span class="mbadge m-type">TYPE</span> WallCutSection</a>
       <a href="#member-station"><span class="mbadge m-type">TYPE</span> MemberStation</a>
       <a href="#station-component"><span class="mbadge m-type">TYPE</span> StationComponent</a>
       <a href="#extreme-value"><span class="mbadge m-type">TYPE</span> ExtremeValue</a>
@@ -987,7 +996,7 @@
         <thead><tr><th>Topic</th><th>Field</th><th>Rule</th></tr></thead>
         <tbody>
           <tr><td>Geometry</td><td>points, widthLeft, widthRight</td><td>At least 2 centreline points <code>{ x, y, z }</code> (mm) in order along the strip, and the width on each side of it; left is +2, seen from +3. A width may be 0 (a strip on one side of a column line), not both.</td></tr>
-          <tr><td>Plane</td><td>normal</td><td>The strip lies in the plane through its points normal to <code>normal</code> (default <code>[0, 0, 1]</code>; <code>[0, -1, 0]</code> for a wall in the XZ plane). It picks up every shell element in that plane (each corner within <code>STRIP_PLANE_TOLERANCE</code>, 10⁻³ of the element's longest side) and ignores the rest: walls under a floor, other floors.</td></tr>
+          <tr><td>Plane</td><td>normal</td><td>The strip lies in the plane through its points normal to <code>normal</code> (default <code>[0, 0, 1]</code>; <code>[0, 1, 0]</code> for a wall in the XZ plane, which gives strip axes 2 = +X and 3 = +Y). A strip up a single flat wall gives its <code>P</code>, <code>Vp</code> and <code>Mp</code>; for walls made of several legs, cores and walls with columns use <a href="#piers" style="color:var(--accent)">piers</a>. It picks up every shell element in that plane (each corner within <code>STRIP_PLANE_TOLERANCE</code>, 10⁻³ of the element's longest side) and ignores the rest: walls under a floor, other floors.</td></tr>
           <tr><td>Axes</td><td>—</td><td>Per segment: 1 along it, 3 = <code>normal</code>, 2 = 3 × 1 across the strip. Independent of the shells' own local axes and <code>angle</code>.</td></tr>
           <tr><td>Stations</td><td>maxSpacing</td><td>Every polyline point, and points no further apart than <code>maxSpacing</code> (mm) along each segment; without it, 20 equal divisions per segment (<code>STRIP_DEFAULT_DIVISIONS</code>). A bend has two stations at the same <code>x</code>, one cut normal to each segment.</td></tr>
           <tr><td>Integration</td><td>—</td><td>Each element's own force field (no averaging between elements) is integrated along its piece of the cut; a cut lying on a mesh line takes the mean of both sides. V and T include Kirchhoff's edge forces, so <code>V = −dM/dx</code> and a full-width cut matches statics.</td></tr>
@@ -1069,6 +1078,112 @@
       <div class="alert alert--error">
         <span>⚠️</span>
         <span>Throws <strong>FeaError 330</strong> for invalid strip geometry (fewer than 2 points, points off the strip's plane, a zero-length segment or one turning straight back, a zero <code>normal</code>, a negative width or both widths 0), <strong>314</strong> for a value that is not a finite number (<code>details.field</code> e.g. <code>"points[1].z"</code>, <code>"maxSpacing"</code>), and <strong>303</strong> for a strip id used twice. <code>details.stripId</code> names the strip.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Piers & spandrels ══════════════ -->
+    <div class="section" id="piers">
+      <div class="section__title">Piers &amp; spandrels <code style="font-size:13px">analysis/post/wall-forces.ts</code></div>
+      <p>
+        Wall design forces, as in ETABS. A <strong>pier</strong> groups shell areas (wall legs, planar or not, connected
+        or not) and members (boundary or embedded columns); a <strong>spandrel</strong> groups the areas of a coupling
+        beam over an opening, and the beams along it. List them in <code>model.piers</code> and
+        <code>model.spandrels</code>, and every load case and combination gets <code>pierForces</code> and
+        <code>spandrelForces</code>: one resultant <code>P, V2, V3, T, M2, M3</code> per cut across the whole group, about
+        the centroid of the cut section, with that section's legs for later wall design. Piers and spandrels add nothing
+        to the analysis and change no other result. The method, sign conventions and checks are in the
+        <a href="theory/pier-spandrel.html" style="color:var(--accent)">pier and spandrel notes</a>.
+      </p>
+
+      <div class="sub-label">Rules</div>
+      <table class="param-table">
+        <thead><tr><th>Topic</th><th>Field</th><th>Rule</th></tr></thead>
+        <tbody>
+          <tr><td>Groups</td><td>areaIds, memberIds</td><td>Shell areas and members by id. An area or member may be in one pier and one spandrel, never in two piers or two spandrels. A pier needs at least one area or member, a spandrel at least one area.</td></tr>
+          <tr><td>Geometry</td><td>—</td><td>Pier areas are vertical (the vertical part of the normal at most <code>WALL_VERTICAL_TOLERANCE</code>, 10⁻³) and pier members are not horizontal. A spandrel's areas lie in one vertical plane, and its members are not normal to its axis 1.</td></tr>
+          <tr><td>Pier cuts</td><td>cuts</td><td>At every elevation where one of the pier's areas or members starts or ends: a <code>"top"</code> cut from the elements below it and a <code>"bottom"</code> cut from those above it. A floor level shared by two lifts has both, and they differ by what the floor delivers there. <code>cuts</code> adds elevations (mm, global Z) as <code>"cut"</code>, taken from below.</td></tr>
+          <tr><td>Spandrel cuts</td><td>cuts</td><td><code>"left"</code> and <code>"right"</code> at its ends; <code>cuts</code> adds distances from the left end (mm) as <code>"cut"</code>, taken from the left.</td></tr>
+          <tr><td>Mesh lines</td><td>—</td><td>Every cut lies on the mesh lines of the areas it meets (a node is on a cut within <code>WALL_CUT_TOLERANCE</code>, 10⁻⁶ of the group's extent): an area that a cut crosses inside an element (lifts broken at different elevations, an extra cut between mesh lines) is an error (331); divide the area there. Members may cross a cut anywhere.</td></tr>
+          <tr><td>Separate legs</td><td>—</td><td>A cut may cross several disconnected legs (walls either side of a door): their forces are summed about the centroid of the whole cut, as ETABS does.</td></tr>
+          <tr><td>Pier axes</td><td>angle</td><td>1 = +Z (up); 2 horizontal along the pier's longest area (toward +X, or +Y for an area parallel to Y), or global X turned by <code>angle</code> (rad) about +Z; 3 = 1 × 2. A pier of columns only has 2 = +X.</td></tr>
+          <tr><td>Spandrel axes</td><td>reverse</td><td>1 horizontal along the wall, toward +X (+Y for a wall parallel to Y), or the other way with <code>reverse: true</code>; the left end is where 1 starts. 2 = +Z; 3 = 1 × 2, out of the wall.</td></tr>
+          <tr><td>Reference point</td><td>—</td><td>The geometric centroid of the cut: each leg by length × thickness, each member by its section area A.</td></tr>
+          <tr><td>Method</td><td>—</td><td>The nodal forces <code>k·u − f</code> of the group's shell elements on the cut's side, at their nodes on the cut, plus the end forces of the member pieces ending there, plus the internal forces of members crossing it. Exact equilibrium: a base cut equals the loads above it.</td></tr>
+          <tr><td>Combinations</td><td>—</td><td>Linear in the loads: combinations superpose exactly, and <code>envelope.piers</code> and <code>envelope.spandrels</code> give the max and min at every cut.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="sub-label">Resultants (pier or spandrel axes, on the face whose outward normal is +1)</div>
+      <p>
+        The forces the rest of the structure exerts on the part below a pier cut (left of a spandrel cut), with the signs
+        of a member's internal forces (<a href="#member-station" style="color:var(--accent)">MemberStation</a>) with the same
+        local axes: a pier reads like a column and a spandrel like a beam.
+      </p>
+      <table class="param-table">
+        <thead><tr><th>Field</th><th>Unit</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>P</td><td>kN</td><td>Axial force along 1, positive in tension (N of a member)</td></tr>
+          <tr><td>V2, V3</td><td>kN</td><td>Shear along 2 (in the wall plane for a planar pier, vertical for a spandrel) and along 3</td></tr>
+          <tr><td>T</td><td>kN·m</td><td>Torsion about 1, right-hand rule</td></tr>
+          <tr><td>M2, M3</td><td>kN·m</td><td>Moments about 2 and 3, right-hand rule. For a planar pier M3 is the in-plane moment; for a spandrel with 2 up, M3 is positive sagging and <code>M3(x) = M3(0) − x·V2</code> without loads on it</td></tr>
+        </tbody>
+      </table>
+
+      <div class="sub-label">Example — coupled walls</div>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript</div>
+        <pre>
+<span class="c">// Two 1 m wide, 3 m high walls in the XZ plane, 1 m apart over a 2.4 m high opening,</span>
+<span class="c">// coupled by a 0.6 m deep spandrel; 40 kN along +X at each top corner.</span>
+<span class="b">const</span> xs = [<span class="n">0</span>, <span class="n">1000</span>, <span class="n">2000</span>, <span class="n">3000</span>], zs = [<span class="n">0</span>, <span class="n">2400</span>, <span class="n">3000</span>];  <span class="c">// mm</span>
+<span class="b">const</span> section = { <span class="k">thickness</span>: <span class="n">200</span>, <span class="k">E</span>: <span class="n">30000</span>, <span class="k">nu</span>: <span class="n">0.2</span> };     <span class="c">// mm, MPa</span>
+<span class="b">const</span> area = (id, x0, x1, z0, z1) => ({
+  id, section, <span class="k">mesh</span>: { <span class="k">maxSize</span>: <span class="n">250</span> },                       <span class="c">// mm</span>
+  <span class="k">nodeIds</span>: [<span class="s">`${x0},${z0}`</span>, <span class="s">`${x1},${z0}`</span>, <span class="s">`${x1},${z1}`</span>, <span class="s">`${x0},${z1}`</span>],
+});
+<span class="b">const</span> result = <span class="u">analyze</span>({
+  <span class="k">nodes</span>: xs.flatMap((x) => zs.map((z) => ({ <span class="k">id</span>: <span class="s">`${x},${z}`</span>, x, <span class="k">y</span>: <span class="n">0</span>, z }))),
+  <span class="k">shells</span>: [
+    area(<span class="s">"W1"</span>, <span class="n">0</span>, <span class="n">1000</span>, <span class="n">0</span>, <span class="n">2400</span>), area(<span class="s">"W1top"</span>, <span class="n">0</span>, <span class="n">1000</span>, <span class="n">2400</span>, <span class="n">3000</span>),
+    area(<span class="s">"SP"</span>, <span class="n">1000</span>, <span class="n">2000</span>, <span class="n">2400</span>, <span class="n">3000</span>),
+    area(<span class="s">"W2"</span>, <span class="n">2000</span>, <span class="n">3000</span>, <span class="n">0</span>, <span class="n">2400</span>), area(<span class="s">"W2top"</span>, <span class="n">2000</span>, <span class="n">3000</span>, <span class="n">2400</span>, <span class="n">3000</span>),
+  ],
+  <span class="k">restraints</span>: [],
+  <span class="k">lineRestraints</span>: [{ <span class="k">nodeIds</span>: [<span class="s">"0,0"</span>, <span class="s">"3000,0"</span>], <span class="k">ux</span>: <span class="b">true</span>, <span class="k">uy</span>: <span class="b">true</span>, <span class="k">uz</span>: <span class="b">true</span>, <span class="k">rx</span>: <span class="b">true</span>, <span class="k">ry</span>: <span class="b">true</span>, <span class="k">rz</span>: <span class="b">true</span> }],
+  <span class="k">loadCases</span>: [{ <span class="k">id</span>: <span class="s">"W"</span> }],
+  <span class="k">nodalLoads</span>: [
+    { <span class="k">loadCase</span>: <span class="s">"W"</span>, <span class="k">nodeId</span>: <span class="s">"0,3000"</span>, <span class="k">fx</span>: <span class="n">40</span> },      <span class="c">// kN</span>
+    { <span class="k">loadCase</span>: <span class="s">"W"</span>, <span class="k">nodeId</span>: <span class="s">"3000,3000"</span>, <span class="k">fx</span>: <span class="n">40</span> },
+  ],
+  <span class="k">piers</span>: [
+    { <span class="k">id</span>: <span class="s">"P1"</span>, <span class="k">areaIds</span>: [<span class="s">"W1"</span>, <span class="s">"W1top"</span>] },
+    { <span class="k">id</span>: <span class="s">"P2"</span>, <span class="k">areaIds</span>: [<span class="s">"W2"</span>, <span class="s">"W2top"</span>] },
+  ],
+  <span class="k">spandrels</span>: [{ <span class="k">id</span>: <span class="s">"S1"</span>, <span class="k">areaIds</span>: [<span class="s">"SP"</span>], <span class="k">cuts</span>: [<span class="n">500</span>] }],  <span class="c">// mm from the left end</span>
+});</pre>
+      </div>
+      <div class="code-block">
+        <div class="code-block__label">Result</div>
+        <pre>
+<span class="c">// result.cases.W.pierForces[0]  ("P1", axes [[0,0,1], [1,0,0], [0,1,0]])</span>
+<span class="c">//   z = 0,    "bottom": { P: 50.8538,  V2: 40,      M3: 69.1462,  section.centroid: [500, 0, 0] }</span>
+<span class="c">//   z = 2400, "top":    { P: 50.8538,  V2: 40,      M3: -26.8538 }</span>
+<span class="c">//   z = 2400, "bottom": { P: 17.0281,  V2: -3.4247, M3: -9.5904 }   the spandrel joins at this level</span>
+<span class="c">//   z = 3000, "top":    { P: 1.0168,   V2: 13.4078, M3: 0.2514 }</span>
+<span class="c">// result.cases.W.pierForces[1]  ("P2")   z = 0, "bottom": { P: -50.8538, V2: 40, M3: 69.1462 }</span>
+<span class="c">//   overturning: 2 × 69.1462 + 50.8538 × 2 m = 240 kN·m = 2 × 40 kN × 3 m</span>
+<span class="c">// result.cases.W.spandrelForces[0]  ("S1", length 1000, axes [[1,0,0], [0,0,1], [0,-1,0]])</span>
+<span class="c">//   x = 0,    "left":  { P: 0, V2: 50.8538, M3: 25.4269,  section.legs[0]: { start: [1000,0,2400], end: [1000,0,3000], length: 600 } }</span>
+<span class="c">//   x = 500,  "cut":   { P: 0, V2: 50.8538, M3: 0 }</span>
+<span class="c">//   x = 1000, "right": { P: 0, V2: 50.8538, M3: -25.4269 }   V2 = (M3left − M3right) / L</span></pre>
+      </div>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>The spandrel's shear is the axial force it puts into each pier (50.85 kN, tension in P1 and compression in P2). Pier and spandrel forces are analysis demands; they do not apply a wall design provision. Each area must belong to one pier at most, so to see two legs both apart and together, analyse the model twice.</span>
+      </div>
+      <div class="alert alert--error">
+        <span>⚠️</span>
+        <span>Throws <strong>FeaError 331</strong> for an unknown, repeated or doubly assigned area or member, an empty group, a pier area that is not vertical or a horizontal pier member, a spandrel out of one vertical plane or with a member normal to its axis, an extra cut that misses the group, or a cut that crosses an area between mesh lines (<code>details.areaId</code> and <code>details.position</code> say where); <strong>314</strong> for a value that is not valid (<code>details.field</code> e.g. <code>"cuts[0]"</code>, <code>"angle"</code>, <code>"reverse"</code>), and <strong>303</strong> for an id used twice. <code>details.pierId</code> or <code>details.spandrelId</code> names the group.</span>
       </div>
     </div>
 
@@ -1496,7 +1611,7 @@ self.onmessage = ({ data }) =&gt; {
     <div class="section" id="analysis-flow">
       <div class="section__title">Analysis flow</div>
       <div class="flow-steps">
-        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Validate</strong> the model, load cases, loads and combinations with <code>validateModel</code> (errors 301–303, 305–317, 326, 327, 329 and 330); every problem is collected, and the first is thrown with all of them in <code>issues</code>.</div></div>
+        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Validate</strong> the model, load cases, loads and combinations with <code>validateModel</code> (errors 301–303, 305–317, 326, 327 and 329–331); every problem is collected, and the first is thrown with all of them in <code>issues</code>.</div></div>
         <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Distribute area loads</strong>: each null area's edge profiles are built once for a unit load, then scaled for each area load and cut at the members along the edges, giving <code>trapezoidal</code> (and cantilever <code>torque</code>) member loads in their load cases — what <code>distributeAreaLoads</code> returns.</div></div>
         <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Build the system once:</strong> split each member internally at the model nodes and shell-mesh nodes lying on it (<a href="#intermediate-nodes" style="color:var(--accent)">Nodes on members</a>); member local stiffness, condensation of end releases and partial-fixity springs, and transformation <code>T</code>; number the free DOFs with the nodes in reverse Cuthill–McKee order (which narrows the band), assemble the stiffness in skyline (variable-band) storage, add spring stiffnesses, hold joint rotations that no member resists (<a href="#auto-restraint" style="color:var(--accent)">automatic joint restraint</a>) and factorise by Cholesky once. A singular matrix throws 304, naming a node and DOF of the mechanism.</div></div>
         <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Solve each load case</strong> against that factorisation: group the loads by their <code>loadCase</code>, resolve member loads and self-weight into local fixed-end forces, form <code>F</code> = nodal loads − fixed-end forces, check that it has no moment about an automatically held rotation (304), and recover displacements, reactions <code>R = K·U − F</code> and member end forces.</div></div>
@@ -1631,7 +1746,7 @@ self.onmessage = ({ data }) =&gt; {
           </div>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws <strong>FeaError 301–317, 326–327, 329–330</strong> for an invalid model, load case or combination, <strong>328</strong> for a translation nothing resists at a node connected only to shells, or an unstable structure (304). The model is checked by <a href="#validate-model" style="color:var(--accent)">validateModel</a> first; the error is the first problem found, its <code>details</code> say where it is, and <code>issues</code> lists every problem. See <a href="#errors" style="color:var(--accent)">the error table</a>.</span>
+            <span>Throws <strong>FeaError 301–317, 326–327, 329–331</strong> for an invalid model, load case or combination, <strong>328</strong> for a translation nothing resists at a node connected only to shells, or an unstable structure (304). The model is checked by <a href="#validate-model" style="color:var(--accent)">validateModel</a> first; the error is the first problem found, its <code>details</code> say where it is, and <code>issues</code> lists every problem. See <a href="#errors" style="color:var(--accent)">the error table</a>.</span>
           </div>
         </div>
       </div>
@@ -1721,7 +1836,7 @@ analysis.result.cases.D.memberDiagrams[<span class="n">0</span>].stations;  <spa
             <tbody>
               <tr><td>code</td><td>number</td><td>—</td><td>The <a href="#errors" style="color:var(--accent)">error code</a></td></tr>
               <tr><td>message</td><td>string</td><td>—</td><td>The code's message followed by its location in brackets</td></tr>
-              <tr><td>details</td><td>FeaErrorDetails</td><td>—</td><td><code>{ nodeId?, memberId?, areaId?, shellId?, stripId?, edge?, loadCaseId?, combinationId?, field?, dof? }</code> — only the fields that apply</td></tr>
+              <tr><td>details</td><td>FeaErrorDetails</td><td>—</td><td><code>{ nodeId?, memberId?, areaId?, shellId?, stripId?, pierId?, spandrelId?, position?, edge?, loadCaseId?, combinationId?, field?, dof? }</code> — only the fields that apply</td></tr>
             </tbody>
           </table>
           <div class="alert alert--info">
@@ -1785,7 +1900,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           </div>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws like <code>analyze</code> (<strong>FeaError 301–317, 326–327, 329–330</strong>, all problems in <code>issues</code>); the area errors are <strong>315</strong>–<strong>317</strong>, see <a href="#null-areas" style="color:var(--accent)">Null areas</a>.</span>
+            <span>Throws like <code>analyze</code> (<strong>FeaError 301–317, 326–327, 329–331</strong>, all problems in <code>issues</code>); the area errors are <strong>315</strong>–<strong>317</strong>, see <a href="#null-areas" style="color:var(--accent)">Null areas</a>.</span>
           </div>
         </div>
       </div>
@@ -2024,6 +2139,8 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>areaLoads</td><td>AreaLoad[]</td><td>kN/m²</td><td><span class="opt">Optional</span></td><td><code>{ loadCase, areaId, direction, q }</code> on a null area or a shell; see <a href="#area-load" style="color:var(--accent)">AreaLoad</a></td></tr>
               <tr><td>combinations</td><td>LoadCombination[]</td><td>—</td><td><span class="opt">Optional</span></td><td>See <a href="#load-combination" style="color:var(--accent)">LoadCombination</a></td></tr>
               <tr><td>strips</td><td>ShellStrip[]</td><td>mm</td><td><span class="opt">Optional</span></td><td><code>{ id, points, widthLeft, widthRight, normal?, maxSpacing? }</code>: design strips across the shells, whose forces come back in <code>stripForces</code>; see <a href="#shell-strip" style="color:var(--accent)">ShellStrip</a> and <a href="#strips" style="color:var(--accent)">Strip forces</a></td></tr>
+              <tr><td>piers</td><td>WallPier[]</td><td>mm, rad</td><td><span class="opt">Optional</span></td><td><code>{ id, areaIds?, memberIds?, cuts?, angle? }</code>: wall piers, whose forces come back in <code>pierForces</code>; see <a href="#wall-pier" style="color:var(--accent)">WallPier</a> and <a href="#piers" style="color:var(--accent)">Piers &amp; spandrels</a></td></tr>
+              <tr><td>spandrels</td><td>WallSpandrel[]</td><td>mm</td><td><span class="opt">Optional</span></td><td><code>{ id, areaIds, memberIds?, cuts?, reverse? }</code>: wall spandrels, whose forces come back in <code>spandrelForces</code>; see <a href="#wall-spandrel" style="color:var(--accent)">WallSpandrel</a></td></tr>
             </tbody>
           </table>
         </div>
@@ -2334,6 +2451,58 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
         </div>
         <div class="export-card__body">
           <p class="ex-desc">A point of a strip's centreline in global axes: <code>{ x, y, z }</code> in mm.</p>
+        </div>
+      </div>
+
+      <div class="export-card" id="wall-pier">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">WallPier</span>
+          <span class="scope-badge s-public">Public API</span>
+          <span class="std-badge" title="Basis: element nodal forces of the finite element model — not an ACI 318-19 provision">FEM</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">A wall pier: shell areas and members whose forces <code>analyze</code> sums on horizontal cuts in <code>pierForces</code>. See <a href="#piers" style="color:var(--accent)">Piers &amp; spandrels</a>.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>id</td><td>FeaId</td><td>—</td><td><span class="req">Required</span></td><td>Unique among piers</td></tr>
+              <tr><td>areaIds</td><td>FeaId[]</td><td>—</td><td><span class="opt">Optional</span></td><td>Vertical shell areas of the pier</td></tr>
+              <tr><td>memberIds</td><td>FeaId[]</td><td>—</td><td><span class="opt">Optional</span></td><td>Members of the pier, none horizontal; at least one area or member in all</td></tr>
+              <tr><td>cuts</td><td>number[]</td><td>mm</td><td><span class="opt">Optional</span></td><td>Extra cut elevations (global Z), within the pier and on its areas' mesh lines</td></tr>
+              <tr><td>angle</td><td>number</td><td>rad</td><td><span class="opt">Optional</span></td><td>Pier axis 2 as global X turned about +Z; default along the longest area</td></tr>
+            </tbody>
+          </table>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws <strong>FeaError 331</strong> for invalid references or geometry, <strong>314</strong> for an invalid value, <strong>303</strong> for an id used twice.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-card" id="wall-spandrel">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">WallSpandrel</span>
+          <span class="scope-badge s-public">Public API</span>
+          <span class="std-badge" title="Basis: element nodal forces of the finite element model — not an ACI 318-19 provision">FEM</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">A wall spandrel (coupling beam): shell areas in one vertical plane and members whose forces <code>analyze</code> sums on vertical cuts in <code>spandrelForces</code>.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>id</td><td>FeaId</td><td>—</td><td><span class="req">Required</span></td><td>Unique among spandrels</td></tr>
+              <tr><td>areaIds</td><td>FeaId[]</td><td>—</td><td><span class="req">Required</span></td><td>At least one shell area, all in one vertical plane</td></tr>
+              <tr><td>memberIds</td><td>FeaId[]</td><td>—</td><td><span class="opt">Optional</span></td><td>Members of the spandrel (beams along it), none normal to its axis 1</td></tr>
+              <tr><td>cuts</td><td>number[]</td><td>mm</td><td><span class="opt">Optional</span></td><td>Extra cuts as distances from the left end along axis 1, on the mesh lines</td></tr>
+              <tr><td>reverse</td><td>boolean</td><td>—</td><td><span class="opt">Optional</span></td><td>Reverse axis 1, swapping the left and right ends; default false</td></tr>
+            </tbody>
+          </table>
+          <div class="alert alert--error">
+            <span>⚠️</span>
+            <span>Throws <strong>FeaError 331</strong> for invalid references or geometry, <strong>314</strong> for an invalid value, <strong>303</strong> for an id used twice.</span>
+          </div>
         </div>
       </div>
 
@@ -2809,6 +2978,8 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>memberDiagrams</td><td>MemberDiagram[]</td><td>kN, kN·m, mm</td><td><code>{ memberId, length, stations, extremes }</code>: forces N, V2, V3, T, M2, M3 and displacements u1, u2, u3 (local) and ux, uy, uz (global) at stations along the member, and each component's <code>{ max, min }</code> as <code>{ value, x }</code>; see <a href="#member-diagram" style="color:var(--accent)">MemberDiagram</a> and <a href="#member-diagrams" style="color:var(--accent)">Member diagrams</a></td></tr>
               <tr><td>shellForces</td><td>ShellElementForces[]</td><td>kN/m, kN·m/m, MPa</td><td>Per shell element, area by area in model order (one per area that is not meshed), forces per unit width and face stresses at its corners; empty without shells. See <a href="#shell-element-forces" style="color:var(--accent)">ShellElementForces</a></td></tr>
               <tr><td>stripForces</td><td>StripForces[]</td><td>kN, kN·m</td><td>Per strip, in model order, the resultants at stations along it; empty without strips. See <a href="#strip-forces" style="color:var(--accent)">StripForces</a></td></tr>
+              <tr><td>pierForces</td><td>PierForces[]</td><td>kN, kN·m</td><td>Per pier, in model order, the resultant at each cut; empty without piers. See <a href="#pier-forces" style="color:var(--accent)">PierForces</a></td></tr>
+              <tr><td>spandrelForces</td><td>SpandrelForces[]</td><td>kN, kN·m</td><td>Per spandrel, in model order, the resultant at each cut; empty without spandrels. See <a href="#spandrel-forces" style="color:var(--accent)">SpandrelForces</a></td></tr>
               <tr><td>equilibriumResidual</td><td>{ force, moment }</td><td>kN, kN·m</td><td>Global equilibrium residual of applied loads plus reactions</td></tr>
               <tr><td>warnings</td><td>Warnings</td><td>—</td><td>Warnings of this case or combination</td></tr>
             </tbody>
@@ -3140,6 +3311,117 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
         </div>
       </div>
 
+      <div class="export-card" id="pier-forces">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">PierForces</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">The forces of one pier in one load case or combination (<code>pierForces</code>, one per pier in model order).</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>pierId</td><td>FeaId</td><td>—</td><td>The pier</td></tr>
+              <tr><td>axes</td><td>[Vec, Vec, Vec]</td><td>—</td><td>Pier axes 1, 2, 3 (rows) in global components</td></tr>
+              <tr><td>cuts</td><td>PierCut[]</td><td>—</td><td>Up the pier; at a shared level the lower lift's <code>"top"</code> first. See <a href="#pier-cut" style="color:var(--accent)">PierCut</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="pier-cut">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">PierCut, PierCutFace</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">The resultant on one pier cut, with the <a href="#wall-resultants" style="color:var(--accent)">WallResultants</a> fields.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>z</td><td>number</td><td>mm</td><td>The cut's elevation</td></tr>
+              <tr><td>face</td><td>"bottom" | "top" | "cut"</td><td>—</td><td><code>PierCutFace</code>: from the elements above (the bottom of a lift), below (the top of a lift), or an extra cut taken from below</td></tr>
+              <tr><td>P, V2, V3, T, M2, M3</td><td>number</td><td>kN, kN·m</td><td>The resultant; see <a href="#piers" style="color:var(--accent)">Piers &amp; spandrels</a></td></tr>
+              <tr><td>section</td><td>WallCutSection</td><td>mm, mm²</td><td>The section the cut passes through; see <a href="#wall-cut-section" style="color:var(--accent)">WallCutSection</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="spandrel-forces">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">SpandrelForces</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">The forces of one spandrel in one load case or combination (<code>spandrelForces</code>, one per spandrel in model order).</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>spandrelId</td><td>FeaId</td><td>—</td><td>The spandrel</td></tr>
+              <tr><td>axes</td><td>[Vec, Vec, Vec]</td><td>—</td><td>Spandrel axes 1, 2, 3 (rows) in global components</td></tr>
+              <tr><td>length</td><td>number</td><td>mm</td><td>From the left end to the right end along axis 1</td></tr>
+              <tr><td>cuts</td><td>SpandrelCut[]</td><td>—</td><td>From left to right. See <a href="#spandrel-cut" style="color:var(--accent)">SpandrelCut</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="spandrel-cut">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">SpandrelCut, SpandrelCutFace</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">The resultant on one spandrel cut, with the <a href="#wall-resultants" style="color:var(--accent)">WallResultants</a> fields.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>x</td><td>number</td><td>mm</td><td>Distance from the left end along axis 1</td></tr>
+              <tr><td>face</td><td>"left" | "right" | "cut"</td><td>—</td><td><code>SpandrelCutFace</code>: from the elements right of the left end, left of the right end, or an extra cut taken from the left</td></tr>
+              <tr><td>P, V2, V3, T, M2, M3</td><td>number</td><td>kN, kN·m</td><td>The resultant</td></tr>
+              <tr><td>section</td><td>WallCutSection</td><td>mm, mm²</td><td>The section the cut passes through</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="wall-resultants">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">WallResultants, WallForceComponent</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc"><code>{ P, V2, V3, T, M2, M3 }</code> in kN and kN·m, in pier or spandrel axes, about the cut's centroid, on the face whose outward normal is +1, with member-diagram signs; <code>WallForceComponent</code> is one of its keys. See <a href="#piers" style="color:var(--accent)">Piers &amp; spandrels</a>.</p>
+        </div>
+      </div>
+
+      <div class="export-card" id="wall-cut-section">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">WallCutSection, WallSectionLeg, WallSectionMember</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">The section a pier or spandrel cut passes through: enough to rebuild it for wall design.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>legs</td><td>WallSectionLeg[]</td><td>mm</td><td>One per area on the cut: <code>{ areaId, start, end, length, thickness }</code>, end points in global X, Y, Z; legs run up (spandrel) or toward +X (+Y for a leg parallel to Y)</td></tr>
+              <tr><td>members</td><td>WallSectionMember[]</td><td>mm, mm²</td><td>One per member on the cut: <code>{ memberId, point, A }</code>, its axis on the cut and its section area</td></tr>
+              <tr><td>length</td><td>number</td><td>mm</td><td>Total length of the legs</td></tr>
+              <tr><td>area</td><td>number</td><td>mm²</td><td>Σ length × thickness of the legs plus Σ A of the members</td></tr>
+              <tr><td>centroid</td><td>[number, number, number]</td><td>mm</td><td>Geometric centroid, global X, Y, Z: the point the moments are about</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="export-card" id="fea-envelope">
         <div class="export-card__header">
           <span class="kind m-type">TYPE</span>
@@ -3157,6 +3439,8 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>members</td><td>array</td><td>kN, kN·m, mm</td><td>Per member: <code>extremes</code> of N, V2, V3, T, M2, M3, u1, u2, u3, each a <a href="#bound" style="color:var(--accent)">Bound</a> of <a href="#governing-extreme-value" style="color:var(--accent)">GoverningExtremeValue</a></td></tr>
               <tr><td>shells</td><td>array</td><td>kN/m, kN·m/m, MPa</td><td>Per shell: <code>{ shellId, corners }</code>, each corner <code>{ nodeId }</code> plus F11 … S12Bot, each a <a href="#bound" style="color:var(--accent)">Bound</a> of <a href="#governing-value" style="color:var(--accent)">GoverningValue</a></td></tr>
               <tr><td>strips</td><td>array</td><td>kN, kN·m</td><td>Per strip: <code>{ stripId, stations, extremes }</code>. Each station <code>{ x, segment, perWidth }</code> plus P, V, M, T, Vp, Mp, each (and each of <code>perWidth</code>) a <a href="#bound" style="color:var(--accent)">Bound</a> of <a href="#governing-value" style="color:var(--accent)">GoverningValue</a>: the strip's envelope diagram. <code>extremes</code>: each resultant over the whole strip, a Bound of <a href="#governing-extreme-value" style="color:var(--accent)">GoverningExtremeValue</a></td></tr>
+              <tr><td>piers</td><td>array</td><td>kN, kN·m</td><td>Per pier: <code>{ pierId, cuts }</code>, each cut <code>{ z, face }</code> plus P, V2, V3, T, M2, M3, each a <a href="#bound" style="color:var(--accent)">Bound</a> of <a href="#governing-value" style="color:var(--accent)">GoverningValue</a></td></tr>
+              <tr><td>spandrels</td><td>array</td><td>kN, kN·m</td><td>Per spandrel: <code>{ spandrelId, cuts }</code>, each cut <code>{ x, face }</code> plus P, V2, V3, T, M2, M3, each a Bound of GoverningValue</td></tr>
             </tbody>
           </table>
         </div>
@@ -3275,7 +3559,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>code</td><td>number</td><td>—</td><td>Error code, 301–317, 326–327 or 329–330 (328 only from the analysis); see <a href="#errors" style="color:var(--accent)">the error table</a></td></tr>
+              <tr><td>code</td><td>number</td><td>—</td><td>Error code, 301–317, 326–327 or 329–331 (328 only from the analysis); see <a href="#errors" style="color:var(--accent)">the error table</a></td></tr>
               <tr><td>message</td><td>string</td><td>—</td><td>The code's message followed by the location in brackets</td></tr>
               <tr><td>details</td><td>FeaErrorDetails</td><td>—</td><td>Where the problem is; see <a href="#fea-error-details" style="color:var(--accent)">FeaErrorDetails</a></td></tr>
             </tbody>
@@ -3294,7 +3578,8 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td>nodeId, memberId, areaId, shellId, stripId</td><td>FeaId</td><td>—</td><td>The node, member, null area, shell area or strip concerned</td></tr>
+              <tr><td>nodeId, memberId, areaId, shellId, stripId, pierId, spandrelId</td><td>FeaId</td><td>—</td><td>The node, member, null area, shell area, strip, pier or spandrel concerned</td></tr>
+              <tr><td>position</td><td>number</td><td>mm</td><td>For a pier or spandrel cut (331): its elevation, or its distance from the spandrel's left end</td></tr>
               <tr><td>edge</td><td>number</td><td>—</td><td>An area's edge index (edge <code>i</code> runs from <code>nodeIds[i]</code> to <code>nodeIds[i + 1]</code>)</td></tr>
               <tr><td>loadCaseId, combinationId</td><td>string</td><td>—</td><td>The load case or combination concerned</td></tr>
               <tr><td>field</td><td>string</td><td>—</td><td>The offending input field, e.g. <code>"x"</code>, <code>"w"</code>, <code>"direction"</code>, <code>"supportEdges"</code></td></tr>
@@ -3349,6 +3634,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td class="path-cell">328</td><td class="path-cell">SHELL_DOF_UNSUPPORTED</td><td>A node connected only to shells has a translation nothing resists — a membrane's out-of-plane or a plate's in-plane direction. <code>details</code> names the node, a shell and the DOF; every such node is in <code>issues</code>. Restrain the DOF, connect a member, or use type <code>"shell"</code>. Found when the stiffness is assembled, not by <code>validateModel</code>.</td></tr>
           <tr><td class="path-cell">329</td><td class="path-cell">INVALID_SHELL_MESH</td><td>Shell areas cannot be meshed: no division counts make the meshes of areas sharing edges meet node to node, a generated element is not a valid quadrilateral, or a generated id is already used by a node or shell. <code>details.shellId</code> names the area. Divide the areas so they meet edge to edge, or change their mesh sizes.</td></tr>
           <tr><td class="path-cell">330</td><td class="path-cell">INVALID_STRIP_GEOMETRY</td><td>A strip has fewer than 2 points, points off its plane, a zero-length segment or one turning straight back on the previous one, a zero <code>normal</code>, a negative width, or both widths 0. <code>details.stripId</code> and <code>details.field</code> name it. See <a href="#strips" style="color:var(--accent)">Strip forces</a>.</td></tr>
+          <tr><td class="path-cell">331</td><td class="path-cell">INVALID_PIER_GEOMETRY</td><td>A pier or spandrel lists an unknown area or member, one twice, or one already in another pier (or spandrel); a pier has no area or member, or a spandrel no area; a pier area is not vertical or a pier member is horizontal; a spandrel's areas are not in one vertical plane, or a member is normal to its axis 1; an extra cut misses the group; or a cut crosses an area between its mesh lines. <code>details.pierId</code> / <code>details.spandrelId</code>, <code>areaId</code>, <code>memberId</code>, <code>field</code> and <code>position</code> say where. See <a href="#piers" style="color:var(--accent)">Piers &amp; spandrels</a>.</td></tr>
         </tbody>
       </table>
     </div>
@@ -3387,6 +3673,8 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">LineRestraint</td><td>—</td><td>Fixed DOFs along a line, generated nodes included</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ShellStrip</td><td>—</td><td>A design strip across shells: centreline, widths, plane, station spacing</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">StripPoint</td><td>—</td><td>A strip centreline point <code>{ x, y, z }</code></td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">WallPier</td><td>—</td><td>A wall pier: areas, members, extra cut elevations, axis angle</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">WallSpandrel</td><td>—</td><td>A wall spandrel: areas, members, extra cuts, reverse</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">LoadCase</td><td>—</td><td>One set of loads, with optional self-weight</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">LoadCaseType</td><td>—</td><td>Load case label</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">LoadCombination</td><td>—</td><td>Factored sum of load cases and combinations</td></tr>
@@ -3423,6 +3711,12 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">StripStation</td><td>—</td><td>The resultants on one cut, with its covered width and per-width values</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">StripResultants, StripForceComponent</td><td>—</td><td><code>{ P, V, M, T, Vp, Mp }</code> and its keys</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">StripExtremeValue</td><td>—</td><td><code>{ value, x }</code> along a strip</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">PierForces</td><td>—</td><td>A pier's axes and cuts in one case or combination</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">PierCut, PierCutFace</td><td>—</td><td>The resultant on one pier cut, its elevation, face and section</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">SpandrelForces</td><td>—</td><td>A spandrel's axes, length and cuts in one case or combination</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">SpandrelCut, SpandrelCutFace</td><td>—</td><td>The resultant on one spandrel cut, its position, face and section</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">WallResultants, WallForceComponent</td><td>—</td><td><code>{ P, V2, V3, T, M2, M3 }</code> and its keys</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">WallCutSection, WallSectionLeg, WallSectionMember</td><td>—</td><td>The legs, members, length, area and centroid of a cut</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberStation</td><td>—</td><td>Forces and displacements at one point</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">StationComponent</td><td>—</td><td>Components that have extremes</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">ExtremeValue</td><td>—</td><td>Extreme value and its position</td></tr>

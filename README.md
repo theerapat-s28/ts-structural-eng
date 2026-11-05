@@ -43,6 +43,7 @@ Full API reference, with parameter tables, worked examples, warnings and error c
 - [Strengthening](https://theerapat-s28.github.io/ts-structural-eng/strengthening/) — `@theerapat-s28/ts-structural-eng-tools/strengthening`
 - [Shell element theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/shell-element.html) — how the shell element's stiffness is formed, with its benchmarks
 - [Strip forces theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/strip-forces.html) — how strip forces are integrated from the shell forces, with their sign conventions and checks
+- [Pier and spandrel theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/pier-spandrel.html) — how wall pier and spandrel forces are summed from the element nodal forces, with their sign conventions and checks
 
 The pages are served from [`html-docs/`](https://github.com/theerapat-s28/ts-structural-eng/tree/main/html-docs) via GitHub Pages.
 
@@ -254,6 +255,7 @@ A `FeaModel` is plain data. Every load names its `loadCase`, so loads are flat t
 | `areaLoads` | `{ loadCase, areaId, direction, q, projected? }` in kN/m², on a null area or a shell; `direction` is the area's normal `"3"` or a global axis |
 | `combinations` | `{ id, name?, terms }`, each term `{ case, factor }` or `{ combination, factor }`; nested combinations are expanded |
 | `strips` | Design strips across shells, `{ id, points, widthLeft, widthRight, normal?, maxSpacing? }`; see [Strip forces](#strip-forces) |
+| `piers`, `spandrels` | Wall piers `{ id, areaIds?, memberIds?, cuts?, angle? }` and spandrels `{ id, areaIds, memberIds?, cuts?, reverse? }`; see [Pier and spandrel forces](#pier-and-spandrel-forces) |
 
 #### Members
 
@@ -292,11 +294,34 @@ const strip = result.combinations.ULS.stripForces[0];
 // strip.stations[i] → { x, point, segment, width, P, V, M, T, Vp, Mp, perWidth: { … } }
 ```
 
+A strip with a horizontal `normal` also works up a single flat wall (`P`, `Vp`, `Mp`); for grouped walls, cores and walls with columns, use piers.
+
+#### Pier and spandrel forces
+
+Group walls into piers and coupling beams into spandrels, as in ETABS, and `analyze` returns one resultant per cut across each group, for wall design. A pier lists vertical shell areas (`areaIds`: wall legs, planar or not, connected or not) and members (`memberIds`: boundary or embedded columns). It is cut at the bottom and top of each lift, between consecutive elevations where any of its areas or members starts or ends: a floor level shared by two lifts gives a `"top"` cut from below and a `"bottom"` cut from above, which differ by what the floor delivers. `cuts` adds elevations. A spandrel lists areas in one vertical plane, plus beams along it, and is cut at its `"left"` and `"right"` ends and at the distances in `cuts`. Every cut must lie on the mesh lines of the areas it meets (error 331 otherwise); separate legs are summed together, as ETABS does.
+
+Each cut gives `P`, `V2`, `V3`, `T`, `M2`, `M3` (kN, kN·m) about the centroid of the cut section, with the signs of member internal forces: pier axis 1 is up and 2 runs along its longest area (or set it with `angle`); spandrel axis 1 runs along the wall toward +X or +Y (flip it with `reverse`) and 2 is up. Each cut also lists its `section` (each leg's end points and thickness, each member's position and area, the total length, area and centroid) for a later wall design. The forces are the element nodal forces summed at the cut, so they are in exact equilibrium with the loads, and they superpose: `envelope.piers` and `envelope.spandrels` give the max and min at every cut. The [pier and spandrel theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/pier-spandrel.html) show how each value is calculated.
+
+```ts
+const result = analyze({
+  ...model, // walls of shells, coupled over an opening
+  piers: [
+    { id: "P1", areaIds: ["W1", "W1top"] },
+    { id: "P2", areaIds: ["W2", "W2top"] },
+  ],
+  spandrels: [{ id: "S1", areaIds: ["SP"] }],
+});
+const pier = result.combinations.ULS.pierForces[0];
+// pier.cuts[i] → { z, face: "bottom" | "top" | "cut", P, V2, V3, T, M2, M3, section: { legs, members, length, area, centroid } }
+const spandrel = result.combinations.ULS.spandrelForces[0];
+// spandrel.cuts[i] → { x, face: "left" | "right" | "cut", P, V2, V3, T, M2, M3, section }
+```
+
 #### The result
 
 | Field | What it holds |
 | --- | --- |
-| `cases`, `combinations` | Results keyed by id, each with `nodalDisplacements`, `reactions`, `memberEndForces`, `releaseDeformations`, `memberDiagrams` (`N`, `V2`, `V3`, `T`, `M2`, `M3` and deflections `u1`–`u3` local, `ux`–`uz` global, along each member), `shellForces`, `stripForces`, an `equilibriumResidual` check and `warnings` |
+| `cases`, `combinations` | Results keyed by id, each with `nodalDisplacements`, `reactions`, `memberEndForces`, `releaseDeformations`, `memberDiagrams` (`N`, `V2`, `V3`, `T`, `M2`, `M3` and deflections `u1`–`u3` local, `ux`–`uz` global, along each member), `shellForces`, `stripForces`, `pierForces`, `spandrelForces`, an `equilibriumResidual` check and `warnings` |
 | `envelope` | Max and min of every result over the combinations, with the governing combination; absent without combinations |
 | `mesh` | The generated nodes and every shell element with its nodes; absent without shells |
 | `calculationDetails` | Node (generated included), member, shell-element, DOF, load case and combination counts, `profileSize`, `autoRestrainedDofs`, `intermediateNodes` and `nearMissNodes` |
@@ -340,7 +365,7 @@ ACI 440.2R-17 11.4.2 (spacing, which defers to the ACI 318 limits) and 11.4.3 (`
 A design that is valid but breaks a code provision returns normally with an entry in `warnings`, citing the clause (e.g. `"ACI318-19, 9.6.1.2"`). A calculation whose assumptions break down throws instead, never returning a silently wrong result:
 
 - **`RCDesignError`** — `code` and `message` from `Errors`: 1XX for RC beam design (e.g. 102, tensile steel not yielding; 105, `Vs` above the 22.5.1.2 limit), 2XX for strengthening and plate connections (201–206).
-- **`FeaError`** — `code` and `message` from `FeaErrors`, `details` locating the problem, and `issues` listing every problem `validateModel` found. Codes 301–317 cover the model, members, loads, null areas and combinations (304 is an unstable structure); 326–329 cover shells: 326 invalid geometry, 327 invalid section, 328 a translation that nothing resists at a node connected only to membranes or plates, 329 an area that cannot be meshed; 330 is an invalid strip. Match on `code`, not on `message`.
+- **`FeaError`** — `code` and `message` from `FeaErrors`, `details` locating the problem, and `issues` listing every problem `validateModel` found. Codes 301–317 cover the model, members, loads, null areas and combinations (304 is an unstable structure); 326–329 cover shells: 326 invalid geometry, 327 invalid section, 328 a translation that nothing resists at a node connected only to membranes or plates, 329 an area that cannot be meshed; 330 is an invalid strip; 331 an invalid pier or spandrel. Match on `code`, not on `message`.
 
 `core` also exports the shared input types, the type guards `isSinglyReinforced`, `hasTopPlate`, `hasBottomPlate` and `hasSidePlate`, and the engineering constants (φ factors, ultimate concrete strain, inertia modifiers, frame-analysis tolerances, `SHELL_WARPING_LIMIT`).
 
@@ -414,9 +439,9 @@ src/
 │       ├── index.ts
 │       ├── mesh/             # The analysed model: shell mesh, line restraints, member splitting at model and mesh nodes
 │       ├── solver/           # System build + skyline factorisation, per-case solve, combinations, analyze, distributeAreaLoads
-│       ├── validation/       # validateModel: every input problem, with its location
-│       ├── post/             # Result presentation, envelopes, design demands
-│       └── types/            # FeaModel (load cases, combinations, nodal loads, line restraints) and FeaResult
+│       ├── validation/       # validateModel: every input problem, with its location; pier and spandrel checks
+│       ├── post/             # Result presentation, envelopes, design demands, pier and spandrel forces
+│       └── types/            # FeaModel (load cases, combinations, nodal loads, line restraints, piers, spandrels) and FeaResult
 ├── core/                 # Shared infrastructure
 │   ├── index.ts
 │   ├── constants/        # RC design constants (ACI 318) in rc.constant.ts; FEA constants in fea.constant.ts (shared), frame.constant.ts and shell.constant.ts
@@ -448,7 +473,8 @@ html-docs/                # HTML API reference, deployed to GitHub Pages
 ├── fea/index.html
 ├── fea/theory/
 │   ├── shell-element.html  # Shell element theory notes
-│   └── strip-forces.html   # Strip forces: theory and how they are calculated
+│   ├── strip-forces.html   # Strip forces: theory and how they are calculated
+│   └── pier-spandrel.html  # Pier and spandrel forces: theory and how they are calculated
 └── shell-element.html    # Redirect to fea/theory/shell-element.html (old address)
 ROADMAP.md                # FEA roadmap and implementation plan (not published)
 .agents/skills/update-version/ # AI agent skill: bump the version and roll the changelog
