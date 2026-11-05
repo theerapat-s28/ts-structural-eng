@@ -3,7 +3,7 @@ import {
   COLUMN_INERTIA_MODIFIER,
   CONCRETE_POISSON_RATIO,
   CONCRETE_UNIT_WEIGHT,
-} from "@app-core/constants/frame.constant";
+} from "@app-core/constants/rc.constant";
 import type { Warnings } from "@app-core/types/output-message.type";
 import type { RectBeamSection } from "@app-core/types/rc-beam.type";
 import type { SectionProperties } from "@app-core/types/section-properties.type";

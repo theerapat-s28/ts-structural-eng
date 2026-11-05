@@ -1,8 +1,5 @@
-import {
-  AREA_GEOMETRY_TOLERANCE,
-  STRIP_DEFAULT_DIVISIONS,
-  STRIP_PLANE_TOLERANCE,
-} from "@app-core/constants/frame.constant";
+import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/fea.constant";
+import { STRIP_DEFAULT_DIVISIONS, STRIP_PLANE_TOLERANCE } from "@app-core/constants/shell.constant";
 import type { Warnings } from "@app-core/types/output-message.type";
 import type { FeaId } from "@app-fea/shared/types/model.type";
 import { roundToDecimalPlaces } from "@app-utils/math";

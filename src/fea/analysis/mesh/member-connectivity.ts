@@ -1,5 +1,5 @@
+import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/fea.constant";
 import {
-  AREA_GEOMETRY_TOLERANCE,
   NODE_NEAR_MEMBER_MAX_DISTANCE,
   NODE_NEAR_MEMBER_RATIO,
 } from "@app-core/constants/frame.constant";

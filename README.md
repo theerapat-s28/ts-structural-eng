@@ -419,7 +419,7 @@ src/
 │       └── types/            # FeaModel (load cases, combinations, nodal loads, line restraints) and FeaResult
 ├── core/                 # Shared infrastructure
 │   ├── index.ts
-│   ├── constants/        # RC design constants (ACI 318) and frame-analysis tolerances
+│   ├── constants/        # RC design constants (ACI 318) in rc.constant.ts; FEA constants in fea.constant.ts (shared), frame.constant.ts and shell.constant.ts
 │   ├── errors/           # RCDesignError and FeaError with their coded entries
 │   └── types/            # Shared types: RC sections, plate jacketing, section properties, warnings, units
 └── utils/                # Helper utilities

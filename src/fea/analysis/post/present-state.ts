@@ -1,4 +1,4 @@
-import { EQUILIBRIUM_TOLERANCE } from "@app-core/constants/frame.constant";
+import { EQUILIBRIUM_TOLERANCE } from "@app-core/constants/fea.constant";
 import type { Warnings } from "@app-core/types/output-message.type";
 import { fixedEndForces } from "@app-fea/frame/elements/fixed-end-forces";
 import { chainDiagram, memberDiagram } from "@app-fea/frame/post/member-diagram";

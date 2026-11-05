@@ -191,7 +191,7 @@ Replaces the earlier "envelope sets" item: an envelope combination does that job
 
 ### 1.7 Null Area Robustness
 - [ ] **Crossing beams**: detect members lying inside a null area (not on its edges). Today they silently receive no load — issue a warning naming the area and member. A later step can subdivide the area automatically (2.11).
-- [ ] **Tolerances**: split `AREA_GEOMETRY_TOLERANCE` ($10^{-6} \times \text{size}$, [`frame.constant.ts`](src/core/constants/frame.constant.ts)) into:
+- [ ] **Tolerances**: split `AREA_GEOMETRY_TOLERANCE` ($10^{-6} \times \text{size}$, [`fea.constant.ts`](src/core/constants/fea.constant.ts)) into:
   - [ ] `AREA_LENGTH_TOLERANCE`: absolute length (e.g. $1\text{ mm}$) for planarity and node-on-edge checks.
   - [ ] `AREA_ANGLE_TOLERANCE`: angle (e.g. $10^{-3}\text{ rad} \approx 0.06^\circ$) for parallel edges, square corners and convexity.
   - [ ] Keep $10^{-6} \times \text{size}$ only for true degeneracies (duplicate nodes, zero area).
@@ -366,7 +366,7 @@ Flat four-node shell elements with membrane, plate and shell behaviour, so walls
 - [x] [`shell/elements/membrane-quad.ts`](src/fea/shell/elements/membrane-quad.ts): drilling quad after Ibrahimbegovic–Taylor–Wilson (Allman edge terms plus Hughes–Brezzi penalty, $\gamma = G$), 12×12 over $u, v, \theta_z$; strain rows exposed for stress recovery (5.5).
   - Strain energy at 3×3 points: with 2×2 a rectangle has a fourth zero-energy mode (alternating corner rotations whose normal strains vanish at the 2×2 points).
   - Penalty at one point (the centre): with 2×2 distorted elements lock as $\gamma$ grows (trapezoidal cantilever 0.0848 at $G$, 0.0323 at $100G$); at the centre results change by < 0.3 % over $0.01G$–$100G$.
-- [x] `DRILLING_PENALTY_RATIO` in [`frame.constant.ts`](src/core/constants/frame.constant.ts) (not re-exported yet).
+- [x] `DRILLING_PENALTY_RATIO` in [`shell.constant.ts`](src/core/constants/shell.constant.ts) (not re-exported yet).
 - [x] Tests in [`tests/fea/shell/`](tests/fea/shell/) (dense-solve harness, no model integration): symmetry, exactly 3 rigid-body modes (rectangle and distorted), tensor transformation and corner-order invariance; MacNeal–Harder patch test (exact field, θ = ω, $\sigma_x = \sigma_y = 1333.3$, $\tau_{xy} = 400$); straight cantilever 0.0977 / 0.0931 / 0.0829 (regular / parallelogram / trapezoidal, reference 0.1081 — a flipped edge-term sign gives 0.0031); penalty insensitivity; Cook's membrane converging from below to ≈ 25.2, where a bilinear quad and an independent 9-node element also converge; this is above the 23.9–23.96 usually quoted for the problem, a difference not yet explained (see Technical Debt).
 
 ### 5.2 DKQ Plate Element

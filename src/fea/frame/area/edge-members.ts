@@ -1,4 +1,4 @@
-import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/frame.constant";
+import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/fea.constant";
 import type { FeaId } from "@app-fea/shared/types/model.type";
 
 import type { Member } from "../types/model.type";

@@ -1,4 +1,4 @@
-import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/frame.constant";
+import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/fea.constant";
 import type { Warnings } from "@app-core/types/output-message.type";
 import { nodesAlongMembers } from "@app-fea/frame/solver/nodes-along-members";
 import type { Member } from "@app-fea/frame/types/model.type";

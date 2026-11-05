@@ -1,4 +1,4 @@
-import { SINGULARITY_TOLERANCE } from "@app-core/constants/frame.constant";
+import { SINGULARITY_TOLERANCE } from "@app-core/constants/fea.constant";
 import { FeaErrors } from "@app-core/errors/fea.error";
 import { memberGlobalStiffness } from "@app-fea/frame/solver/member-assembly";
 import {

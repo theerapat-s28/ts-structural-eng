@@ -1,4 +1,4 @@
-import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/frame.constant";
+import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/fea.constant";
 import type { FeaId, FeaNode } from "@app-fea/shared/types/model.type";
 
 import { isValidShellQuad, type Vec3 } from "../elements/shell-axes";

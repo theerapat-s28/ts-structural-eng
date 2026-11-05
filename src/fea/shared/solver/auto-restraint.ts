@@ -1,4 +1,4 @@
-import { SINGULARITY_TOLERANCE } from "@app-core/constants/frame.constant";
+import { SINGULARITY_TOLERANCE } from "@app-core/constants/fea.constant";
 import type { Matrix } from "@app-utils/matrix";
 
 import type { BoundaryConditions } from "./boundary-conditions";

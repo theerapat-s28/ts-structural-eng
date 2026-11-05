@@ -1,4 +1,4 @@
-import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/frame.constant";
+import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/fea.constant";
 import { FeaErrors, type FeaErrorDetails, type FeaModelIssue } from "@app-core/errors/fea.error";
 import { isFiniteNumber, modelIssue } from "@app-fea/shared/validation/issues";
 
