@@ -83,3 +83,16 @@ export const DEFAULT_SIDE_PLATE_ANGLE = 90; // degrees from the beam axis
 // Practical detailing limit on bolt pitch along a bonded strengthening plate,
 // so the plate is restrained against local buckling / peeling between fasteners
 export const MAX_PLATE_BOLT_SPACING = 300; // mm
+
+// Concrete material and cracked-section values used to build member section properties
+/** Poisson's ratio of concrete, for G = E / (2(1 + ν)). */
+export const CONCRETE_POISSON_RATIO = 0.2;
+
+/** ACI 318-19 Table 6.6.3.1.1(a): effective I of beams for elastic analysis at factored load. */
+export const BEAM_INERTIA_MODIFIER = 0.35;
+
+/** ACI 318-19 Table 6.6.3.1.1(a): effective I of columns for elastic analysis at factored load. */
+export const COLUMN_INERTIA_MODIFIER = 0.7;
+
+/** Unit weight of reinforced concrete in kN/m³ — common design practice, not an ACI 318-19 value. */
+export const CONCRETE_UNIT_WEIGHT = 24;

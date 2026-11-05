@@ -1,4 +1,4 @@
-import { VERTICAL_MEMBER_TOLERANCE } from "@app-core/constants/frame.constant";
+import { VERTICAL_MEMBER_TOLERANCE } from "@app-core/constants/fea.constant";
 import { FeaError, FeaErrors } from "@app-core/errors/fea.error";
 import { zeros, type Matrix } from "@app-utils/matrix";
 

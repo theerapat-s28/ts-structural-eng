@@ -66,6 +66,7 @@ Every feature added must conform to the following core principles:
 | [x] | 5 | Shells in the model (validation, assembly, loads) | L | Flat shell |
 | [x] | 5 | Shell results & first release | M | Shells in the model |
 | [x] | 5 | Engine meshing of shell areas | L | Shell results |
+| [x] | 5 | Strip forces (design strips over slabs) | M | Engine meshing |
 | [ ] | 5 | Thick plates (DKMQ or MITC4) | M | Shell results |
 | [ ] | 5 | Triangular shells & openings | L | Engine meshing |
 
@@ -190,7 +191,7 @@ Replaces the earlier "envelope sets" item: an envelope combination does that job
 
 ### 1.7 Null Area Robustness
 - [ ] **Crossing beams**: detect members lying inside a null area (not on its edges). Today they silently receive no load — issue a warning naming the area and member. A later step can subdivide the area automatically (2.11).
-- [ ] **Tolerances**: split `AREA_GEOMETRY_TOLERANCE` ($10^{-6} \times \text{size}$, [`frame.constant.ts`](src/core/constants/frame.constant.ts)) into:
+- [ ] **Tolerances**: split `AREA_GEOMETRY_TOLERANCE` ($10^{-6} \times \text{size}$, [`fea.constant.ts`](src/core/constants/fea.constant.ts)) into:
   - [ ] `AREA_LENGTH_TOLERANCE`: absolute length (e.g. $1\text{ mm}$) for planarity and node-on-edge checks.
   - [ ] `AREA_ANGLE_TOLERANCE`: angle (e.g. $10^{-3}\text{ rad} \approx 0.06^\circ$) for parallel edges, square corners and convexity.
   - [ ] Keep $10^{-6} \times \text{size}$ only for true degeneracies (duplicate nodes, zero area).
@@ -347,7 +348,7 @@ The shared transformation mechanism behind diaphragms (3.2), and usable on its o
 
 ## Phase 5: Shell Elements
 
-Flat four-node shell elements with membrane, plate and shell behaviour, so walls, cores, transfer slabs and mats can be modelled with their own stiffness. The theory, the chosen formulations and the benchmark values are in [html-docs/shell-element.html](html-docs/shell-element.html). Phase 5 does not depend on Phases 1–4 and is being worked first. Null areas stay as they are; shells are opt-in, used only where a surface's stiffness matters.
+Flat four-node shell elements with membrane, plate and shell behaviour, so walls, cores, transfer slabs and mats can be modelled with their own stiffness. The theory, the chosen formulations and the benchmark values are in [html-docs/fea/theory/shell-element.html](html-docs/fea/theory/shell-element.html). Phase 5 does not depend on Phases 1–4 and is being worked first. Null areas stay as they are; shells are opt-in, used only where a surface's stiffness matters.
 
 **API decisions**
 - **Behaviour on the area**: `ShellArea.type?: "shell" | "membrane" | "plate"` (default `"shell"`).
@@ -365,7 +366,7 @@ Flat four-node shell elements with membrane, plate and shell behaviour, so walls
 - [x] [`shell/elements/membrane-quad.ts`](src/fea/shell/elements/membrane-quad.ts): drilling quad after Ibrahimbegovic–Taylor–Wilson (Allman edge terms plus Hughes–Brezzi penalty, $\gamma = G$), 12×12 over $u, v, \theta_z$; strain rows exposed for stress recovery (5.5).
   - Strain energy at 3×3 points: with 2×2 a rectangle has a fourth zero-energy mode (alternating corner rotations whose normal strains vanish at the 2×2 points).
   - Penalty at one point (the centre): with 2×2 distorted elements lock as $\gamma$ grows (trapezoidal cantilever 0.0848 at $G$, 0.0323 at $100G$); at the centre results change by < 0.3 % over $0.01G$–$100G$.
-- [x] `DRILLING_PENALTY_RATIO` in [`frame.constant.ts`](src/core/constants/frame.constant.ts) (not re-exported yet).
+- [x] `DRILLING_PENALTY_RATIO` in [`shell.constant.ts`](src/core/constants/shell.constant.ts) (not re-exported yet).
 - [x] Tests in [`tests/fea/shell/`](tests/fea/shell/) (dense-solve harness, no model integration): symmetry, exactly 3 rigid-body modes (rectangle and distorted), tensor transformation and corner-order invariance; MacNeal–Harder patch test (exact field, θ = ω, $\sigma_x = \sigma_y = 1333.3$, $\tau_{xy} = 400$); straight cantilever 0.0977 / 0.0931 / 0.0829 (regular / parallelogram / trapezoidal, reference 0.1081 — a flipped edge-term sign gives 0.0031); penalty insensitivity; Cook's membrane converging from below to ≈ 25.2, where a bilinear quad and an independent 9-node element also converge; this is above the 23.9–23.96 usually quoted for the problem, a difference not yet explained (see Technical Debt).
 
 ### 5.2 DKQ Plate Element
@@ -413,6 +414,18 @@ API decisions: supports along meshed edges by line restraints; members along mes
 - [ ] 3-node shells: DKT plate with an Allman triangle membrane; triangular areas in the mesher.
 - [ ] Openings: documented approach (divide the area around the opening) or automatic subdivision.
 
+### 5.9 Strip Forces
+API decisions: strips are a field on the model (`FeaModel.strips`), so `analyze` returns their forces for every case and combination from the unrounded shell forces; a strip is a centreline polyline with left and right widths, as SAFE design strips; it picks up every shell element in its plane; each element's own force field is integrated (no nodal averaging); a cut not fully on shells integrates what it covers and warns.
+
+- [x] Types `ShellStrip` (`id`, `points`, `widthLeft`, `widthRight`, `normal?` default +Z, `maxSpacing?`), `StripPoint` ([`shell/types/model.type.ts`](src/fea/shell/types/model.type.ts)); results `StripForces`, `StripStation`, `StripResultants`, `StripForceComponent`, `StripExtremeValue` ([`shell/types/results.type.ts`](src/fea/shell/types/results.type.ts)).
+- [x] [`shell/post/strip-forces.ts`](src/fea/shell/post/strip-forces.ts): elements in the strip's plane (corners within `STRIP_PLANE_TOLERANCE` = 10⁻³ of the element size); stations at every polyline point and at most `maxSpacing` apart (default `STRIP_DEFAULT_DIVISIONS` = 20 per segment), two at a bend; cut clipped to each element (Cyrus–Beck), mean of both sides on a mesh line; inverse bilinear map; forces rotated to the strip axes (σ = ±1 for the element's local 3 against the normal); 4-point Gauss–Legendre per piece. Resultants P, V, M, T, Vp, Mp and `perWidth`, as fixed coefficients on the raw corner forces, so combinations superpose exactly.
+- [x] Shear and torsion Kirchhoff-consistent, element by element: $V = -\int \partial M_{aa}/\partial a\,ds$, $T = \int (2 m_{ab} - s\,\partial M_{aa}/\partial a)\,ds$. Plain $\int Q_a$ was 8 % low on a one-way slab (twisting at the free edges); with this form $V = -dM/dx$ exactly and full-width cuts match statics.
+- [x] `FeaCaseResult.stripForces`, `FeaEnvelope.strips` (max/min per station and per width, and over the strip); coverage warning; validation in [`shell/validation/validate-strips.ts`](src/fea/shell/validation/validate-strips.ts): 330, 314, 303 with `details.stripId`.
+- [x] Tests in [`tests/fea/shell/strip-forces.test.ts`](tests/fea/shell/strip-forces.test.ts): simply supported one-way slab (M = 90 kN·m, V = −30 kN at quarter span, exact), cantilever corner load (V, M, T = −10, −15, −10.01), pure twist (T = −20.03 against −20), in-plane load (P, Vp, Mp within 0.2 %), reversed strip, clockwise shells, shell `angle`, half strips adding up, partial coverage, other plane, combinations and envelope, validation, geometry helpers.
+- [x] Docs: [strip forces theory notes](html-docs/fea/theory/strip-forces.html) (with a "Points for review" table), FEA reference (section, types, 330), README, CHANGELOG; the shell element notes moved to `html-docs/fea/theory/` (old address redirects).
+- [ ] Not yet released (in `[Unreleased]`).
+- [ ] Later: V at a support station is the value half an element in (−55 against −60 kN on a 500 mm mesh); consider reporting it at the element edge, or document the critical-section practice only.
+
 ---
 
 ## Technical Debt & Pending Verifications
@@ -453,6 +466,7 @@ Codes 301–314 are the existing validation and solver errors in [`fea.error.ts`
 | **327** | `INVALID_SHELL_SECTION` | Shell elements *(3.0.0)* | Thickness or $E$ not positive, $\nu$ outside $[0, 0.5)$, or negative `unitWeight` |
 | **328** | `SHELL_DOF_UNSUPPORTED` | Shell elements *(3.0.0)* | A translation nothing resists at a node connected only to membrane (or only to plate) shells |
 | **329** | `INVALID_SHELL_MESH` | Engine meshing *(3.0.0)* | No conforming division counts, a bad generated element, or a generated id already in use |
+| **330** | `INVALID_STRIP_GEOMETRY` | Strip forces *(Unreleased)* | Fewer than 2 points, points off the strip's plane, a zero-length or doubled-back segment, a zero normal, a negative width or both widths 0 |
 
 ---
 
@@ -489,6 +503,9 @@ Codes 301–314 are the existing validation and solver errors in [`fea.error.ts`
 | `TYPE` | `ShellArea.mesh`, `ShellMesh` *(3.0.0)* | — | Engine meshing of shell areas |
 | `TYPE` | `FeaModel.lineRestraints`, `LineRestraint` *(3.0.0)* | — | Fixed DOFs along a line, generated nodes included |
 | `TYPE` | `FeaResult.mesh`, `FeaMesh` *(3.0.0)* | — | Generated nodes and shell elements |
+| `TYPE` | `FeaModel.strips`, `ShellStrip`, `StripPoint` *(Unreleased)* | — | Design strips across shells |
+| `TYPE` | `FeaCaseResult.stripForces`, `FeaEnvelope.strips` *(Unreleased)* | `StripForces[]` | Resultants on cuts across each strip, and their envelope |
+| `CONST` | `STRIP_PLANE_TOLERANCE`, `STRIP_DEFAULT_DIVISIONS` *(Unreleased)* | `number` | Strip plane tolerance and default station divisions |
 | `TYPE` | `ShellArea.plateTheory` | `"thin" \| "thick"` | Thick-plate formulation |
 
 ---

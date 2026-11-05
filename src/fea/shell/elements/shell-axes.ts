@@ -1,8 +1,8 @@
 import {
   AREA_GEOMETRY_TOLERANCE,
-  SHELL_WARPING_LIMIT,
   VERTICAL_MEMBER_TOLERANCE,
-} from "@app-core/constants/frame.constant";
+} from "@app-core/constants/fea.constant";
+import { SHELL_WARPING_LIMIT } from "@app-core/constants/shell.constant";
 import type { Matrix } from "@app-utils/matrix";
 
 import { quadJacobian, type Vec2 } from "./quad-geometry";

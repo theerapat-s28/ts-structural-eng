@@ -1,4 +1,4 @@
-import { DRILLING_PENALTY_RATIO } from "@app-core/constants/frame.constant";
+import { DRILLING_PENALTY_RATIO } from "@app-core/constants/shell.constant";
 import { zeros, type Matrix } from "@app-utils/matrix";
 
 import {

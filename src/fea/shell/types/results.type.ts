@@ -45,3 +45,59 @@ export interface FeaMesh {
   /** Every shell element, in model order of their areas, with its four corner nodes. */
   shells: { id: FeaId; areaId: FeaId; nodeIds: FeaId[] }[];
 }
+
+/**
+ * Resultants on a strip's cut, in strip axes 1 (along), 2 (across, left) and 3 (normal), acting
+ * on the face whose outward normal is +1, as a member's internal forces:
+ *
+ * - `P` axial force along 1, positive in tension (kN)
+ * - `V` transverse shear along 3, `V = −dM/dx` as V2 of a member (kN)
+ * - `M` bending moment, positive sagging: tension on the −3 face (kN·m)
+ * - `T` torsion about 1, right-hand rule, including the moment of `V` about the centreline (kN·m)
+ * - `Vp` in-plane shear along 2 (kN)
+ * - `Mp` in-plane moment about 3, right-hand rule, positive with tension on the right (−2)
+ *   side (kN·m)
+ */
+export interface StripResultants {
+  P: number;
+  V: number;
+  M: number;
+  T: number;
+  Vp: number;
+  Mp: number;
+}
+
+/** A strip resultant. */
+export type StripForceComponent = keyof StripResultants;
+
+/** The resultants on one cut across a strip. */
+export interface StripStation extends StripResultants {
+  /** Distance along the strip's centreline from its first point (mm). */
+  x: number;
+  /** The cut's centre on the centreline, global X, Y, Z (mm). */
+  point: [number, number, number];
+  /**
+   * Strip segment the cut is normal to (0 = first point to second). A bend has two stations at
+   * the same `x`: the end of one segment and the start of the next.
+   */
+  segment: number;
+  /** Length of the cut that lies on shells in the strip's plane (mm); the full width when covered. */
+  width: number;
+  /** The resultants divided by `width`: kN/m and kN·m/m; all 0 where `width` is 0. */
+  perWidth: StripResultants;
+}
+
+/** Max or min of a strip resultant along the strip, with the station's `x`. */
+export interface StripExtremeValue {
+  value: number;
+  x: number; // mm
+}
+
+/** Forces of one strip in one load case or combination. */
+export interface StripForces {
+  stripId: FeaId;
+  /** In order along the strip: the stations of each segment, its end points included. */
+  stations: StripStation[];
+  /** Max and min of each total resultant over the stations. */
+  extremes: Record<StripForceComponent, { max: StripExtremeValue; min: StripExtremeValue }>;
+}

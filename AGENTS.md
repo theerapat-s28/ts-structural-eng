@@ -30,7 +30,7 @@ pnpm run dev                # run examples/EX-0001-basic-usage/basic-usage.ts wi
 
 Layered modules, each with a barrel `index.ts`, dependencies flowing downward only:
 
-- `src/core/` — shared foundation: types (`core/types/`), ACI constants (`core/constants/`), error classes (`core/errors/`). Depends on nothing.
+- `src/core/` — shared foundation: types (`core/types/`), ACI constants (`core/constants/rc.constant.ts`) and FEA constants (`fea.constant.ts` shared, `frame.constant.ts`, `shell.constant.ts`, mirroring the `fea/` parts), error classes (`core/errors/`). Depends on nothing.
 - `src/utils/` — generic helpers (quadratic solver, rounding, warning merging). Depends only on core types.
 - `src/rc/` — RC beam design calculations. Depends on core + utils.
 - `src/strengthening/` — strengthening methods. Builds on `rc/`: e.g. steel plate jacketing converts plates to equivalent rebar area and delegates to `rectBeamMomentCapacity` rather than reimplementing capacity math. New strengthening methods should follow this transform-then-delegate pattern where possible.

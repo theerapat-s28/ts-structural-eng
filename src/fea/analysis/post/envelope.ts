@@ -1,5 +1,6 @@
 import type { StationComponent } from "@app-fea/frame/types/results.type";
-import type { ShellForceComponent } from "@app-fea/shell/types/results.type";
+import { STRIP_COMPONENTS } from "@app-fea/shell/post/strip-forces";
+import type { ShellForceComponent, StripForceComponent } from "@app-fea/shell/types/results.type";
 
 import type {
   Bound,
@@ -106,11 +107,51 @@ export const buildEnvelope = (results: FeaCaseResult[]): FeaEnvelope => {
     }),
   }));
 
+  const strips = first.stripForces.map((strip, s) => ({
+    stripId: strip.stripId,
+    stations: strip.stations.map((station, i) => {
+      const entry = {
+        x: station.x,
+        segment: station.segment,
+        perWidth: {},
+      } as FeaEnvelope["strips"][number]["stations"][number];
+      for (const key of STRIP_COMPONENTS) {
+        let total: Bound<GoverningValue> | undefined;
+        let perWidth: Bound<GoverningValue> | undefined;
+        for (const r of results) {
+          const at = r.stripForces[s].stations[i];
+          const g = { value: at[key], combinationId: r.id };
+          const w = { value: at.perWidth[key], combinationId: r.id };
+          total = update(total, g, g);
+          perWidth = update(perWidth, w, w);
+        }
+        entry[key] = total as Bound<GoverningValue>;
+        entry.perWidth[key] = perWidth as Bound<GoverningValue>;
+      }
+      return entry;
+    }),
+    extremes: Object.fromEntries(
+      STRIP_COMPONENTS.map((key) => {
+        let bound: Bound<GoverningExtremeValue> | undefined;
+        for (const r of results) {
+          const e = r.stripForces[s].extremes[key];
+          bound = update(
+            bound,
+            { ...e.max, combinationId: r.id },
+            { ...e.min, combinationId: r.id },
+          );
+        }
+        return [key, bound as Bound<GoverningExtremeValue>];
+      }),
+    ) as Record<StripForceComponent, Bound<GoverningExtremeValue>>,
+  }));
+
   return {
     combinationIds: results.map((r) => r.id),
     nodalDisplacements,
     reactions,
     members,
     shells,
+    strips,
   };
 };

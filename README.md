@@ -41,7 +41,8 @@ Full API reference, with parameter tables, worked examples, warnings and error c
 - [FEA — Frame and shell analysis](https://theerapat-s28.github.io/ts-structural-eng/fea/) — `@theerapat-s28/ts-structural-eng-tools/fea`
 - [RC Beam Design](https://theerapat-s28.github.io/ts-structural-eng/rc/) — `@theerapat-s28/ts-structural-eng-tools/rc`
 - [Strengthening](https://theerapat-s28.github.io/ts-structural-eng/strengthening/) — `@theerapat-s28/ts-structural-eng-tools/strengthening`
-- [Shell element theory notes](https://theerapat-s28.github.io/ts-structural-eng/shell-element.html) — how the shell element's stiffness is formed, with its benchmarks
+- [Shell element theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/shell-element.html) — how the shell element's stiffness is formed, with its benchmarks
+- [Strip forces theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/strip-forces.html) — how strip forces are integrated from the shell forces, with their sign conventions and checks
 
 The pages are served from [`html-docs/`](https://github.com/theerapat-s28/ts-structural-eng/tree/main/html-docs) via GitHub Pages.
 
@@ -252,6 +253,7 @@ A `FeaModel` is plain data. Every load names its `loadCase`, so loads are flat t
 | `shells` | Shell areas, `{ id, nodeIds, type?, section, angle?, modifiers?, mesh? }` |
 | `areaLoads` | `{ loadCase, areaId, direction, q, projected? }` in kN/m², on a null area or a shell; `direction` is the area's normal `"3"` or a global axis |
 | `combinations` | `{ id, name?, terms }`, each term `{ case, factor }` or `{ combination, factor }`; nested combinations are expanded |
+| `strips` | Design strips across shells, `{ id, points, widthLeft, widthRight, normal?, maxSpacing? }`; see [Strip forces](#strip-forces) |
 
 #### Members
 
@@ -267,11 +269,34 @@ Both are areas that take `areaLoads`, and they share one id namespace.
 - **A shell area** has its own stiffness and shares nodes with members and other shells; use it for walls, cores, transfer slabs and mats. It is a four-node flat shell: a drilling-rotation membrane, so a beam framing into a wall in its plane transfers its moment, and a thin (DKQ) plate. `type` is `"shell"` (both parts, the default), `"membrane"` or `"plate"`. `section` is `{ thickness, E, nu, unitWeight? }`, and `modifiers` scale the membrane (`f11`, `f22`, `f12`) and bending (`m11`, `m22`, `m12`) stiffness and the self-weight (`weight`), e.g. for the cracked-section values of ACI 318-19 Table 6.6.3.1.1. Slightly warped quads are allowed, up to `SHELL_WARPING_LIMIT` (0.1·√A off the plane). Local 3 follows the right-hand rule around `nodeIds`, local 2 points up on walls and local 1 is +X on horizontal shells; `angle` rotates them.
 - **Meshing.** Give a shell `mesh: { maxSize }` (mm) or `mesh: { divisions: [n1, n2] }` and the engine divides it into elements. Neighbouring areas share their mesh nodes, including where an area edge meets another at a node; model nodes on an area edge become mesh nodes; and members along a meshed edge are split there internally. Fix supports along a meshed edge with `lineRestraints`, which reach the generated nodes.
 
+#### Strip forces
+
+Draw a design strip over a slab, as in SAFE or ETABS, and `analyze` returns the forces on cuts across it. The front end draws the strip; the engine takes it as data: a centreline polyline `points` (`{ x, y, z }` in mm, at least two) with `widthLeft` and `widthRight` measured from it (left seen from above). The strip lies in the plane through its points normal to `normal` (default `[0, 0, 1]`) and picks up every shell element in that plane; walls and other planes are ignored.
+
+Stations sit at every polyline point and no further apart than `maxSpacing` (default: 20 divisions per segment); a bend has two stations, one normal to each segment. At each station the engine integrates each element's own force field along the cut and returns, in strip axes (1 along, 2 across to the left, 3 the normal), `P` (axial, + tension), `V` (shear, `V = −dM/dx`), `M` (bending, + sagging), `T` (torsion about the strip axis), `Vp` and `Mp` (in-plane shear and moment), plus each divided by the covered `width` in `perWidth`. A cut that is not fully on shells (an opening, a slab edge) integrates what it covers and reports its `width`, with a warning. Strip forces are linear, so combinations superpose them, and `envelope.strips` gives the max and min at every station. The [strip forces theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/strip-forces.html) show how each value is calculated.
+
+```ts
+const result = analyze({
+  ...model, // a slab of shells
+  strips: [
+    {
+      id: "CS-1",
+      points: [{ x: 0, y: 1000, z: 0 }, { x: 6000, y: 1000, z: 0 }],
+      widthLeft: 1000, // mm
+      widthRight: 1000, // mm
+      maxSpacing: 500, // mm
+    },
+  ],
+});
+const strip = result.combinations.ULS.stripForces[0];
+// strip.stations[i] → { x, point, segment, width, P, V, M, T, Vp, Mp, perWidth: { … } }
+```
+
 #### The result
 
 | Field | What it holds |
 | --- | --- |
-| `cases`, `combinations` | Results keyed by id, each with `nodalDisplacements`, `reactions`, `memberEndForces`, `releaseDeformations`, `memberDiagrams` (`N`, `V2`, `V3`, `T`, `M2`, `M3` and deflections `u1`–`u3` local, `ux`–`uz` global, along each member), `shellForces`, an `equilibriumResidual` check and `warnings` |
+| `cases`, `combinations` | Results keyed by id, each with `nodalDisplacements`, `reactions`, `memberEndForces`, `releaseDeformations`, `memberDiagrams` (`N`, `V2`, `V3`, `T`, `M2`, `M3` and deflections `u1`–`u3` local, `ux`–`uz` global, along each member), `shellForces`, `stripForces`, an `equilibriumResidual` check and `warnings` |
 | `envelope` | Max and min of every result over the combinations, with the governing combination; absent without combinations |
 | `mesh` | The generated nodes and every shell element with its nodes; absent without shells |
 | `calculationDetails` | Node (generated included), member, shell-element, DOF, load case and combination counts, `profileSize`, `autoRestrainedDofs`, `intermediateNodes` and `nearMissNodes` |
@@ -315,7 +340,7 @@ ACI 440.2R-17 11.4.2 (spacing, which defers to the ACI 318 limits) and 11.4.3 (`
 A design that is valid but breaks a code provision returns normally with an entry in `warnings`, citing the clause (e.g. `"ACI318-19, 9.6.1.2"`). A calculation whose assumptions break down throws instead, never returning a silently wrong result:
 
 - **`RCDesignError`** — `code` and `message` from `Errors`: 1XX for RC beam design (e.g. 102, tensile steel not yielding; 105, `Vs` above the 22.5.1.2 limit), 2XX for strengthening and plate connections (201–206).
-- **`FeaError`** — `code` and `message` from `FeaErrors`, `details` locating the problem, and `issues` listing every problem `validateModel` found. Codes 301–317 cover the model, members, loads, null areas and combinations (304 is an unstable structure); 326–329 cover shells: 326 invalid geometry, 327 invalid section, 328 a translation that nothing resists at a node connected only to membranes or plates, 329 an area that cannot be meshed. Match on `code`, not on `message`.
+- **`FeaError`** — `code` and `message` from `FeaErrors`, `details` locating the problem, and `issues` listing every problem `validateModel` found. Codes 301–317 cover the model, members, loads, null areas and combinations (304 is an unstable structure); 326–329 cover shells: 326 invalid geometry, 327 invalid section, 328 a translation that nothing resists at a node connected only to membranes or plates, 329 an area that cannot be meshed; 330 is an invalid strip. Match on `code`, not on `message`.
 
 `core` also exports the shared input types, the type guards `isSinglyReinforced`, `hasTopPlate`, `hasBottomPlate` and `hasSidePlate`, and the engineering constants (φ factors, ultimate concrete strain, inertia modifiers, frame-analysis tolerances, `SHELL_WARPING_LIMIT`).
 
@@ -382,9 +407,9 @@ src/
 │   │   ├── elements/         # Membrane, DKQ plate, flat shell, local axes, warping links, quad geometry
 │   │   ├── mesh/             # Shell-area meshing
 │   │   ├── solver/           # Shell elements of the system and their surface-load vectors
-│   │   ├── post/             # Shell forces and stresses
-│   │   ├── validation/       # Checks on shell areas
-│   │   └── types/            # Shell-area model and result types
+│   │   ├── post/             # Shell forces and stresses, strip forces
+│   │   ├── validation/       # Checks on shell areas and strips
+│   │   └── types/            # Shell-area and strip model and result types
 │   └── analysis/         # The whole model, members and shells together (direct stiffness method)
 │       ├── index.ts
 │       ├── mesh/             # The analysed model: shell mesh, line restraints, member splitting at model and mesh nodes
@@ -394,7 +419,7 @@ src/
 │       └── types/            # FeaModel (load cases, combinations, nodal loads, line restraints) and FeaResult
 ├── core/                 # Shared infrastructure
 │   ├── index.ts
-│   ├── constants/        # RC design constants (ACI 318) and frame-analysis tolerances
+│   ├── constants/        # RC design constants (ACI 318) in rc.constant.ts; FEA constants in fea.constant.ts (shared), frame.constant.ts and shell.constant.ts
 │   ├── errors/           # RCDesignError and FeaError with their coded entries
 │   └── types/            # Shared types: RC sections, plate jacketing, section properties, warnings, units
 └── utils/                # Helper utilities
@@ -421,7 +446,10 @@ html-docs/                # HTML API reference, deployed to GitHub Pages
 ├── rc/index.html
 ├── strengthening/index.html
 ├── fea/index.html
-└── shell-element.html    # Shell element theory notes
+├── fea/theory/
+│   ├── shell-element.html  # Shell element theory notes
+│   └── strip-forces.html   # Strip forces: theory and how they are calculated
+└── shell-element.html    # Redirect to fea/theory/shell-element.html (old address)
 ROADMAP.md                # FEA roadmap and implementation plan (not published)
 .agents/skills/update-version/ # AI agent skill: bump the version and roll the changelog
 .claude/skills/npm-publish/ # AI agent skill: release checklist for publishing to npm

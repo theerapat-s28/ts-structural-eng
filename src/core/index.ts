@@ -35,21 +35,24 @@ export {
   PLATE_SHEAR_YIELD_COEFFICIENT,
   SIDE_PLATE_EFFECTIVE_STRAIN_LIMIT,
   SIDE_PLATE_REDUCTION_FACTOR_PSI,
-} from "./constants/rc.constant";
-
-export {
   CONCRETE_POISSON_RATIO,
   CONCRETE_UNIT_WEIGHT,
   BEAM_INERTIA_MODIFIER,
   COLUMN_INERTIA_MODIFIER,
+} from "./constants/rc.constant";
+
+export {
   VERTICAL_MEMBER_TOLERANCE,
   SINGULARITY_TOLERANCE,
   EQUILIBRIUM_TOLERANCE,
   AREA_GEOMETRY_TOLERANCE,
+} from "./constants/fea.constant";
+export { NODE_NEAR_MEMBER_RATIO, NODE_NEAR_MEMBER_MAX_DISTANCE } from "./constants/frame.constant";
+export {
   SHELL_WARPING_LIMIT,
-  NODE_NEAR_MEMBER_RATIO,
-  NODE_NEAR_MEMBER_MAX_DISTANCE,
-} from "./constants/frame.constant";
+  STRIP_PLANE_TOLERANCE,
+  STRIP_DEFAULT_DIVISIONS,
+} from "./constants/shell.constant";
 
 // Errors
 export { RCDesignError, Errors } from "./errors/rc-design.error";

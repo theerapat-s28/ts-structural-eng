@@ -12,6 +12,8 @@ import type {
   FeaMesh,
   ShellElementForces,
   ShellForceComponent,
+  StripForceComponent,
+  StripForces,
 } from "@app-fea/shell/types/results.type";
 
 import type { LoadCaseType } from "./model.type";
@@ -71,6 +73,8 @@ export interface FeaCaseResult {
   memberDiagrams: MemberDiagram[];
   /** One entry per shell element, area by area in model order (see `FeaResult.mesh`). */
   shellForces: ShellElementForces[];
+  /** One entry per strip, in model order (see `FeaModel.strips`); empty without strips. */
+  stripForces: StripForces[];
   equilibriumResidual: { force: number; moment: number }; // kN, kN·m
   warnings: Warnings;
 }
@@ -93,6 +97,19 @@ export interface FeaEnvelope {
   shells: {
     shellId: FeaId;
     corners: ({ nodeId: FeaId } & Record<ShellForceComponent, Bound<GoverningValue>>)[];
+  }[];
+  /**
+   * Per strip: max/min of each resultant at every station (for envelope diagrams), of its
+   * per-width value, and over the whole strip.
+   */
+  strips: {
+    stripId: FeaId;
+    stations: ({
+      x: number; // mm
+      segment: number;
+      perWidth: Record<StripForceComponent, Bound<GoverningValue>>;
+    } & Record<StripForceComponent, Bound<GoverningValue>>)[];
+    extremes: Record<StripForceComponent, Bound<GoverningExtremeValue>>;
   }[];
 }
 

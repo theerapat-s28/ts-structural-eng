@@ -1,4 +1,4 @@
-import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/frame.constant";
+import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/fea.constant";
 
 import type { AreaDistribution } from "../types/model.type";
 

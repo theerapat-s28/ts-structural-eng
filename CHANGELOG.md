@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **Strip forces on shells.** Give the model `strips` (type `ShellStrip`), design strips drawn over a slab as in SAFE or ETABS, and every load case and combination gets `stripForces` (type `StripForces`): the resultants on cuts across each strip at stations along it. A strip is a centreline polyline `points` with `widthLeft` and `widthRight`, an optional plane `normal` (default +Z) and an optional `maxSpacing` between stations (default: 20 divisions per segment); it picks up every shell element in its plane and ignores walls and other planes. Each station gives `P`, `V`, `M`, `T`, `Vp` and `Mp` in kN and kN·m (strip axis 1 along, 2 across, 3 the normal; `M` positive sagging and `V = −dM/dx`, as for members), the same divided by the covered `width` in `perWidth`, and each strip lists the `extremes` along it. `envelope.strips` gives the max and min of every station over the combinations. A strip changes no other result. A cut that is not fully on shells (an opening, a slab edge, a strip wider than the slab) integrates the shells it crosses, reports the covered `width` and adds a warning. The new [strip forces theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/strip-forces.html) show how each value is calculated. New constants `STRIP_PLANE_TOLERANCE` and `STRIP_DEFAULT_DIVISIONS` in `core`; `FeaErrorDetails` gains `stripId`.
+- **Error 330** (`INVALID_STRIP_GEOMETRY`) for a strip with fewer than 2 points, points off its plane, a zero-length or doubled-back segment, a zero normal, or negative or zero widths. A strip id used twice is error 303, and a value that is not a finite number is 314.
+
+### Changed
+
+- The shell element theory notes moved to `fea/theory/shell-element.html`, next to the new strip forces notes. The old address redirects there.
+
 ## [3.3.0] — 2026-11-03
 
 **Members connect to the nodes lying on them.** Draw a girder once, from support to support, and the beams framing into it and the columns landing on it are connected without splitting it by hand. The girder stays one member in the results. Nodes that just miss a member are reported, and the new `memberConnectivity` returns both lists while the user draws, so a frontend can show what is connected. Results change only for models that had a node on a member's span that the member ignored; see Changed.

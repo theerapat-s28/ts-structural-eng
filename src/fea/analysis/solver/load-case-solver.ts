@@ -1,4 +1,4 @@
-import { SINGULARITY_TOLERANCE } from "@app-core/constants/frame.constant";
+import { SINGULARITY_TOLERANCE } from "@app-core/constants/fea.constant";
 import { FeaErrors } from "@app-core/errors/fea.error";
 import { fixedEndForces, type LocalMemberLoad } from "@app-fea/frame/elements/fixed-end-forces";
 import { memberDofs, scatterMemberForces } from "@app-fea/frame/solver/member-assembly";

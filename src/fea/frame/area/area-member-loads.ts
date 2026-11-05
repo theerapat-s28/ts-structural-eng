@@ -1,4 +1,4 @@
-import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/frame.constant";
+import { AREA_GEOMETRY_TOLERANCE } from "@app-core/constants/fea.constant";
 import type { Warnings } from "@app-core/types/output-message.type";
 import type { AreaLoad, FeaId, FeaNode } from "@app-fea/shared/types/model.type";
 

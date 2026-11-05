@@ -3,6 +3,7 @@ import { areaMemberLoads } from "@app-fea/frame/area/area-member-loads";
 import type { MemberLoad } from "@app-fea/frame/types/model.type";
 import type { MemberDiagram } from "@app-fea/frame/types/results.type";
 import type { AreaLoad, FeaId } from "@app-fea/shared/types/model.type";
+import { prepareStrips } from "@app-fea/shell/post/strip-forces";
 import { throwIssues } from "@app-fea/shared/validation/issues";
 import { roundToDecimalPlaces } from "@app-utils/math";
 
@@ -78,7 +79,7 @@ const groupByCase = <T extends { loadCase: string }>(loads: T[] = []): Map<strin
  *   case, null areas, and combinations
  * @param options - Diagram station count and detail
  * @returns `{ result, memberDiagram }`
- * @throws {FeaError} 301–317, 326 and 327 for an invalid model (with `details` and
+ * @throws {FeaError} 301–317, 326, 327 and 330 for an invalid model (with `details` and
  *   every problem in `issues`), 328 for a translation nothing resists at a node connected only
  *   to shells, 304 for an unstable structure
  */
@@ -92,6 +93,7 @@ export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): A
   const resolved = resolveCombinations(combinations, new Set(model.loadCases.map((c) => c.id)));
   const withStations = (options.diagrams ?? "full") === "full";
   const fromAreas = areaMemberLoads(model);
+  const strips = prepareStrips(model.strips ?? [], system.shells);
 
   const states = new Map<string, RawState>();
   const cases: Record<string, FeaCaseResult> = {};
@@ -116,6 +118,7 @@ export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): A
       state,
       { id: loadCase.id, kind: "case", name: loadCase.name, type: loadCase.type },
       { stations: options.stations, withStations },
+      strips.strips,
     );
   }
 
@@ -133,12 +136,14 @@ export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): A
       state,
       { id: combination.id, kind: "combination", name: combination.name },
       { stations: options.stations, withStations },
+      strips.strips,
     );
   }
 
   const warnings: Warnings = [
     ...fromAreas.warnings,
     ...expanded.warnings,
+    ...strips.warnings,
     ...[...Object.values(cases), ...Object.values(combinationResults)].flatMap((r) =>
       r.warnings.map((w) => ({
         ...w,
@@ -215,7 +220,8 @@ export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): A
  * Area loads on null areas (`areas`, `areaLoads`) are first turned into member loads on the
  * members along each area's edges (see `distributeAreaLoads`); the areas add no stiffness.
  * Shell areas (`shells`) are four-node flat shell elements with their own stiffness; area loads
- * and self-weight on them act as forces at their corners.
+ * and self-weight on them act as forces at their corners. Strips (`strips`) integrate the shell
+ * forces across cuts at stations along them (`stripForces`), for strip design of slabs.
  *
  * Model and result are plain data (JSON-serialisable), so the analysis can run in a Web Worker.
  *
@@ -224,7 +230,7 @@ export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): A
  * @param options - Diagram station count and detail
  * @returns `cases` and `combinations` keyed by id, `envelope` over the combinations,
  *   `calculationDetails`, `units` and `warnings`
- * @throws {FeaError} 301–317, 326 and 327 for an invalid model (with `details` and
+ * @throws {FeaError} 301–317, 326, 327 and 330 for an invalid model (with `details` and
  *   every problem in `issues`), 328 for a translation nothing resists at a node connected only
  *   to shells, 304 for an unstable structure
  */

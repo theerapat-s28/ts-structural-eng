@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Strip Forces — Theory Notes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #f0f2f6;
+      --border: #e2e5ec;
+      --accent: #3b63d8;
+      --accent-dim: rgba(59, 99, 216, 0.08);
+      --green: #1f9d63;
+      --green-dim: rgba(31, 157, 99, 0.10);
+      --red: #d9463c;
+      --red-dim: rgba(217, 70, 60, 0.08);
+      --yellow: #b97d0a;
+      --yellow-dim: rgba(230, 160, 30, 0.12);
+      --purple: #8a4fd0;
+      --purple-dim: rgba(138, 79, 208, 0.10);
+      --text: #1f2430;
+      --text-muted: #5c6474;
+      --text-dim: #8a90a0;
+      --code-bg: #f8f9fb;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ─────────────────────────────────────── */
+    .sidebar {
+      width: 252px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px 40px;
+    }
+    .sidebar__brand { padding: 0 10px 18px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .brand-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .sidebar__brand h2 { font-size: 13.5px; font-weight: 600; }
+    .nav-section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      padding: 0 10px;
+      margin-bottom: 6px;
+    }
+    .nav-section-label + .nav-section-label,
+    nav a + .nav-section-label { margin-top: 8px; }
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      margin-bottom: 2px;
+    }
+    nav a:hover { background: var(--accent-dim); color: var(--text); }
+
+    /* ── Kind badges ─────────────────────────────────── */
+    .mbadge, .kind {
+      font-family: var(--mono);
+      font-weight: 700;
+      border-radius: 5px;
+      flex-shrink: 0;
+    }
+    .mbadge { font-size: 9.5px; padding: 2px 6px; min-width: 34px; text-align: center; }
+    .kind { font-size: 11.5px; padding: 3px 9px; }
+    .m-fn { color: var(--green); background: var(--green-dim); }
+    .m-type { color: var(--accent); background: var(--accent-dim); }
+    .m-const { color: var(--yellow); background: var(--yellow-dim); }
+    .m-error { color: var(--red); background: var(--red-dim); }
+
+    /* ── Scope badges ────────────────────────────────── */
+    .scope-badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .s-public { color: var(--accent); background: var(--accent-dim); }
+    .s-internal { color: var(--purple); background: var(--purple-dim); }
+
+    .std-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+      color: var(--yellow);
+      background: var(--yellow-dim);
+    }
+
+    /* ── Main ────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 40px 48px 120px;
+      min-width: 0;
+    }
+
+    .page-header { margin-bottom: 36px; }
+    .import-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .import-tag .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+    }
+    .import-tag code { background: none; padding: 0; font-size: 12.5px; }
+    .page-header h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+    .page-header p { color: var(--text-muted); max-width: 640px; }
+
+    .section { margin-bottom: 44px; scroll-margin-top: 24px; }
+    .section__title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section p { color: var(--text-muted); margin-bottom: 12px; }
+
+    /* ── Export cards ────────────────────────────────── */
+    .export-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 20px;
+      overflow: hidden;
+      scroll-margin-top: 24px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .export-card__header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .ex-sig { font-family: var(--mono); font-size: 13.5px; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+    .export-card__body { padding: 18px 20px 20px; }
+    .ex-desc { color: var(--text-muted); margin-bottom: 16px; }
+    .sub-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin: 18px 0 8px;
+    }
+    .sub-label:first-of-type { margin-top: 0; }
+
+    /* ── Code blocks ─────────────────────────────────── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .code-block__label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .code-block pre {
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .k { color: #0e7490; }
+    .s { color: #2f7d32; }
+    .n { color: var(--yellow); }
+    .b { color: var(--purple); }
+    .nl { color: var(--text-dim); }
+    .c { color: var(--text-dim); font-style: italic; }
+    .u { color: var(--accent); }
+
+    /* ── Inline code ─────────────────────────────────── */
+    code {
+      font-family: var(--mono);
+      font-size: 0.86em;
+      background: var(--surface-2);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+    pre code { background: none; padding: 0; color: inherit; }
+
+    /* ── Tables ──────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 13.5px; }
+    th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      font-weight: 600;
+      padding: 8px 12px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      color: var(--text-muted);
+    }
+    tr:last-child td { border-bottom: none; }
+    .param-table, .summary-table {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: block;
+      overflow-x: auto;
+    }
+    .param-table td:first-child {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .param-table td:nth-child(2) { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+    .req { color: var(--red); font-size: 12px; font-weight: 500; }
+    .opt { color: var(--text-dim); font-size: 12px; }
+    .summary-table .path-cell { font-family: var(--mono); font-size: 12.5px; color: var(--text); white-space: nowrap; }
+
+    /* ── Alerts ──────────────────────────────────────── */
+    .alert {
+      display: flex;
+      gap: 10px;
+      padding: 11px 14px;
+      border-radius: var(--radius);
+      font-size: 13.5px;
+      margin-bottom: 10px;
+      border: 1px solid;
+      color: var(--text-muted);
+    }
+    .alert strong { color: var(--text); }
+    .alert--error { background: var(--red-dim); border-color: rgba(217, 70, 60, 0.25); }
+    .alert--warn { background: var(--yellow-dim); border-color: rgba(185, 125, 10, 0.25); }
+    .alert--info { background: var(--accent-dim); border-color: rgba(59, 99, 216, 0.25); }
+
+    /* ── Flow steps ──────────────────────────────────── */
+    .flow-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 12px; }
+    .flow-step {
+      display: flex;
+      gap: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .step-num {
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-body { color: var(--text-muted); font-size: 13.5px; }
+    .step-body strong { color: var(--text); }
+
+    /* ── Model grid ──────────────────────────────────── */
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .model-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .model-card__title { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    .model-card__desc { font-size: 12.5px; color: var(--text-muted); }
+    /* ── Theory notes: lists, equations, matrices, figures ── */
+    .section ul, .section ol { color: var(--text-muted); margin: 0 0 12px 22px; }
+    .section li { margin-bottom: 6px; }
+    .section li strong, .section p strong { color: var(--text); }
+
+    .eq {
+      font-family: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', 'Times New Roman', serif;
+      font-size: 16.5px;
+      line-height: 2.1;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      margin-bottom: 12px;
+      overflow-x: auto;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .eq + .eq { margin-top: -4px; }
+    .eq .note { font-family: 'Inter', sans-serif; font-size: 12.5px; color: var(--text-dim); margin-left: 14px; }
+    .mat {
+      display: inline-grid;
+      vertical-align: middle;
+      column-gap: 14px;
+      padding: 2px 10px;
+      margin: 0 3px;
+      position: relative;
+      text-align: center;
+      line-height: 1.55;
+    }
+    .mat::before, .mat::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+      border: 1.4px solid var(--text);
+    }
+    .mat::before { left: 0; border-right: none; }
+    .mat::after { right: 0; border-left: none; }
+    .mat.c1 { grid-template-columns: auto; }
+    .mat.c2 { grid-template-columns: repeat(2, auto); }
+    .mat.c3 { grid-template-columns: repeat(3, auto); }
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      vertical-align: middle;
+      text-align: center;
+      line-height: 1.3;
+      margin: 0 3px;
+    }
+    .frac > span + span { border-top: 1px solid var(--text); }
+
+    .figure {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 16px 12px;
+      margin-bottom: 12px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .figure svg { max-width: 100%; height: auto; }
+    .figure figcaption { font-size: 12.5px; color: var(--text-muted); margin-top: 6px; }
+    .dg-edge { fill: var(--accent-dim); stroke: var(--text); stroke-width: 1.5; }
+    .dg-dash { fill: none; stroke: var(--text-dim); stroke-width: 1; stroke-dasharray: 4 3; }
+    .dg-arrow { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+    .dg-arrowhead { fill: var(--accent); }
+    .dg-node { fill: var(--accent); }
+    .dg-mid { fill: var(--surface); stroke: var(--yellow); stroke-width: 1.8; }
+    .dg-gauss { fill: var(--green); }
+    .dg-text { font-family: 'Inter', sans-serif; font-size: 12px; fill: var(--text-muted); }
+    .dg-label { font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; fill: var(--text); }
+    .dg-math { font-family: 'STIX Two Math', 'Cambria Math', 'Times New Roman', serif; font-size: 14px; font-style: italic; fill: var(--text); }
+
+
+    @media (max-width: 800px) {
+      .sidebar { display: none; }
+      .main { padding: 24px 20px 80px; }
+    }
+  </style>
+
+</head>
+<body>
+<div class="layout">
+
+  <!-- ══════════════ Sidebar ══════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <div class="brand-label">Theory Notes</div>
+      <h2>Strip Forces</h2>
+    </div>
+    <nav>
+      <a href="../../"><span style="font-size:14px">←</span> All modules</a>
+
+      <div class="nav-section-label">Getting Started</div>
+      <a href="#overview"><span style="font-size:14px">◈</span> Overview</a>
+      <a href="#strip-input"><span style="font-size:14px">▭</span> The strip</a>
+      <a href="#axes-signs"><span style="font-size:14px">◇</span> Axes &amp; signs</a>
+
+      <div class="nav-section-label">Calculation</div>
+      <a href="#steps"><span style="font-size:14px">▶</span> Steps</a>
+      <a href="#plane"><span style="font-size:14px">▱</span> Shells in the plane</a>
+      <a href="#stations"><span style="font-size:14px">⋯</span> Stations</a>
+      <a href="#cutting"><span style="font-size:14px">✂</span> Cutting the elements</a>
+      <a href="#field"><span style="font-size:14px">▦</span> Force field</a>
+      <a href="#rotation"><span style="font-size:14px">↻</span> Rotation to strip axes</a>
+      <a href="#resultants"><span style="font-size:14px">∫</span> Resultants</a>
+      <a href="#kirchhoff"><span style="font-size:14px">⇅</span> Shear &amp; torsion</a>
+      <a href="#coverage"><span style="font-size:14px">⊟</span> Coverage &amp; gaps</a>
+      <a href="#combinations"><span style="font-size:14px">∑</span> Combinations</a>
+
+      <div class="nav-section-label">Checks</div>
+      <a href="#verification"><span style="font-size:14px">✔</span> Verification</a>
+      <a href="#limitations"><span style="font-size:14px">⚠</span> Limitations</a>
+      <a href="#review"><span style="font-size:14px">✎</span> Points for review</a>
+
+      <div class="nav-section-label">Reference</div>
+      <a href="#references"><span style="font-size:14px">☷</span> References</a>
+      <a href="#summary"><span style="font-size:14px">☰</span> Summary</a>
+    </nav>
+  </aside>
+
+  <!-- ══════════════ Main ══════════════ -->
+  <main class="main">
+
+    <div class="page-header">
+      <div class="import-tag">
+        <span class="label">Status</span>
+        <code>@theerapat-s28/ts-structural-eng-tools/fea — model.strips, unreleased</code>
+      </div>
+      <h1>Strip Forces — Theory Notes</h1>
+      <p>How the engine turns the forces of the shell elements under a design strip into the bending moment, shear, torsion and axial force on cuts across the strip, with the sign conventions and the checks against statics.</p>
+    </div>
+
+    <!-- ══════════════ Overview ══════════════ -->
+    <div class="section" id="overview">
+      <div class="section__title">Overview</div>
+      <p>
+        A slab analysed with shell elements gives forces <em>per unit width</em> at the corners of every element
+        (<code>shellForces</code>: F11 … V23 in kN/m and kN·m/m). Slabs are designed in <strong>strips</strong>: a
+        column strip or middle strip of a given width, whose total moment and shear at each section along it are
+        what the reinforcement and the shear check need. A <strong>design strip</strong> is a polyline drawn over
+        the slab with a width on each side, as in SAFE or ETABS. At stations along it the engine cuts across the
+        strip and integrates the shell forces along each cut.
+      </p>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>The basis is the finite element method and plate theory, not a code provision <span class="std-badge" title="Basis: integration of linear-elastic finite element shell forces (Kirchhoff plate theory) — not an ACI 318-19 provision">FEM</span>. Strip forces are the analysis demands only; they do not apply Wood–Armer or any code rule for distributing moments. Every number on this page comes from the library's tests (<code>tests/fea/shell/strip-forces.test.ts</code>) or from running the shown inputs through <code>analyze</code>.</span>
+      </div>
+
+      <div class="sub-label">Basis</div>
+      <table class="summary-table">
+        <thead><tr><th>Quantity</th><th>Basis</th><th>Code or adaptation</th></tr></thead>
+        <tbody>
+          <tr><td>Force field in each element</td><td>The shell's own corner forces, bilinear inside the element (the field through its 2×2 Gauss points)</td><td>Adaptation (finite element method)</td></tr>
+          <tr><td>P, Vp, M, Mp</td><td>Integrals of the membrane forces and moments, rotated to the strip axes, along the cut</td><td>Statics of a section cut</td></tr>
+          <tr><td>V, T</td><td>Kirchhoff plate theory: transverse shear plus the edge forces of the twisting moment</td><td>Adaptation (Kirchhoff plate theory)</td></tr>
+          <tr><td>Integration</td><td>4-point Gauss–Legendre on each element's piece of the cut</td><td>Numerical method</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════ Input ══════════════ -->
+    <div class="section" id="strip-input">
+      <div class="section__title">The strip <code style="font-size:13px">ShellStrip</code></div>
+      <p>The front end draws the strip; the engine takes it as plain data in <code>model.strips</code>. A strip adds nothing to the stiffness or the loads and changes no other result.</p>
+      <table class="param-table">
+        <thead><tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td>FeaId</td><td>—</td><td><span class="req">Required</span></td><td>Unique among strips</td></tr>
+          <tr><td>points</td><td>{ x, y, z }[]</td><td>mm</td><td><span class="req">Required</span></td><td>Centreline, at least 2 points in order along the strip, all in one plane normal to <code>normal</code></td></tr>
+          <tr><td>widthLeft</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Width on the left of the centreline (along +2, left seen from +3)</td></tr>
+          <tr><td>widthRight</td><td>number</td><td>mm</td><td><span class="req">Required</span></td><td>Width on the right (along −2); one of the two may be 0</td></tr>
+          <tr><td>normal</td><td>[x, y, z]</td><td>—</td><td><span class="opt">Optional</span></td><td>Strip axis 3, need not be unit. Default <code>[0, 0, 1]</code> (floor slabs); e.g. <code>[0, -1, 0]</code> for a wall in the XZ plane</td></tr>
+          <tr><td>maxSpacing</td><td>number</td><td>mm</td><td><span class="opt">Optional</span></td><td>Largest distance between stations along a segment. Default: 20 equal divisions per segment (<code>STRIP_DEFAULT_DIVISIONS</code>)</td></tr>
+        </tbody>
+      </table>
+
+      <div class="figure">
+        <svg viewBox="0 0 640 270" width="640" role="img" aria-label="Plan of a slab with a strip, its widths, stations and axes">
+          <rect class="dg-edge" x="40" y="30" width="560" height="200" />
+          <!-- mesh -->
+          <line class="dg-dash" x1="110" y1="30" x2="110" y2="230" />
+          <line class="dg-dash" x1="180" y1="30" x2="180" y2="230" />
+          <line class="dg-dash" x1="250" y1="30" x2="250" y2="230" />
+          <line class="dg-dash" x1="320" y1="30" x2="320" y2="230" />
+          <line class="dg-dash" x1="390" y1="30" x2="390" y2="230" />
+          <line class="dg-dash" x1="460" y1="30" x2="460" y2="230" />
+          <line class="dg-dash" x1="530" y1="30" x2="530" y2="230" />
+          <line class="dg-dash" x1="40" y1="80" x2="600" y2="80" />
+          <line class="dg-dash" x1="40" y1="130" x2="600" y2="130" />
+          <line class="dg-dash" x1="40" y1="180" x2="600" y2="180" />
+          <!-- strip band -->
+          <rect x="40" y="90" width="560" height="100" fill="var(--yellow-dim)" stroke="none" />
+          <line x1="40" y1="90" x2="600" y2="90" stroke="var(--yellow)" stroke-width="1.4" stroke-dasharray="6 3" />
+          <line x1="40" y1="190" x2="600" y2="190" stroke="var(--yellow)" stroke-width="1.4" stroke-dasharray="6 3" />
+          <!-- centreline -->
+          <line x1="40" y1="145" x2="600" y2="145" stroke="var(--text)" stroke-width="1.6" />
+          <!-- cuts -->
+          <line class="dg-arrow" x1="40" y1="90" x2="40" y2="190" />
+          <line class="dg-arrow" x1="180" y1="90" x2="180" y2="190" />
+          <line class="dg-arrow" x1="320" y1="90" x2="320" y2="190" />
+          <line class="dg-arrow" x1="460" y1="90" x2="460" y2="190" />
+          <line class="dg-arrow" x1="600" y1="90" x2="600" y2="190" />
+          <circle class="dg-node" cx="40" cy="145" r="4" />
+          <circle class="dg-node" cx="600" cy="145" r="4" />
+          <!-- axes at the station x = 180 -->
+          <line x1="180" y1="145" x2="236" y2="145" stroke="var(--green)" stroke-width="2" />
+          <polygon points="236,140 246,145 236,150" fill="var(--green)" />
+          <line x1="180" y1="145" x2="180" y2="101" stroke="var(--green)" stroke-width="2" />
+          <polygon points="175,103 180,93 185,103" fill="var(--green)" />
+          <circle cx="180" cy="145" r="6" fill="var(--surface)" stroke="var(--green)" stroke-width="1.6" />
+          <circle cx="180" cy="145" r="1.8" fill="var(--green)" />
+          <text class="dg-label" x="222" y="139">1</text>
+          <text class="dg-label" x="187" y="112">2</text>
+          <text class="dg-text" x="190" y="162">3 out of the page (normal)</text>
+          <!-- widths -->
+          <line x1="560" y1="145" x2="560" y2="92" stroke="var(--text-muted)" stroke-width="1" />
+          <line x1="560" y1="145" x2="560" y2="188" stroke="var(--text-muted)" stroke-width="1" />
+          <text class="dg-math" x="566" y="122">w</text><text class="dg-text" x="577" y="126">L</text>
+          <text class="dg-math" x="566" y="172">w</text><text class="dg-text" x="577" y="176">R</text>
+          <text class="dg-text" x="44" y="22">points[0]</text>
+          <text class="dg-text" x="548" y="22">points[1]</text>
+          <text class="dg-text" x="44" y="252">shell mesh (dashed), strip (yellow), cuts at the stations (blue)</text>
+        </svg>
+        <figcaption>A strip in plan. The cuts are normal to the centreline and run from −w<sub>R</sub> to +w<sub>L</sub>; 1 points along the strip, 2 to its left, 3 out of the slab.</figcaption>
+      </div>
+
+      <div class="sub-label">Example</div>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript</div>
+        <pre>
+<span class="c">// a 6 m × 2 m slab at z = 0, simply supported on its short edges, q = 10 kN/m²</span>
+<span class="b">const</span> result = <span class="u">analyze</span>({
+  ...slab,
+  <span class="k">strips</span>: [{
+    <span class="k">id</span>: <span class="s">"S1"</span>,
+    <span class="k">points</span>: [{ <span class="k">x</span>: <span class="n">0</span>, <span class="k">y</span>: <span class="n">1000</span>, <span class="k">z</span>: <span class="n">0</span> }, { <span class="k">x</span>: <span class="n">6000</span>, <span class="k">y</span>: <span class="n">1000</span>, <span class="k">z</span>: <span class="n">0</span> }],  <span class="c">// mm</span>
+    <span class="k">widthLeft</span>: <span class="n">1000</span>,   <span class="c">// mm</span>
+    <span class="k">widthRight</span>: <span class="n">1000</span>,  <span class="c">// mm</span>
+    <span class="k">maxSpacing</span>: <span class="n">1500</span>,  <span class="c">// mm</span>
+  }],
+});
+<span class="b">const</span> strip = result.cases.L.stripForces[<span class="n">0</span>];</pre>
+      </div>
+      <div class="code-block">
+        <div class="code-block__label">Result</div>
+        <pre>
+<span class="c">// 12 × 4 elements; stations at x = 0, 1500, 3000, 4500, 6000 mm</span>
+<span class="c">// x = 1500: { width: 2000, M: 67.5, V: -30, T: 0, P: 0, perWidth: { M: 33.75, V: -15, … } }</span>
+<span class="c">// x = 3000: { width: 2000, M: 90,   V: 0,   perWidth: { M: 45, … } }       statics: qBL²/8 = 90 kN·m</span>
+<span class="c">// x = 0:    { M: 0, V: -55 }  (V half an element in from the support; statics 60 kN, see Limitations)</span></pre>
+      </div>
+    </div>
+
+    <!-- ══════════════ Axes and signs ══════════════ -->
+    <div class="section" id="axes-signs">
+      <div class="section__title">Axes &amp; signs</div>
+      <p>Each segment of the polyline, from <strong>p</strong><sub>k</sub> to <strong>p</strong><sub>k+1</sub>, has its own axes:</p>
+      <div class="eq">
+        <strong>n</strong> = normal / |normal| &nbsp;&nbsp;&nbsp;
+        <strong>a</strong> = <span class="frac"><span><strong>d</strong> − (<strong>d</strong>·<strong>n</strong>)<strong>n</strong></span><span>|<strong>d</strong> − (<strong>d</strong>·<strong>n</strong>)<strong>n</strong>|</span></span>, &nbsp; <strong>d</strong> = <strong>p</strong><sub>k+1</sub> − <strong>p</strong><sub>k</sub> &nbsp;&nbsp;&nbsp;
+        <strong>b</strong> = <strong>n</strong> × <strong>a</strong>
+        <span class="note">axis 1 = a (along), 2 = b (across, to the left), 3 = n</span>
+      </div>
+      <p>
+        The six resultants are the force and moment that the part of the strip <em>ahead</em> of the cut applies
+        to the part <em>behind</em> it, on the face whose outward normal is +1, as for a member's internal forces
+        (<code>N</code>, <code>V2</code>, <code>M3</code> of <code>memberDiagrams</code>):
+      </p>
+      <table class="param-table">
+        <thead><tr><th>Field</th><th>Unit</th><th>Positive when</th><th>Member analogue</th></tr></thead>
+        <tbody>
+          <tr><td>P</td><td>kN</td><td>Tension along 1</td><td>N</td></tr>
+          <tr><td>V</td><td>kN</td><td>Force along +3 on the +1 face; <code>V = −dM/dx</code></td><td>V2 = −dM3/dx</td></tr>
+          <tr><td>M</td><td>kN·m</td><td>Sagging: tension on the −3 face (the bottom of a floor slab)</td><td>M3, sagging with local 2 up</td></tr>
+          <tr><td>T</td><td>kN·m</td><td>Moment about +1 by the right-hand rule, about the cut's centre on the centreline</td><td>T</td></tr>
+          <tr><td>Vp</td><td>kN</td><td>In-plane force along +2</td><td>—</td></tr>
+          <tr><td>Mp</td><td>kN·m</td><td>Moment about +3 by the right-hand rule: tension on the right (−2) side</td><td>—</td></tr>
+        </tbody>
+      </table>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>Reversing a strip's points keeps <code>M</code>, <code>P</code> and <code>T</code> and flips the sign of <code>V</code> and <code>Vp</code>, as reversing a member does. The direction of a shell's own local 3 (the order of its <code>nodeIds</code>) and its <code>angle</code> do not matter: the strip uses its own normal <strong>n</strong>. Both are checked in the tests.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Steps ══════════════ -->
+    <div class="section" id="steps">
+      <div class="section__title">Steps <code style="font-size:13px">shell/post/strip-forces.ts</code></div>
+      <div class="flow-steps">
+        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Find the shells in the strip's plane</strong> — every element whose corners are within <code>STRIP_PLANE_TOLERANCE</code> of the plane.</div></div>
+        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Place the stations</strong> along each segment, and at each one the cut from −w<sub>R</sub> to +w<sub>L</sub>.</div></div>
+        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Cut the elements</strong>: clip the cut to each element, giving each element's piece of it.</div></div>
+        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Evaluate each element's force field</strong> at Gauss points on its piece, rotate it to the strip axes and add it up.</div></div>
+        <div class="flow-step"><div class="step-num">5</div><div class="step-body"><strong>Present</strong>: kN and kN·m, per-width values, extremes along the strip; for combinations, the same from the combined shell forces, and the envelope.</div></div>
+      </div>
+      <p>Steps 1–4 depend only on the geometry. They run once per analysis and give, for each station, fixed coefficients that turn the elements' raw corner forces into the six resultants. Each load case and combination then only multiplies those coefficients by its own shell forces.</p>
+    </div>
+
+    <!-- ══════════════ Plane ══════════════ -->
+    <div class="section" id="plane">
+      <div class="section__title">Shells in the plane</div>
+      <p>The strip plane passes through <code>points[0]</code> with normal <strong>n</strong>. An analysed element (after meshing) belongs to the strip when each of its four corners <strong>x</strong><sub>i</sub> satisfies</p>
+      <div class="eq">|(<strong>x</strong><sub>i</sub> − <strong>p</strong><sub>0</sub>) · <strong>n</strong>| ≤ τ · h<sub>max</sub> <span class="note">τ = STRIP_PLANE_TOLERANCE = 10⁻³, h<sub>max</sub> = the element's longest side (1 mm on a 1 m element)</span></div>
+      <p>Walls, beams' flanges in other planes and slabs at other levels are ignored, so a strip on a floor never picks up the walls below it. A slab with a fall (a ramp) is not flat; give the strip the ramp's normal or model the ramp as its own plane.</p>
+      <p>Each element remembers the sign σ = sign(<strong>e</strong><sub>3</sub> · <strong>n</strong>) of its own local 3 against the strip's normal. Moments and transverse shear are defined about local 3 (sagging = tension on the −3 face), so they are multiplied by σ: a slab drawn clockwise from above (local 3 down) gives the same strip moments as one drawn anticlockwise.</p>
+    </div>
+
+    <!-- ══════════════ Stations ══════════════ -->
+    <div class="section" id="stations">
+      <div class="section__title">Stations</div>
+      <p>A segment of in-plane length L<sub>k</sub> is divided into n<sub>k</sub> equal parts:</p>
+      <div class="eq">n<sub>k</sub> = max(1, ⌈L<sub>k</sub> / maxSpacing⌉) &nbsp; or &nbsp; n<sub>k</sub> = 20 without maxSpacing &nbsp;&nbsp;&nbsp; <strong>c</strong><sub>j</sub> = <strong>p</strong><sub>k</sub> + (j / n<sub>k</sub>)(<strong>p</strong><sub>k+1</sub> − <strong>p</strong><sub>k</sub>), &nbsp; j = 0 … n<sub>k</sub></div>
+      <ul>
+        <li><code>x</code> is the distance along the centreline from <code>points[0]</code>, measured in the plane.</li>
+        <li>Every polyline point is a station. A <strong>bend</strong> has two stations at the same <code>x</code>: the end of the incoming segment, cut normal to it, and the start of the outgoing one, cut normal to that (<code>segment</code> tells them apart). A straight continuation gives two equal stations.</li>
+        <li>The cut at station <strong>c</strong> is the line <strong>X</strong>(s) = <strong>c</strong> + s·<strong>b</strong>, −w<sub>R</sub> ≤ s ≤ w<sub>L</sub>.</li>
+      </ul>
+    </div>
+
+
+    <!-- ══════════════ Cutting ══════════════ -->
+    <div class="section" id="cutting">
+      <div class="section__title">Cutting the elements</div>
+      <p>
+        Each element in the plane is a convex quadrilateral (checked by validation, error 326) with corners
+        (x<sub>i</sub>, y<sub>i</sub>) in its own local 1–2 coordinates, anticlockwise about its local 3. The cut is
+        written in those coordinates as <strong>c</strong>′ + s <strong>d</strong>′, where
+        <strong>c</strong>′ = ((<strong>c</strong> − <strong>o</strong>)·<strong>e</strong><sub>1</sub>, (<strong>c</strong> − <strong>o</strong>)·<strong>e</strong><sub>2</sub>),
+        <strong>d</strong>′ = (<strong>b</strong>·<strong>e</strong><sub>1</sub>, <strong>b</strong>·<strong>e</strong><sub>2</sub>) and
+        <strong>o</strong> is the element's centroid. It is clipped against the four edges (Cyrus–Beck): edge i, from
+        corner i to i + 1, with inward unit normal <strong>m</strong><sub>i</sub>, keeps the part where
+      </p>
+      <div class="eq"><strong>m</strong><sub>i</sub> · (<strong>c</strong>′ − <strong>x</strong><sub>i</sub>) + s (<strong>m</strong><sub>i</sub> · <strong>d</strong>′) ≥ 0</div>
+      <p>
+        The intersection of the four conditions with −w<sub>R</sub> ≤ s ≤ w<sub>L</sub> is the element's piece
+        [s<sub>from</sub>, s<sub>to</sub>] of the cut. A cut running along an element edge (within
+        10⁻⁶ × the element size) counts as inside it.
+      </p>
+      <p>
+        All the pieces' end points are sorted into sub-intervals of the cut. A sub-interval covered by k elements
+        gives each of them the weight 1/k. On an ordinary cut k = 1; a cut lying exactly on a mesh line, which
+        is common since stations often fall on mesh lines, takes the <strong>mean of the elements on both sides</strong>.
+      </p>
+
+      <div class="figure">
+        <svg viewBox="0 0 640 230" width="640" role="img" aria-label="A cut crossing three elements, with four Gauss points on each piece">
+          <rect class="dg-edge" x="160" y="20" width="160" height="60" />
+          <rect class="dg-edge" x="160" y="80" width="160" height="60" />
+          <rect class="dg-edge" x="160" y="140" width="160" height="60" />
+          <rect class="dg-edge" x="320" y="20" width="160" height="60" />
+          <rect class="dg-edge" x="320" y="80" width="160" height="60" />
+          <rect class="dg-edge" x="320" y="140" width="160" height="60" />
+          <line class="dg-arrow" x1="250" y1="40" x2="250" y2="190" />
+          <circle class="dg-node" cx="250" cy="40" r="3.5" />
+          <circle class="dg-node" cx="250" cy="190" r="3.5" />
+          <circle class="dg-gauss" cx="250" cy="42.8" r="3" />
+          <circle class="dg-gauss" cx="250" cy="52.6" r="3" />
+          <circle class="dg-gauss" cx="250" cy="67.4" r="3" />
+          <circle class="dg-gauss" cx="250" cy="77.2" r="3" />
+          <circle class="dg-gauss" cx="250" cy="82.1" r="3" />
+          <circle class="dg-gauss" cx="250" cy="96.7" r="3" />
+          <circle class="dg-gauss" cx="250" cy="123.3" r="3" />
+          <circle class="dg-gauss" cx="250" cy="137.9" r="3" />
+          <circle class="dg-gauss" cx="250" cy="142.4" r="3" />
+          <circle class="dg-gauss" cx="250" cy="155.0" r="3" />
+          <circle class="dg-gauss" cx="250" cy="175.0" r="3" />
+          <circle class="dg-gauss" cx="250" cy="187.6" r="3" />
+          <line x1="400" y1="40" x2="400" y2="190" stroke="var(--yellow)" stroke-width="2.2" />
+          <text class="dg-text" x="40" y="44">s = +w<tspan baseline-shift="sub" font-size="9">L</tspan></text>
+          <text class="dg-text" x="40" y="194">s = −w<tspan baseline-shift="sub" font-size="9">R</tspan></text>
+          <text class="dg-text" x="40" y="118">cut inside elements</text>
+          <text class="dg-text" x="40" y="132">(4 Gauss points each)</text>
+          <text class="dg-text" x="490" y="112">cut on a mesh line:</text>
+          <text class="dg-text" x="490" y="126">mean of both sides</text>
+          <text class="dg-text" x="160" y="218">element pieces of the cut, integrated each in its own element's field</text>
+        </svg>
+        <figcaption>Left cut: three pieces, each integrated with 4 Gauss points (green) in its own element. Right cut (yellow) lies on the line between two columns of elements and takes the mean of both.</figcaption>
+      </div>
+    </div>
+
+    <!-- ══════════════ Field ══════════════ -->
+    <div class="section" id="field">
+      <div class="section__title">Force field in an element</div>
+      <p>
+        The shell reports eight forces per corner (see the <a href="shell-element.html#results" style="color:var(--accent)">shell element notes</a>):
+        F11, F22, F12 (N/mm), M11, M22, M12 (N·mm/mm) and V13, V23 (N/mm). F and M are computed at the 2×2 Gauss
+        points and extrapolated bilinearly to the corners, so interpolating the corner values bilinearly
+        reproduces exactly the field through the Gauss points:
+      </p>
+      <div class="eq">f(ξ, η) = Σ<sub>i=1…4</sub> N<sub>i</sub>(ξ, η) f<sub>i</sub>, &nbsp;&nbsp; N<sub>i</sub> = ¼(1 + ξ<sub>i</sub>ξ)(1 + η<sub>i</sub>η) <span class="note">f = any of F11 … M12; f<sub>i</sub> its value at corner i</span></div>
+      <p>
+        The point of the cut, in the element's coordinates (x, y), is mapped back to (ξ, η) by Newton's method on
+        the bilinear map <strong>x</strong>(ξ, η) = Σ N<sub>i</sub> <strong>x</strong><sub>i</sub> (one step for a
+        parallelogram, a few for a distorted quad). Each element's field is used <strong>on its own</strong>: no
+        averaging between elements, as decided for this feature. The corner V13, V23 are not used; the shear is
+        taken from the moment field's derivative instead, see <a href="#kirchhoff" style="color:var(--accent)">Shear &amp; torsion</a>.
+      </p>
+    </div>
+
+    <!-- ══════════════ Rotation ══════════════ -->
+    <div class="section" id="rotation">
+      <div class="section__title">Rotation to the strip axes</div>
+      <p>
+        The element's forces are tensors in its local axes <strong>e</strong><sub>1</sub>, <strong>e</strong><sub>2</sub>.
+        With the direction cosines
+      </p>
+      <div class="eq">c<sub>a1</sub> = <strong>a</strong>·<strong>e</strong><sub>1</sub>, &nbsp; c<sub>a2</sub> = <strong>a</strong>·<strong>e</strong><sub>2</sub>, &nbsp; c<sub>b1</sub> = <strong>b</strong>·<strong>e</strong><sub>1</sub>, &nbsp; c<sub>b2</sub> = <strong>b</strong>·<strong>e</strong><sub>2</sub></div>
+      <p>the components on the cut (whose normal is <strong>a</strong>) are, per unit length of the cut:</p>
+      <div class="eq">F<sub>aa</sub> = c<sub>a1</sub>² F<sub>11</sub> + c<sub>a2</sub>² F<sub>22</sub> + 2 c<sub>a1</sub>c<sub>a2</sub> F<sub>12</sub> <span class="note">normal membrane force</span></div>
+      <div class="eq">F<sub>ba</sub> = c<sub>b1</sub>c<sub>a1</sub> F<sub>11</sub> + c<sub>b2</sub>c<sub>a2</sub> F<sub>22</sub> + (c<sub>b1</sub>c<sub>a2</sub> + c<sub>b2</sub>c<sub>a1</sub>) F<sub>12</sub> <span class="note">in-plane shear</span></div>
+      <div class="eq">M<sub>aa</sub> = σ (c<sub>a1</sub>² M<sub>11</sub> + c<sub>a2</sub>² M<sub>22</sub> + 2 c<sub>a1</sub>c<sub>a2</sub> M<sub>12</sub>) <span class="note">bending moment, sagging about n</span></div>
+      <div class="eq">m<sub>ab</sub> = σ (c<sub>b1</sub>c<sub>a1</sub> M<sub>11</sub> + c<sub>b2</sub>c<sub>a2</sub> M<sub>22</sub> + (c<sub>b1</sub>c<sub>a2</sub> + c<sub>b2</sub>c<sub>a1</sub>) M<sub>12</sub>) <span class="note">twisting moment</span></div>
+      <p>
+        σ = ±1 is the sign of the element's local 3 against <strong>n</strong> (see
+        <a href="#plane" style="color:var(--accent)">Shells in the plane</a>). Membrane forces do not depend on
+        which face is up, so they take no σ. The strip direction <strong>a</strong> may be at any angle to the
+        element axes; the rotation also handles the shell's <code>angle</code>.
+      </p>
+    </div>
+
+    <!-- ══════════════ Resultants ══════════════ -->
+    <div class="section" id="resultants">
+      <div class="section__title">Resultants</div>
+      <p>
+        With s the offset along <strong>b</strong> from the cut's centre on the centreline, the resultants on the
+        +1 face are the integrals along the covered part of the cut:
+      </p>
+      <div class="eq">P = ∫ F<sub>aa</sub> ds &nbsp;&nbsp;&nbsp; Vp = ∫ F<sub>ba</sub> ds &nbsp;&nbsp;&nbsp; M = ∫ M<sub>aa</sub> ds &nbsp;&nbsp;&nbsp; Mp = −∫ s F<sub>aa</sub> ds</div>
+      <div class="eq">V = −∫ <span class="frac"><span>∂M<sub>aa</sub></span><span>∂a</span></span> ds &nbsp;&nbsp;&nbsp; T = ∫ ( 2 m<sub>ab</sub> − s <span class="frac"><span>∂M<sub>aa</sub></span><span>∂a</span></span> ) ds <span class="note">V and T: see Shear &amp; torsion</span></div>
+      <p>
+        On each element's piece [u, v] of the cut, the integral is a 4-point Gauss–Legendre rule
+        (points t<sub>g</sub>, weights w<sub>g</sub>):
+      </p>
+      <div class="eq">∫<sub>u</sub><sup>v</sup> g(s) ds ≈ <span class="frac"><span>v − u</span><span>2</span></span> Σ<sub>g=1…4</sub> w<sub>g</sub> · g(<span class="frac"><span>u + v</span><span>2</span></span> + <span class="frac"><span>v − u</span><span>2</span></span> t<sub>g</sub>) &nbsp;&nbsp; × 1/k on overlapping pieces</div>
+      <p>
+        Along a straight cut through a parallelogram, ξ and η are linear in s, so the field is quadratic in s
+        and the integrands are at most cubic: the rule is exact. On distorted quads it is accurate to round-off
+        for ordinary mesh shapes.
+      </p>
+      <p>
+        <strong>Moment sign of Mp.</strong> The traction F<sub>aa</sub> at offset s·<strong>b</strong> has a moment
+        (s<strong>b</strong>) × (F<sub>aa</sub><strong>a</strong>) = −s F<sub>aa</sub> <strong>n</strong> about the centre,
+        hence the minus sign: tension on the right side (s &lt; 0) gives a positive Mp.
+      </p>
+      <p>
+        <strong>Per width.</strong> <code>perWidth</code> divides each resultant by the covered <code>width</code> of
+        the cut (in m), giving kN/m and kN·m/m: the average over the strip, which is what a strip design per metre
+        uses. Where <code>width</code> is 0 the per-width values are 0.
+      </p>
+    </div>
+
+    <!-- ══════════════ Kirchhoff ══════════════ -->
+    <div class="section" id="kirchhoff">
+      <div class="section__title">Shear &amp; torsion</div>
+      <p>
+        The plate is a thin (Kirchhoff) plate. Its transverse shear is not an independent field: it follows from
+        moment equilibrium,
+      </p>
+      <div class="eq">Q<sub>a</sub> = −( <span class="frac"><span>∂M<sub>aa</sub></span><span>∂a</span></span> + <span class="frac"><span>∂m<sub>ab</sub></span><span>∂b</span></span> ) <span class="note">the shell's V13 = −(∂M11/∂x₁ + ∂M12/∂x₂), turned to the strip axes</span></div>
+      <p>
+        Integrating Q<sub>a</sub> alone along a cut does <strong>not</strong> give the shear that statics requires.
+        In Kirchhoff theory a twisting moment on a free edge is statically equivalent to a shear force along that
+        edge plus concentrated forces m<sub>ab</sub> at its ends (Kirchhoff's edge forces, the same effect as the
+        corner forces 2M<sub>xy</sub> of a rectangular plate). A cut's ends are such edges: the slab's free edges,
+        openings and the edges of the strip itself. In a real slab, a narrow boundary layer of transverse shear,
+        about a slab thickness wide, carries these forces; thin-plate theory folds it into the twisting moment.
+      </p>
+      <p>Adding the edge forces m<sub>ab</sub> at the two ends of the cut, the ∂m<sub>ab</sub>/∂b term integrates out exactly:</p>
+      <div class="eq">V = ∫ Q<sub>a</sub> ds + m<sub>ab</sub>(w<sub>L</sub>) − m<sub>ab</sub>(−w<sub>R</sub>) = −∫ <span class="frac"><span>∂M<sub>aa</sub></span><span>∂a</span></span> ds</div>
+      <p>The moment about <strong>a</strong> of the same system (couples m<sub>ab</sub>, shear Q<sub>a</sub> at lever s, end forces at levers w<sub>L</sub> and −w<sub>R</sub>), integrated by parts:</p>
+      <div class="eq">T = ∫ (m<sub>ab</sub> + s Q<sub>a</sub>) ds + [ s m<sub>ab</sub> ]<sub>−w<sub>R</sub></sub><sup>w<sub>L</sub></sup> = ∫ ( 2 m<sub>ab</sub> − s <span class="frac"><span>∂M<sub>aa</sub></span><span>∂a</span></span> ) ds</div>
+      <p>
+        The factor 2 is the classical result for the torsion of a thin plate strip: half the torque is carried by
+        the twisting moments and half by the edge shears (Timoshenko &amp; Woinowsky-Krieger). The engine applies
+        both identities within each element's piece of the cut, so the twisting moment's jumps between elements,
+        which are discretisation error, cancel too. As a result:
+      </p>
+      <ul>
+        <li><strong>V = −dM/dx along a straight strip of constant width</strong>, exactly, for the integrated field, because ∫ ∂M<sub>aa</sub>/∂a ds = d/dx ∫ M<sub>aa</sub> ds.</li>
+        <li>A full-width cut reproduces statics: V and T balance the loads beyond the cut (see <a href="#verification" style="color:var(--accent)">Verification</a>).</li>
+        <li>∂M<sub>aa</sub>/∂a comes from the bilinear moment field, so it is constant along 1 within an element: V is the shear at the element's centre line, and at a mesh line the mean of the two elements' values.</li>
+      </ul>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span><strong>Why this matters.</strong> On the 6 m × 2 m simply supported slab (ν = 0.2), integrating Q<sub>a</sub> alone gave −27.67 kN at quarter span on every mesh tried (12 × 4 to 48 × 8), where statics gives −30 kN: 8 % low, from the twisting moments at the free edges. Adding the edge forces only at the cut's two ends gave −31.7 to −32.0 kN, because the element-by-element twisting moment also jumps between elements. The element-wise form above gives −30.000 kN on all meshes.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Coverage ══════════════ -->
+    <div class="section" id="coverage">
+      <div class="section__title">Coverage &amp; gaps</div>
+      <p>
+        <code>width</code> is the length of the cut that lies on elements in the plane. It is less than
+        w<sub>L</sub> + w<sub>R</sub> where the cut crosses an opening, runs past a slab edge, or the strip is wider
+        than the slab. The resultants then integrate only the covered parts, and per-width values use the covered
+        <code>width</code>. Each covered piece of the cut ends at an edge, and the Kirchhoff edge forces apply
+        there (they are already included element by element).
+      </p>
+      <div class="alert alert--warn">
+        <span>⚠️</span>
+        <span>Pushes one warning per strip to <code>result.warnings</code> when any of its stations is not fully on shells (giving their count), or <code>crosses no shell element in its plane</code> when it misses them all — <strong>Strip forces, shell coverage</strong>.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Combinations ══════════════ -->
+    <div class="section" id="combinations">
+      <div class="section__title">Combinations &amp; envelope</div>
+      <p>
+        Every step is linear in the elements' raw corner forces, which are linear in the loads. The engine stores,
+        for each station, the coefficients that map those 32 numbers per element (8 forces × 4 corners) to the six
+        resultants. A combination's strip forces come from its combined (unrounded) shell forces through the same
+        coefficients, so they equal the factored sum of the case values exactly, and rounding happens only on
+        presentation.
+      </p>
+      <p>
+        <code>envelope.strips</code> gives, at every station, the max and min of each resultant and of its per-width
+        value over all combinations, with the governing combination, which is the strip's design envelope
+        diagram. It also gives the max and min of each resultant over the whole strip, with the station's
+        <code>x</code>.
+      </p>
+    </div>
+
+    <!-- ══════════════ Verification ══════════════ -->
+    <div class="section" id="verification">
+      <div class="section__title">Verification</div>
+      <p>Slabs 200 mm thick, E = 30 000 MPa, ν = 0.2, at z = 0. Library values from <code>analyze</code> against statics:</p>
+      <table class="summary-table">
+        <thead><tr><th>Case</th><th>Cut</th><th>Quantity</th><th>Statics</th><th>Library</th></tr></thead>
+        <tbody>
+          <tr><td rowspan="4">One-way slab 6 × 2 m, simply supported on the short edges, q = 10 kN/m², 12 × 4 elements, full-width strip</td><td>x = 3 m</td><td>M</td><td>qBL²/8 = 90 kN·m</td><td>90</td></tr>
+          <tr><td>x = 3 m</td><td>M per width</td><td>45 kN·m/m</td><td>45</td></tr>
+          <tr><td>x = 1.5 m</td><td>M, V</td><td>67.5 kN·m, −30 kN</td><td>67.5, −30</td></tr>
+          <tr><td>x = 0</td><td>V</td><td>−60 kN</td><td>−55 (see Limitations)</td></tr>
+          <tr><td>Same slab, strip w<sub>L</sub> = w<sub>R</sub> = 500 mm centred on y = 1.5 m (half the slab)</td><td>x = 1.5 m</td><td>M, V, T</td><td>half of the full-width M and V</td><td>33.75, −15, T = −2.3019</td></tr>
+          <tr><td rowspan="3">Cantilever 3 × 2 m fixed along x = 0, 12 × 8 elements, full-width strip on y = 1 m</td><td rowspan="3">x = 1.5 m</td><td>Corner load F<sub>z</sub> = −10 kN at (3, 2) m: V, M, T</td><td>−10 kN, −15 kN·m, −10 kN·m</td><td>−10, −15, −10.0143</td></tr>
+          <tr><td>Twist: +10 kN at (3, 0) m, −10 kN at (3, 2) m: V, T</td><td>0, −20 kN·m</td><td>0, −20.0286</td></tr>
+          <tr><td>In-plane F<sub>x</sub> = 10, F<sub>y</sub> = 5 kN at (3, 2) m: P, Vp, Mp</td><td>10 kN, 5 kN, −2.5 kN·m</td><td>9.9874, 4.9996, −2.4981</td></tr>
+        </tbody>
+      </table>
+      <p>The tests also check that:</p>
+      <ul>
+        <li>reversing the strip keeps M and flips V;</li>
+        <li>a slab whose corners run clockwise (local 3 down) gives the same signs;</li>
+        <li>a shell <code>angle</code> of 30° changes no strip force;</li>
+        <li>two half-width strips add up to the full-width strip in M and V;</li>
+        <li>a strip wider than the slab reports <code>width</code> = 2000 mm, the same M, and a warning;</li>
+        <li>a strip in another plane picks up nothing and warns;</li>
+        <li>combinations superpose, and the envelope names the governing combination at each station.</li>
+      </ul>
+      <p>
+        In the half strip, T is not zero: near the supports, the twisting moments of the anticlastic slab
+        (ν = 0.2) do not cancel over half the width. They cancel over the whole width, where T = 0.
+      </p>
+    </div>
+
+    <!-- ══════════════ Limitations ══════════════ -->
+    <div class="section" id="limitations">
+      <div class="section__title">Limitations</div>
+      <ul>
+        <li><strong>V at a support or a free end</strong> is the shear at the centre of the first element, not at its edge: −55 kN instead of −60 kN on a 500 mm mesh above (60 − 10 × 2 × 0.25). It converges with the mesh (−58.75 kN at 125 mm). Check shear at the critical section, d or d/2 from the support face, rather than at the support line.</li>
+        <li><strong>Concentrated loads and columns.</strong> Close to a point load or a column the plate field is singular and the shells' moments and shears depend on the mesh; strip values there are as good as the mesh. Refine the mesh around columns.</li>
+        <li><strong>Membrane forces</strong> come from the membrane's strain field, which does not satisfy equilibrium exactly on a cut: P, Vp and Mp are within 0.2 % of statics in the cantilever above.</li>
+        <li><strong>Flat strips only.</strong> A strip lies in one plane and picks up only the elements in that plane (within 1 mm per metre). It does not follow a folded or curved surface.</li>
+        <li><strong>No Wood–Armer.</strong> M is the bending moment about the cut and T the torsion. Designing reinforcement for the twisting moments (e.g. Wood–Armer moments) is not part of strip forces.</li>
+        <li><strong>Thin plate.</strong> The shells are Kirchhoff plates, so the shear identities above hold; with thick plates (planned) V and T would be revisited.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ Points for review ══════════════ -->
+    <div class="section" id="review">
+      <div class="section__title">Points for review</div>
+      <p>Decisions taken while implementing, for the maintainer to confirm or change:</p>
+      <table class="summary-table">
+        <thead><tr><th>Topic</th><th>Chosen</th><th>Alternative</th></tr></thead>
+        <tbody>
+          <tr><td>Shear and torsion</td><td>Kirchhoff-consistent, element by element: V = −∫∂M<sub>aa</sub>/∂a, T = ∫(2m<sub>ab</sub> − s ∂M<sub>aa</sub>/∂a). Matches statics on full-width cuts and gives V = −dM/dx.</td><td>Plain ∫Q<sub>a</sub> and ∫(m<sub>ab</sub> + sQ<sub>a</sub>): 8 % low on the test slab's shear.</td></tr>
+          <tr><td>Cut on a mesh line</td><td>Mean of the elements on both sides</td><td>One side only (e.g. the element ahead)</td></tr>
+          <tr><td>Default stations</td><td>20 divisions per segment (21 stations), as member diagrams</td><td>From the mesh size</td></tr>
+          <tr><td>Plane tolerance</td><td>Corners within 10⁻³ × element size (1 mm per m)</td><td>An absolute distance, or a per-strip option</td></tr>
+          <tr><td>Bend</td><td>Two stations at the same x, each cut normal to its own segment</td><td>One cut on the bisector</td></tr>
+          <tr><td>Partial coverage</td><td>Integrate what is covered, report <code>width</code>, warn</td><td>Error</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════ References ══════════════ -->
+    <div class="section" id="references">
+      <div class="section__title">References</div>
+      <ol>
+        <li>Timoshenko, S. P. &amp; Woinowsky-Krieger, S. (1959). <em>Theory of Plates and Shells</em>, 2nd ed. McGraw-Hill. (Boundary conditions of plates: Kirchhoff's edge forces and corner forces; torsion of a thin plate strip.)</li>
+        <li>Szilard, R. (2004). <em>Theories and Applications of Plate Analysis</em>. Wiley. Ch. 1 (equilibrium, effective shear).</li>
+        <li>Cook, R. D., Malkus, D. S., Plesha, M. E. &amp; Witt, R. J. (2002). <em>Concepts and Applications of Finite Element Analysis</em>, 4th ed. Wiley. (Stress recovery at Gauss points, extrapolation.)</li>
+        <li>Cyrus, M. &amp; Beck, J. (1978). Generalized two- and three-dimensional clipping. <em>Computers &amp; Graphics</em>, 3, 23–28.</li>
+        <li>Computers and Structures, Inc. <em>SAFE Reference Manual</em>: design strips and strip forces from section cuts (the model this feature follows).</li>
+      </ol>
+    </div>
+
+    <!-- ══════════════ Summary ══════════════ -->
+    <div class="section" id="summary">
+      <div class="section__title">Summary</div>
+      <table class="summary-table">
+        <thead><tr><th>Resultant</th><th>Integral along the cut</th><th>Unit</th><th>Per width</th></tr></thead>
+        <tbody>
+          <tr><td>P</td><td>∫ F<sub>aa</sub> ds</td><td>kN</td><td>kN/m</td></tr>
+          <tr><td>V</td><td>−∫ ∂M<sub>aa</sub>/∂a ds</td><td>kN</td><td>kN/m</td></tr>
+          <tr><td>M</td><td>∫ M<sub>aa</sub> ds</td><td>kN·m</td><td>kN·m/m</td></tr>
+          <tr><td>T</td><td>∫ (2 m<sub>ab</sub> − s ∂M<sub>aa</sub>/∂a) ds</td><td>kN·m</td><td>kN·m/m</td></tr>
+          <tr><td>Vp</td><td>∫ F<sub>ba</sub> ds</td><td>kN</td><td>kN/m</td></tr>
+          <tr><td>Mp</td><td>−∫ s F<sub>aa</sub> ds</td><td>kN·m</td><td>kN·m/m</td></tr>
+        </tbody>
+      </table>
+      <p>See the <a href="../#strips" style="color:var(--accent)">FEA reference</a> for the input and result types.</p>
+    </div>
+
+  </main>
+</div>
+</body>
+</html>
