@@ -21,6 +21,8 @@ const GLOBAL_DIRECTIONS: Record<"X" | "Y" | "Z", [number, number, number]> = {
  * @param shellsByArea - Element indices of each shell area
  * @param loads - The load case's area loads on shell areas
  * @param selfWeight - The load case's self-weight multiplier
+ * @returns The surface load of each shell element as a global vector (kN/m²); its corner `i`
+ *   takes `p · 10⁻³ · cornerAreas[i]` (N)
  */
 export const addShellLoads = (
   F: number[],
@@ -28,7 +30,7 @@ export const addShellLoads = (
   shellsByArea: Map<FeaId, number[]>,
   loads: AreaLoad[],
   selfWeight: number,
-): void => {
+): [number, number, number][] => {
   // kN/m² as a global vector per shell, then N at the corners
   const shellPressure = shells.map((): [number, number, number] => [0, 0, 0]);
   for (const load of loads) {
@@ -57,4 +59,5 @@ export const addShellLoads = (
       for (let k = 0; k < 3; k++) F[6 * node + k] += p[k] * 1e-3 * shell.cornerAreas[i];
     });
   });
+  return shellPressure;
 };

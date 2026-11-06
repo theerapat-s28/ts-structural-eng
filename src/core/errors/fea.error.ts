@@ -7,6 +7,10 @@ export interface FeaErrorDetails {
   areaId?: string | number;
   shellId?: string | number;
   stripId?: string | number;
+  pierId?: string | number;
+  spandrelId?: string | number;
+  /** For a pier or spandrel cut: its elevation (pier) or distance from the left end (spandrel), mm. */
+  position?: number;
   /** For an area: the edge index, edge i running from `nodeIds[i]` to `nodeIds[i + 1]`. */
   edge?: number;
   loadCaseId?: string;
@@ -156,6 +160,11 @@ export const FeaErrors: Record<string, FeaErrorType> = {
     code: 330,
     message:
       "A strip needs at least 2 points in one plane normal to its normal (default +Z), with no zero-length segment and no segment turning straight back on the previous one; its normal must not be zero, its widths must not be negative, and they must not both be zero.",
+  },
+  INVALID_PIER_GEOMETRY: {
+    code: 331,
+    message:
+      "A pier or spandrel must list existing shell areas and members, each at most once and in no other pier (or spandrel); a pier needs at least one area or member, a spandrel at least one area. Pier areas must be vertical and pier members not horizontal; a spandrel's areas must lie in one vertical plane and its members must not be normal to its length. Every cut must lie within the group and on the mesh lines of its areas: divide an area that a cut crosses.",
   },
 };
 

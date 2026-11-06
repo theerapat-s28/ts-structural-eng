@@ -91,6 +91,23 @@ const internalForces = (
 };
 
 /**
+ * Internal forces [N, V2, V3, T, M2, M3] (N and N·mm) at distance `x` from a member's (or a
+ * member piece's) start, acting on the +1 face of the segment [0, x], as in `MemberStation`.
+ * At a point load exactly at `x` the load is not yet included.
+ *
+ * @param startForce - Right-hand local force the start node exerts on the member: [F1, F2, F3, M1, M2, M3]
+ * @param loads - The member's local loads
+ */
+export const memberInternalForces = (
+  startForce: number[],
+  loads: LocalMemberLoad[],
+  x: number,
+): number[] => {
+  const f = internalForces(startForce, loads, x, "left");
+  return [f.N, f.V2, f.V3, f.T, f.M2, f.M3];
+};
+
+/**
  * Local displacements u1, u2, u3 (mm) at every grid point, from Euler–Bernoulli kinematics:
  * `u1' = N/EA`, `u2'' = M3/EI33` (R3 = u2'), `u3'' = −M2/EI22` (R2 = −u3').
  *

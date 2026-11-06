@@ -17,6 +17,7 @@ import { validateStrips } from "@app-fea/shell/validation/validate-strips";
 
 import { resolveCombinations } from "../solver/combinations";
 import type { FeaModel, LoadCaseType } from "../types/model.type";
+import { validateWalls, type WallContext } from "./validate-walls";
 
 const DOF_KEYS = ["ux", "uy", "uz", "rx", "ry", "rz"] as const;
 const NODAL_LOAD_KEYS = ["fx", "fy", "fz", "mx", "my", "mz"] as const;
@@ -45,7 +46,7 @@ const LOAD_CASE_TYPES = new Set<LoadCaseType>([
  * resists at a node connected only to shells (328), which only assembling the stiffness detects.
  *
  * @param model - The model to check
- * @returns Every problem found (codes 301–303, 305–317, 326–327, 329 and 330), in model order
+ * @returns Every problem found (codes 301–303, 305–317, 326–327 and 329–331), in model order
  */
 export const validateModel = (model: FeaModel): FeaModelIssue[] => {
   const issues: FeaModelIssue[] = [];
@@ -205,8 +206,15 @@ export const validateModel = (model: FeaModel): FeaModelIssue[] => {
   // the mesh, once every shell and its mesh settings are valid
   const shellProblem = issues.some((i) => i.details.shellId !== undefined);
   const nodeProblem = nodes.length !== validNode.size;
+  let mesh: WallContext["mesh"];
   if (shells.length > 0 && !shellProblem && !nodeProblem) {
-    issues.push(...validateShellMesh(nodes, shells));
+    const meshed = validateShellMesh(nodes, shells);
+    issues.push(...meshed.issues);
+    if (meshed.issues.length === 0) {
+      mesh = { nodes: [...nodes, ...meshed.mesh.nodes], elements: meshed.mesh.elements };
+    }
+  } else if (shells.length === 0 && !nodeProblem) {
+    mesh = { nodes, elements: [] };
   }
 
   // ---- Strips ----------------------------------------------------------------------
@@ -214,6 +222,9 @@ export const validateModel = (model: FeaModel): FeaModelIssue[] => {
     add(FeaErrors.INVALID_INPUT_VALUE, { field: "strips" });
   }
   issues.push(...validateStrips(strips));
+
+  // ---- Piers and spandrels ---------------------------------------------------------
+  issues.push(...validateWalls(model, { shells, members, nodeById, memberLength, mesh }));
 
   const areaIds = new Set([...areas.map((a) => a.id), ...shells.map((sh) => sh.id)]);
   for (const load of areaLoads) {

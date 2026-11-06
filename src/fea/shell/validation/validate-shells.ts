@@ -3,7 +3,7 @@ import type { FeaId, FeaNode } from "@app-fea/shared/types/model.type";
 import { modelIssue, isFiniteNumber } from "@app-fea/shared/validation/issues";
 
 import { isValidShellQuad } from "../elements/shell-axes";
-import { meshShells } from "../mesh/mesh-shells";
+import { meshShells, type ShellMeshResult } from "../mesh/mesh-shells";
 import type { ShellArea, ShellType } from "../types/model.type";
 
 const SHELL_TYPES = new Set<ShellType>(["shell", "membrane", "plate"]);
@@ -110,9 +110,18 @@ export const validateShells = (
  * Meshes the shell areas and reports those that cannot be meshed (see `meshShells`). Call it
  * only when every node and every shell is valid.
  *
- * @returns Code 329 for each area that cannot be meshed, with `shellId` and `field: "mesh"`
+ * @returns Code 329 for each area that cannot be meshed, with `shellId` and `field: "mesh"`,
+ *   and the mesh itself
  */
-export const validateShellMesh = (nodes: FeaNode[], shells: ShellArea[]): FeaModelIssue[] =>
-  meshShells(nodes, shells).problems.map((shellId) =>
-    modelIssue(FeaErrors.INVALID_SHELL_MESH, { shellId, field: "mesh" }),
-  );
+export const validateShellMesh = (
+  nodes: FeaNode[],
+  shells: ShellArea[],
+): { issues: FeaModelIssue[]; mesh: ShellMeshResult } => {
+  const mesh = meshShells(nodes, shells);
+  return {
+    issues: mesh.problems.map((shellId) =>
+      modelIssue(FeaErrors.INVALID_SHELL_MESH, { shellId, field: "mesh" }),
+    ),
+    mesh,
+  };
+};

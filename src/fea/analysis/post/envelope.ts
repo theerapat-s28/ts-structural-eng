@@ -2,6 +2,7 @@ import type { StationComponent } from "@app-fea/frame/types/results.type";
 import { STRIP_COMPONENTS } from "@app-fea/shell/post/strip-forces";
 import type { ShellForceComponent, StripForceComponent } from "@app-fea/shell/types/results.type";
 
+import { WALL_COMPONENTS } from "./wall-forces";
 import type {
   Bound,
   FeaCaseResult,
@@ -146,6 +147,41 @@ export const buildEnvelope = (results: FeaCaseResult[]): FeaEnvelope => {
     ) as Record<StripForceComponent, Bound<GoverningExtremeValue>>,
   }));
 
+  const piers = first.pierForces.map((pier, p) => ({
+    pierId: pier.pierId,
+    cuts: pier.cuts.map((cut, i) => {
+      const entry = { z: cut.z, face: cut.face } as FeaEnvelope["piers"][number]["cuts"][number];
+      for (const key of WALL_COMPONENTS) {
+        let bound: Bound<GoverningValue> | undefined;
+        for (const r of results) {
+          const g = { value: r.pierForces[p].cuts[i][key], combinationId: r.id };
+          bound = update(bound, g, g);
+        }
+        entry[key] = bound as Bound<GoverningValue>;
+      }
+      return entry;
+    }),
+  }));
+
+  const spandrels = first.spandrelForces.map((spandrel, p) => ({
+    spandrelId: spandrel.spandrelId,
+    cuts: spandrel.cuts.map((cut, i) => {
+      const entry = {
+        x: cut.x,
+        face: cut.face,
+      } as FeaEnvelope["spandrels"][number]["cuts"][number];
+      for (const key of WALL_COMPONENTS) {
+        let bound: Bound<GoverningValue> | undefined;
+        for (const r of results) {
+          const g = { value: r.spandrelForces[p].cuts[i][key], combinationId: r.id };
+          bound = update(bound, g, g);
+        }
+        entry[key] = bound as Bound<GoverningValue>;
+      }
+      return entry;
+    }),
+  }));
+
   return {
     combinationIds: results.map((r) => r.id),
     nodalDisplacements,
@@ -153,5 +189,7 @@ export const buildEnvelope = (results: FeaCaseResult[]): FeaEnvelope => {
     members,
     shells,
     strips,
+    piers,
+    spandrels,
   };
 };

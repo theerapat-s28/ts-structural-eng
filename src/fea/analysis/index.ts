@@ -14,6 +14,8 @@ export type {
   LoadCase,
   CombinationTerm,
   LoadCombination,
+  WallPier,
+  WallSpandrel,
   FeaModel,
 } from "./types/model.type";
 export type {
@@ -26,4 +28,15 @@ export type {
   FeaCaseResult,
   FeaEnvelope,
   FeaResult,
+  WallResultants,
+  WallForceComponent,
+  WallSectionLeg,
+  WallSectionMember,
+  WallCutSection,
+  PierCutFace,
+  PierCut,
+  PierForces,
+  SpandrelCutFace,
+  SpandrelCut,
+  SpandrelForces,
 } from "./types/results.type";

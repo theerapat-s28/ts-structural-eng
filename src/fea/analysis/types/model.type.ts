@@ -69,6 +69,50 @@ export interface LoadCombination {
   terms: CombinationTerm[];
 }
 
+/**
+ * A wall pier, as in ETABS: shell areas (one or more wall legs, planar or not, connected or
+ * not) and members (boundary or embedded columns) whose forces `analyze` sums on horizontal
+ * cuts into one resultant per cut (`pierForces`). Cuts are taken at the bottom and top of each
+ * lift — between consecutive elevations where any of its areas or members starts or ends — and
+ * at the extra elevations in `cuts`.
+ *
+ * Pier axes: 1 = global +Z (up); 2 horizontal, along the longest area of the pier (pointing
+ * toward +X, or +Y for an area parallel to Y), or global X rotated by `angle` about +Z when
+ * given; 3 = 1 × 2. A pier adds nothing to the analysis.
+ */
+export interface WallPier {
+  id: FeaId;
+  /** Shell areas of the pier; all vertical. */
+  areaIds?: FeaId[];
+  /** Members of the pier; none horizontal. */
+  memberIds?: FeaId[];
+  /** Extra cut elevations (mm, global Z), within the pier and on the mesh lines of its areas. */
+  cuts?: number[];
+  /** Rotation of pier axis 2 from global X about +Z (rad); default along the longest area. */
+  angle?: number;
+}
+
+/**
+ * A wall spandrel (coupling beam), as in ETABS: shell areas in one vertical plane, and members
+ * (beams along it), whose forces `analyze` sums on vertical cuts into one resultant per cut
+ * (`spandrelForces`): at its left and right ends and at the distances in `cuts`.
+ *
+ * Spandrel axes: 1 horizontal along the wall plane, pointing toward +X (toward +Y for a wall
+ * parallel to Y), or the opposite way with `reverse: true`; its left end is where 1 starts.
+ * 2 = global +Z, 3 = 1 × 2 (out of the wall plane). A spandrel adds nothing to the analysis.
+ */
+export interface WallSpandrel {
+  id: FeaId;
+  /** Shell areas of the spandrel (at least one), all in one vertical plane. */
+  areaIds: FeaId[];
+  /** Members of the spandrel; none normal to its axis 1. */
+  memberIds?: FeaId[];
+  /** Extra cuts, as distances from the left end along axis 1 (mm), on the mesh lines. */
+  cuts?: number[];
+  /** Reverse axis 1 (and so swap the left and right ends). Default false. */
+  reverse?: boolean;
+}
+
 export interface FeaModel {
   nodes: FeaNode[];
   /** Frame members; omit for a model of shells only, e.g. a mat foundation. */
@@ -93,4 +137,14 @@ export interface FeaModel {
    * every load case and combination (`stripForces`). They add nothing to the analysis.
    */
   strips?: ShellStrip[];
+  /**
+   * Wall piers: `analyze` returns the resultant on cuts across each pier in every load case and
+   * combination (`pierForces`). They add nothing to the analysis.
+   */
+  piers?: WallPier[];
+  /**
+   * Wall spandrels: `analyze` returns the resultant on cuts across each spandrel in every load
+   * case and combination (`spandrelForces`). They add nothing to the analysis.
+   */
+  spandrels?: WallSpandrel[];
 }

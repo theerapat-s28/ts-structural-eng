@@ -67,6 +67,7 @@ Every feature added must conform to the following core principles:
 | [x] | 5 | Shell results & first release | M | Shells in the model |
 | [x] | 5 | Engine meshing of shell areas | L | Shell results |
 | [x] | 5 | Strip forces (design strips over slabs) | M | Engine meshing |
+| [x] | 5 | Pier & spandrel forces (wall section cuts) | L | Engine meshing |
 | [ ] | 5 | Thick plates (DKMQ or MITC4) | M | Shell results |
 | [ ] | 5 | Triangular shells & openings | L | Engine meshing |
 
@@ -426,6 +427,36 @@ API decisions: strips are a field on the model (`FeaModel.strips`), so `analyze`
 - [ ] Not yet released (in `[Unreleased]`).
 - [ ] Later: V at a support station is the value half an element in (−55 against −60 kN on a 500 mm mesh); consider reporting it at the element edge, or document the critical-section practice only.
 
+### 5.10 Pier & Spandrel Forces
+Design forces for shear walls, as ETABS piers and spandrels: one resultant per cut across a whole wall group (planar, L, C or core, columns included), for wall design (ACI 318-19 11.5, 18.10) and coupling beams (18.10.7). Strips (5.9) already work on a single planar wall (`normal` horizontal: `P`, `Vp`, `Mp`); document that, and use piers for anything grouped or non-planar.
+
+API decisions:
+- **Groups on the model**: `FeaModel.piers?: WallPier[]` and `FeaModel.spandrels?: WallSpandrel[]`, each `{ id, areaIds, memberIds?, cuts? }`, plus `angle?` on a pier and `reverse?` on a spandrel. Members count in the resultant (boundary and embedded columns in piers, beams in spandrels). An area may be in one pier and one spandrel at the same time (as ETABS), never in two piers or two spandrels; members likewise.
+- **Cuts**: automatic at the group's area boundaries plus optional extra ones (`cuts`: elevations in mm for a pier, distances from the left end in mm for a spandrel). Pier: the *bottom* and *top* of each lift, a lift running between consecutive elevations where any of the pier's areas starts or ends. A floor level shared by two lifts therefore gives two cuts, the lower lift's top (elements below) and the upper lift's bottom (elements above); they differ by what the floor delivers there. Spandrel: left and right ends. A user cut inside an area gives one value, since both sides match.
+- **Method: nodal-force summation**, not stress integration. At a cut, sum the element nodal forces ($\mathbf{f}_e = \mathbf{k}_e \mathbf{u}_e - \mathbf{f}_{e,\text{load}}$) of the group's shell elements on the lift's side at the nodes on the cut, plus the internal forces of the group's members where they cross the cut (end forces at a member end, the diagram station otherwise), and transfer the total to the reference point. Exact equilibrium, the same for non-planar sections and members, and linear in the loads (computed from each `RawState`, so combinations superpose).
+- **Separate legs** (as ETABS): a pier cut may cross several disconnected legs (e.g. two walls either side of a door); their forces are summed about the centroid of the whole cut.
+- **Reference point**: the geometric centroid of the cut, shell legs weighted by length × thickness and members by section area A (geometric, not modulus-weighted).
+- **Axes**: pier 1 = global +Z (up); 2 = along the longest shell leg of the cut, or global X rotated by `angle` (rad, about +Z) when given; 3 = 1 × 2. Spandrel 1 = horizontal along the wall plane, pointing toward +X (toward +Y for a wall parallel to Y), reversed by `reverse: true`; its *left* end is where 1 starts. 2 = global +Z; 3 = 1 × 2, out of the wall plane.
+- **Signs: as member diagrams** (`MemberStation`): forces act on the +1 face of the cut, the axial force named `P` (as ETABS and `StripResultants`, where members say `N`), positive in tension, `V2`, `V3`, `T`, `M2`, `M3` as on a member with the same local axes. A pier reads like a column and a spandrel like a beam with the same orientation.
+- **Results per cut**: `P`, `V2`, `V3`, `T`, `M2`, `M3` (kN, kN·m), the position (`z` for a pier, `x` from the left end for a spandrel, mm), the face (`"bottom"` / `"top"` / `"cut"` for piers, `"left"` / `"right"` / `"cut"` for spandrels) and the cut section: each shell leg (end points, thickness), each member (id, position, A), and the total length, area and centroid. That is enough for a front end or a later wall P–M design to rebuild the section.
+- **Placement**: [`analysis/`](src/fea/analysis/), because piers mix members and shells and `frame`/`shell` cannot see each other: types in `analysis/types/`, `analysis/post/wall-forces.ts`, `analysis/validation/validate-walls.ts`. Element nodal forces come from the factorised system's element stiffness and the per-case element loads.
+- **Validation**: new error **331** `INVALID_PIER_GEOMETRY` with `details.pierId` / `details.spandrelId` (and `areaId`, `memberId`, `z` where they help locate it):
+  - unknown area or member id; an area or member in two piers (or in two spandrels); an empty group;
+  - a pier area that is not vertical (normal horizontal within tolerance);
+  - spandrel areas not all in one vertical plane;
+  - a pier area spanning a cut elevation with no mesh line there (staggered lifts, or a user cut that misses the mesh): the user splits the area; results stay exact;
+  - an extra cut that reaches no element of the group; an invalid `cuts`, `angle` or `reverse` value (314), an id used twice (303).
+- **Release**: ships together with strip forces in the next minor version (3.4.0); no breaking changes.
+
+- [x] Types `WallPier`, `WallSpandrel` ([`analysis/types/model.type.ts`](src/fea/analysis/types/model.type.ts)); results `PierForces`, `PierCut`, `PierCutFace`, `SpandrelForces`, `SpandrelCut`, `SpandrelCutFace`, `WallResultants`, `WallForceComponent`, `WallCutSection`, `WallSectionLeg`, `WallSectionMember` ([`analysis/types/results.type.ts`](src/fea/analysis/types/results.type.ts)); error 331 and `FeaErrorDetails.pierId`, `spandrelId`, `position` in [`fea.error.ts`](src/core/errors/fea.error.ts); constants `WALL_VERTICAL_TOLERANCE` = 10⁻³, `WALL_CUT_TOLERANCE` = 10⁻⁶.
+- [x] Validation (331, 314, 303) in [`analysis/validation/validate-walls.ts`](src/fea/analysis/validation/validate-walls.ts), called from `validateModel` on the meshed model (`validateShellMesh` now also returns the mesh), so mesh-line problems are reported before analysing.
+- [x] Element nodal forces from the raw state: `RawState.shellPressures` (each element's surface load, returned by `addShellLoads`) gives $\mathbf{k}_e\mathbf{u}_e - \mathbf{f}_e$; member pieces use their end forces, and `memberInternalForces` (exported from [`member-diagram.ts`](src/fea/frame/post/member-diagram.ts)) gives the forces where a member crosses a cut.
+- [x] [`analysis/post/wall-geometry.ts`](src/fea/analysis/post/wall-geometry.ts) (axes, levels, faces, mesh-line check) and [`analysis/post/wall-forces.ts`](src/fea/analysis/post/wall-forces.ts) (cut terms, legs, centroid, resultants). Pier axis 2 is one direction per pier, from its area of largest horizontal extent.
+- [x] `FeaCaseResult.pierForces`, `FeaCaseResult.spandrelForces`, `FeaEnvelope.piers`, `FeaEnvelope.spandrels` (max/min of each component per cut, with the governing combination).
+- [x] Tests in [`tests/fea/analysis/wall-forces.test.ts`](tests/fea/analysis/wall-forces.test.ts): planar cantilever wall, unmeshed and meshed (every cut against statics: −200 kN, 100 kN, 600 / 300 / 0 kN·m); a floor load between the top and bottom of a level; self-weight per lift; an extra cut against a vertical strip (pier exact, strip −199.82 / 100.71 / 449.80 against −200 / 100 / 450); `angle`; L-shaped core under biaxial load and torsion (exact statics about (500, 500)); two separate legs equal to the two single-leg piers moved to the common centroid; a boundary column (A in the centroid); a column-only pier equal to the member diagram, between nodes too; coupled walls with a spandrel (constant V2 = 50.85 kN, V2 = (M3L − M3R)/L, antisymmetric end moments); `reverse`; combinations and envelope; every 331, 314 and 303 case, staggered lifts included.
+- [x] Docs: [theory notes](html-docs/fea/theory/pier-spandrel.html) (with a "Points for review" table), FEA reference (section with a real coupled-wall example, types, 331, the strips-on-walls note), README, CHANGELOG.
+- [ ] Not yet released (in `[Unreleased]`, with strip forces).
+
 ---
 
 ## Technical Debt & Pending Verifications
@@ -467,6 +498,7 @@ Codes 301–314 are the existing validation and solver errors in [`fea.error.ts`
 | **328** | `SHELL_DOF_UNSUPPORTED` | Shell elements *(3.0.0)* | A translation nothing resists at a node connected only to membrane (or only to plate) shells |
 | **329** | `INVALID_SHELL_MESH` | Engine meshing *(3.0.0)* | No conforming division counts, a bad generated element, or a generated id already in use |
 | **330** | `INVALID_STRIP_GEOMETRY` | Strip forces *(Unreleased)* | Fewer than 2 points, points off the strip's plane, a zero-length or doubled-back segment, a zero normal, a negative width or both widths 0 |
+| **331** | `INVALID_PIER_GEOMETRY` | Pier & spandrel forces *(Unreleased)* | Unknown or doubly assigned area/member, empty group, non-vertical pier area, non-coplanar spandrel, a cut off the mesh lines |
 
 ---
 
@@ -506,6 +538,8 @@ Codes 301–314 are the existing validation and solver errors in [`fea.error.ts`
 | `TYPE` | `FeaModel.strips`, `ShellStrip`, `StripPoint` *(Unreleased)* | — | Design strips across shells |
 | `TYPE` | `FeaCaseResult.stripForces`, `FeaEnvelope.strips` *(Unreleased)* | `StripForces[]` | Resultants on cuts across each strip, and their envelope |
 | `CONST` | `STRIP_PLANE_TOLERANCE`, `STRIP_DEFAULT_DIVISIONS` *(Unreleased)* | `number` | Strip plane tolerance and default station divisions |
+| `TYPE` | `FeaModel.piers`, `FeaModel.spandrels`, `WallPier`, `WallSpandrel` *(Unreleased)* | — | Wall pier and spandrel groups |
+| `TYPE` | `FeaCaseResult.pierForces`, `FeaCaseResult.spandrelForces`, `FeaEnvelope.piers`, `FeaEnvelope.spandrels` *(Unreleased)* | `PierForces[]`, `SpandrelForces[]` | Resultants at each pier and spandrel cut, and their envelope |
 | `TYPE` | `ShellArea.plateTheory` | `"thin" \| "thick"` | Thick-plate formulation |
 
 ---

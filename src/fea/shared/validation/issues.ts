@@ -10,6 +10,9 @@ const describe = (d: FeaErrorDetails): string => {
   if (d.areaId !== undefined) parts.push(`area "${String(d.areaId)}"`);
   if (d.shellId !== undefined) parts.push(`shell "${String(d.shellId)}"`);
   if (d.stripId !== undefined) parts.push(`strip "${String(d.stripId)}"`);
+  if (d.pierId !== undefined) parts.push(`pier "${String(d.pierId)}"`);
+  if (d.spandrelId !== undefined) parts.push(`spandrel "${String(d.spandrelId)}"`);
+  if (d.position !== undefined) parts.push(`at ${d.position} mm`);
   if (d.edge !== undefined) parts.push(`edge ${d.edge}`);
   if (d.loadCaseId !== undefined) parts.push(`load case "${d.loadCaseId}"`);
   if (d.combinationId !== undefined) parts.push(`combination "${d.combinationId}"`);

@@ -25,6 +25,7 @@ export interface RawState {
   F: number[]; // applied global load vector (nodal + equivalent member loads)
   memberForces: number[][]; // per member, 12 local right-hand end forces
   shellForces: number[][]; // per shell, 8 corner forces × 4 corners (see `shellRawForces`)
+  shellPressures: number[][]; // per shell, its surface load as a global vector (kN/m², see `addShellLoads`)
   memberLoads: LocalMemberLoad[][]; // per member, local loads (for the diagrams)
 }
 
@@ -66,7 +67,13 @@ export const solveLoadCase = (
   });
 
   // Shell surface loads as forces at the element corners
-  addShellLoads(F, system.shells, system.shellsByArea, loads.shellLoads ?? [], selfWeight);
+  const shellPressures = addShellLoads(
+    F,
+    system.shells,
+    system.shellsByArea,
+    loads.shellLoads ?? [],
+    selfWeight,
+  );
 
   for (const load of loads.nodalLoads) {
     const base = 6 * (nodeIndex.get(load.nodeId) as number);
@@ -125,7 +132,7 @@ export const solveLoadCase = (
 
   const shellForces = system.shells.map((shell) => shellRawForces(shell, U));
 
-  return { U, R, F, memberForces, shellForces, memberLoads };
+  return { U, R, F, memberForces, shellForces, shellPressures, memberLoads };
 };
 
 /** Superposes factored states: `Σ factor × state`. Member loads are concatenated, scaled. */
@@ -144,6 +151,7 @@ export const combineStates = (terms: { state: RawState; factor: number }[]): Raw
     F: add((s) => s.F, first.F.length),
     memberForces: first.memberForces.map((_, m) => add((s) => s.memberForces[m], 12)),
     shellForces: first.shellForces.map((f, sh) => add((s) => s.shellForces[sh], f.length)),
+    shellPressures: first.shellPressures.map((_, sh) => add((s) => s.shellPressures[sh], 3)),
     memberLoads: first.memberLoads.map((_, m) =>
       terms.flatMap(({ state, factor }) =>
         factor === 0 ? [] : state.memberLoads[m].map((l) => scaleMemberLoad(l, factor)),
