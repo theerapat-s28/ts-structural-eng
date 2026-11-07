@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [3.4.0] — 2026-11-07
+
+**Design forces from shells: strips over slabs, piers and spandrels on walls.** Add `strips`, `piers` or `spandrels` to a model and every load case and combination reports the resultants a designer needs, with an envelope over the combinations. All three are optional and change no other result, so existing models give the same numbers as 3.3.0.
+
 ### Added
 
 - **Strip forces on shells.** Give the model `strips` (type `ShellStrip`), design strips drawn over a slab as in SAFE or ETABS, and every load case and combination gets `stripForces` (type `StripForces`): the resultants on cuts across each strip at stations along it. A strip is a centreline polyline `points` with `widthLeft` and `widthRight`, an optional plane `normal` (default +Z) and an optional `maxSpacing` between stations (default: 20 divisions per segment); it picks up every shell element in its plane and ignores walls and other planes. Each station gives `P`, `V`, `M`, `T`, `Vp` and `Mp` in kN and kN·m (strip axis 1 along, 2 across, 3 the normal; `M` positive sagging and `V = −dM/dx`, as for members), the same divided by the covered `width` in `perWidth`, and each strip lists the `extremes` along it. `envelope.strips` gives the max and min of every station over the combinations. A strip changes no other result. A cut that is not fully on shells (an opening, a slab edge, a strip wider than the slab) integrates the shells it crosses, reports the covered `width` and adds a warning. The new [strip forces theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/strip-forces.html) show how each value is calculated. New constants `STRIP_PLANE_TOLERANCE` and `STRIP_DEFAULT_DIVISIONS` in `core`; `FeaErrorDetails` gains `stripId`.
@@ -271,7 +275,8 @@ Maintenance release with no changes to the library code.
 
 First version, under the unscoped name `ts-structural-eng-tools`: `rectBeamMomentCapacity` (singly and doubly reinforced rectangular beams per ACI 318-19), steel plate jacketing, and concrete property helpers.
 
-[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.3.0...HEAD
+[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.4.0...HEAD
+[3.4.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.3.0...v3.4.0
 [3.3.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.2.0...v3.3.0
 [3.2.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.0.0...v3.1.0
