@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [3.4.1] — 2026-11-07
+
+### Changed
+
+- **Documentation describes conventions directly.** The README, reference pages, theory notes and code comments no longer describe local axes and features by comparison with commercial software, and the README and docs landing page gain a trademark notice. Results and the API are unchanged.
+
 ## [3.4.0] — 2026-11-07
 
 **Design forces from shells: strips over slabs, piers and spandrels on walls.** Add `strips`, `piers` or `spandrels` to a model and every load case and combination reports the resultants a designer needs, with an envelope over the combinations. All three are optional and change no other result, so existing models give the same numbers as 3.3.0.
@@ -275,7 +281,8 @@ Maintenance release with no changes to the library code.
 
 First version, under the unscoped name `ts-structural-eng-tools`: `rectBeamMomentCapacity` (singly and doubly reinforced rectangular beams per ACI 318-19), steel plate jacketing, and concrete property helpers.
 
-[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.4.0...HEAD
+[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.4.1...HEAD
+[3.4.1]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.4.0...v3.4.1
 [3.4.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.3.0...v3.4.0
 [3.3.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.2.0...v3.3.0
 [3.2.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.1.0...v3.2.0
