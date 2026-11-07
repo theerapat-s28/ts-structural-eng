@@ -425,7 +425,7 @@ API decisions: strips are a field on the model (`FeaModel.strips`), so `analyze`
 - [x] Tests in [`tests/fea/shell/strip-forces.test.ts`](tests/fea/shell/strip-forces.test.ts): simply supported one-way slab (M = 90 kN·m, V = −30 kN at quarter span, exact), cantilever corner load (V, M, T = −10, −15, −10.01), pure twist (T = −20.03 against −20), in-plane load (P, Vp, Mp within 0.2 %), reversed strip, clockwise shells, shell `angle`, half strips adding up, partial coverage, other plane, combinations and envelope, validation, geometry helpers.
 - [x] Docs: [strip forces theory notes](html-docs/fea/theory/strip-forces.html) (with a "Points for review" table), FEA reference (section, types, 330), README, CHANGELOG; the shell element notes moved to `html-docs/fea/theory/` (old address redirects).
 - [ ] Not yet released (in `[Unreleased]`).
-- [ ] Later: V at a support station is the value half an element in (−55 against −60 kN on a 500 mm mesh); consider reporting it at the element edge, or document the critical-section practice only.
+- [x] V and T recovered along the strip: straight lines through the element centres, extended to supports and ends, never across a jump (a support, member, nodal load or wall in the band). V at a support now matches statics (−60 kN, was −55 kN on a 500 mm mesh).
 
 ### 5.10 Pier & Spandrel Forces
 Design forces for shear walls, as ETABS piers and spandrels: one resultant per cut across a whole wall group (planar, L, C or core, columns included), for wall design (ACI 318-19 11.5, 18.10) and coupling beams (18.10.7). Strips (5.9) already work on a single planar wall (`normal` horizontal: `P`, `Vp`, `Mp`); document that, and use piers for anything grouped or non-planar.

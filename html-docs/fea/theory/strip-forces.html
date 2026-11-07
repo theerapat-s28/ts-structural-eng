@@ -470,7 +470,7 @@
     <div class="page-header">
       <div class="import-tag">
         <span class="label">Status</span>
-        <code>@theerapat-s28/ts-structural-eng-tools/fea — model.strips, unreleased</code>
+        <code>@theerapat-s28/ts-structural-eng-tools/fea — model.strips</code>
       </div>
       <h1>Strip Forces — Theory Notes</h1>
       <p>How the engine turns the forces of the shell elements under a design strip into the bending moment, shear, torsion and axial force on cuts across the strip, with the sign conventions and the checks against statics.</p>
@@ -498,7 +498,7 @@
         <tbody>
           <tr><td>Force field in each element</td><td>The shell's own corner forces, bilinear inside the element (the field through its 2×2 Gauss points)</td><td>Adaptation (finite element method)</td></tr>
           <tr><td>P, Vp, M, Mp</td><td>Integrals of the membrane forces and moments, rotated to the strip axes, along the cut</td><td>Statics of a section cut</td></tr>
-          <tr><td>V, T</td><td>Kirchhoff plate theory: transverse shear plus the edge forces of the twisting moment</td><td>Adaptation (Kirchhoff plate theory)</td></tr>
+          <tr><td>V, T</td><td>Kirchhoff plate theory: transverse shear plus the edge forces of the twisting moment, taken at element centres and joined by straight lines</td><td>Adaptation (Kirchhoff plate theory)</td></tr>
           <tr><td>Integration</td><td>4-point Gauss–Legendre on each element's piece of the cut</td><td>Numerical method</td></tr>
         </tbody>
       </table>
@@ -593,7 +593,7 @@
 <span class="c">// 12 × 4 elements; stations at x = 0, 1500, 3000, 4500, 6000 mm</span>
 <span class="c">// x = 1500: { width: 2000, M: 67.5, V: -30, T: 0, P: 0, perWidth: { M: 33.75, V: -15, … } }</span>
 <span class="c">// x = 3000: { width: 2000, M: 90,   V: 0,   perWidth: { M: 45, … } }       statics: qBL²/8 = 90 kN·m</span>
-<span class="c">// x = 0:    { M: 0, V: -55 }  (V half an element in from the support; statics 60 kN, see Limitations)</span></pre>
+<span class="c">// x = 0:    { M: 0, V: -60 }  statics: qBL/2 = 60 kN</span></pre>
       </div>
     </div>
 
@@ -824,12 +824,28 @@
       <ul>
         <li><strong>V = −dM/dx along a straight strip of constant width</strong>, exactly, for the integrated field, because ∫ ∂M<sub>aa</sub>/∂a ds = d/dx ∫ M<sub>aa</sub> ds.</li>
         <li>A full-width cut reproduces statics: V and T balance the loads beyond the cut (see <a href="#verification" style="color:var(--accent)">Verification</a>).</li>
-        <li>∂M<sub>aa</sub>/∂a comes from the bilinear moment field, so it is constant along 1 within an element: V is the shear at the element's centre line, and at a mesh line the mean of the two elements' values.</li>
       </ul>
       <div class="alert alert--info">
         <span>ℹ️</span>
         <span><strong>Why this matters.</strong> On the 6 m × 2 m simply supported slab (ν = 0.2), integrating Q<sub>a</sub> alone gave −27.67 kN at quarter span on every mesh tried (12 × 4 to 48 × 8), where statics gives −30 kN: 8 % low, from the twisting moments at the free edges. Adding the edge forces only at the cut's two ends gave −31.7 to −32.0 kN, because the element-by-element twisting moment also jumps between elements. The element-wise form above gives −30.000 kN on all meshes.</span>
       </div>
+      <div class="section__title" style="font-size:1rem;margin-top:1.5rem" id="recovery">Recovery along the strip</div>
+      <p>
+        ∂M<sub>aa</sub>/∂a comes from the bilinear moment field, so it is constant along 1 within an element. Taken
+        straight from the elements, V would be a stair with one step per element, stopping half an element short of
+        a support. Each step is exact at its element's centre: a full-width cut through the centre of an element
+        balances the loads beyond it. So V and T are taken at the element centres and joined by straight lines.
+      </p>
+      <div class="flow-steps">
+        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Mesh lines.</strong> The corners of the elements under the band give the lines across a segment. Between two lines is one cell; the cut through its centre gives the value there.</div></div>
+        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Jumps.</strong> A line has a jump when a node of it in the band has a support, a member, a nodal load or a shell off the strip's plane (a wall). Three or more such lines in a row are something lying along the strip, such as a beam, which takes load all along it with no jump, so they mark none.</div></div>
+        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Station.</strong> V and T at a station come from the straight line through the centres of its cell and the next cell, or, where that is across a jump or covers a different width, the cell on the other side, extended. So the shear reaches a support, free edge or slab end.</div></div>
+        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>On a jump.</strong> A station at the end of a segment reads its own side. To get both sides of a column, put a strip point there: the end of one segment and the start of the next have the two values. A station inside a segment that falls exactly on a jump takes the mean of the two sides.</div></div>
+      </div>
+      <p>
+        M, P, Vp and Mp are unchanged. V = −dM/dx holds at the element centres. The weights are fixed, so each station's
+        V and T stay linear in the raw corner forces, and combinations superpose exactly.
+      </p>
     </div>
 
     <!-- ══════════════ Coverage ══════════════ -->
@@ -876,15 +892,17 @@
           <tr><td rowspan="4">One-way slab 6 × 2 m, simply supported on the short edges, q = 10 kN/m², 12 × 4 elements, full-width strip</td><td>x = 3 m</td><td>M</td><td>qBL²/8 = 90 kN·m</td><td>90</td></tr>
           <tr><td>x = 3 m</td><td>M per width</td><td>45 kN·m/m</td><td>45</td></tr>
           <tr><td>x = 1.5 m</td><td>M, V</td><td>67.5 kN·m, −30 kN</td><td>67.5, −30</td></tr>
-          <tr><td>x = 0</td><td>V</td><td>−60 kN</td><td>−55 (see Limitations)</td></tr>
-          <tr><td>Same slab, strip w<sub>L</sub> = w<sub>R</sub> = 500 mm centred on y = 1.5 m (half the slab)</td><td>x = 1.5 m</td><td>M, V, T</td><td>half of the full-width M and V</td><td>33.75, −15, T = −2.3019</td></tr>
-          <tr><td rowspan="3">Cantilever 3 × 2 m fixed along x = 0, 12 × 8 elements, full-width strip on y = 1 m</td><td rowspan="3">x = 1.5 m</td><td>Corner load F<sub>z</sub> = −10 kN at (3, 2) m: V, M, T</td><td>−10 kN, −15 kN·m, −10 kN·m</td><td>−10, −15, −10.0143</td></tr>
-          <tr><td>Twist: +10 kN at (3, 0) m, −10 kN at (3, 2) m: V, T</td><td>0, −20 kN·m</td><td>0, −20.0286</td></tr>
+          <tr><td>x = 0</td><td>V</td><td>−60 kN</td><td>−60</td></tr>
+          <tr><td>Same slab, strip w<sub>L</sub> = w<sub>R</sub> = 500 mm centred on y = 1.5 m (half the slab)</td><td>x = 1.5 m</td><td>M, V, T</td><td>half of the full-width M and V</td><td>33.75, −15, T = −2.2908</td></tr>
+          <tr><td rowspan="3">Cantilever 3 × 2 m fixed along x = 0, 12 × 8 elements, full-width strip on y = 1 m</td><td rowspan="3">x = 1.5 m</td><td>Corner load F<sub>z</sub> = −10 kN at (3, 2) m: V, M, T</td><td>−10 kN, −15 kN·m, −10 kN·m</td><td>−10, −15, −10</td></tr>
+          <tr><td>Twist: +10 kN at (3, 0) m, −10 kN at (3, 2) m: V, T</td><td>0, −20 kN·m</td><td>0, −20</td></tr>
           <tr><td>In-plane F<sub>x</sub> = 10, F<sub>y</sub> = 5 kN at (3, 2) m: P, Vp, Mp</td><td>10 kN, 5 kN, −2.5 kN·m</td><td>9.9874, 4.9996, −2.4981</td></tr>
         </tbody>
       </table>
       <p>The tests also check that:</p>
       <ul>
+        <li>on a flat plate, a full-width cut gives each side of a column the shear statics requires, the jump equals the column line's reactions, and V is a straight line along a span;</li>
+        <li>a beam along the strip does not count as a jump, and the shear is not carried across a change in covered width;</li>
         <li>reversing the strip keeps M and flips V;</li>
         <li>a slab whose corners run clockwise (local 3 down) gives the same signs;</li>
         <li>a shell <code>angle</code> of 30° changes no strip force;</li>
@@ -903,7 +921,7 @@
     <div class="section" id="limitations">
       <div class="section__title">Limitations</div>
       <ul>
-        <li><strong>V at a support or a free end</strong> is the shear at the centre of the first element, not at its edge: −55 kN instead of −60 kN on a 500 mm mesh above (60 − 10 × 2 × 0.25). It converges with the mesh (−58.75 kN at 125 mm). Check shear at the critical section, d or d/2 from the support face, rather than at the support line.</li>
+        <li><strong>Shear beside a column.</strong> The recovered line is exact for a uniform load across a full-width cut. On part of the width, close to a column, the shear rises faster than a straight line and the value at the column still depends on the mesh: 99.5 kN at 1000 mm against 107.3 kN at 125 mm for a 3 m strip over a flat plate. Check shear at the critical section, d or d/2 from the support face, rather than at the support line.</li>
         <li><strong>Concentrated loads and columns.</strong> Close to a point load or a column the plate field is singular and the shells' moments and shears depend on the mesh; strip values there are as good as the mesh. Refine the mesh around columns.</li>
         <li><strong>Membrane forces</strong> come from the membrane's strain field, which does not satisfy equilibrium exactly on a cut: P, Vp and Mp are within 0.2 % of statics in the cantilever above.</li>
         <li><strong>Flat strips only.</strong> A strip lies in one plane and picks up only the elements in that plane (within 1 mm per metre). It does not follow a folded or curved surface.</li>
@@ -920,7 +938,9 @@
         <thead><tr><th>Topic</th><th>Chosen</th><th>Alternative</th></tr></thead>
         <tbody>
           <tr><td>Shear and torsion</td><td>Kirchhoff-consistent, element by element: V = −∫∂M<sub>aa</sub>/∂a, T = ∫(2m<sub>ab</sub> − s ∂M<sub>aa</sub>/∂a). Matches statics on full-width cuts and gives V = −dM/dx.</td><td>Plain ∫Q<sub>a</sub> and ∫(m<sub>ab</sub> + sQ<sub>a</sub>): 8 % low on the test slab's shear.</td></tr>
-          <tr><td>Cut on a mesh line</td><td>Mean of the elements on both sides</td><td>One side only (e.g. the element ahead)</td></tr>
+          <tr><td>Cut on a mesh line</td><td>Mean of the elements on both sides, for M, P, Vp and Mp</td><td>One side only (e.g. the element ahead)</td></tr>
+          <tr><td>V and T along the strip</td><td>Straight lines through the element centres, extended to supports and ends, not across a jump</td><td>The elements' own steps, or a nodal average, which blurs the jump at a column</td></tr>
+          <tr><td>Where the shear jumps</td><td>Lines with a support, member, nodal load or wall in the band, unless three or more in a row</td><td>Only points of the strip, leaving it to the caller</td></tr>
           <tr><td>Default stations</td><td>20 divisions per segment (21 stations), as member diagrams</td><td>From the mesh size</td></tr>
           <tr><td>Plane tolerance</td><td>Corners within 10⁻³ × element size (1 mm per m)</td><td>An absolute distance, or a per-strip option</td></tr>
           <tr><td>Bend</td><td>Two stations at the same x, each cut normal to its own segment</td><td>One cut on the bisector</td></tr>

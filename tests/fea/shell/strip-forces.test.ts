@@ -380,3 +380,218 @@ describe("strip validation", () => {
     ).toThrowError(FeaError);
   });
 });
+
+describe("strip shear recovered from the element centres", () => {
+  const q = 5; // kN/m²
+  const spans = [0, 6000, 12000, 18000];
+  const rows = [0, 5000, 10000];
+  const id = (x: number, y: number) => `${x},${y}`;
+
+  /** A 18 × 10 m slab of six panels on point supports at their corners, meshed `maxSize`. */
+  const flatPlate = (maxSize: number, strips: ShellStrip[], extra: Partial<FeaModel> = {}) => {
+    const nodes = spans.flatMap((x) => rows.map((y) => ({ id: id(x, y), x, y, z: 0 })));
+    const shells = [0, 1, 2].flatMap((i) =>
+      [0, 1].map((j) => ({
+        id: `S${i}${j}`,
+        section: concrete,
+        mesh: { maxSize },
+        nodeIds: [
+          id(spans[i], rows[j]),
+          id(spans[i + 1], rows[j]),
+          id(spans[i + 1], rows[j + 1]),
+          id(spans[i], rows[j + 1]),
+        ],
+      })),
+    );
+    const model: FeaModel = {
+      nodes,
+      restraints: nodes.map((n, k) => ({
+        nodeId: n.id,
+        ux: true,
+        uy: true,
+        uz: true,
+        ...(k === 0 ? { rz: true } : {}),
+      })),
+      shells,
+      loadCases: [{ id: "L" }, { id: "L2" }],
+      areaLoads: shells.flatMap((s) => [
+        { loadCase: "L", areaId: s.id, direction: "Z" as const, q: -q },
+        { loadCase: "L2", areaId: s.id, direction: "Z" as const, q: -2 * q },
+      ]),
+      strips,
+      ...extra,
+    };
+    return model;
+  };
+
+  /** The whole width, with a point at each column so stations fall on them. */
+  const wholeWidth: ShellStrip = {
+    id: "T",
+    points: spans.map((x) => ({ x, y: 5000, z: 0 })),
+    widthLeft: 5000,
+    widthRight: 5000,
+    maxSpacing: 250,
+  };
+
+  const forces = (model: FeaModel, loadCase = "L") => analyze(model).cases[loadCase];
+
+  /** Reactions of the column line at `x`, kN up. */
+  const columnLine = (model: FeaModel, x: number): number =>
+    forces(model)
+      .reactions.filter((r) => String(r.nodeId).startsWith(`${x},`))
+      .reduce((sum, r) => sum + r.fz, 0);
+
+  it("reaches the statical shear at a support, not the value half an element in", () => {
+    const model = slab(6000, 2000, 12, 4, { supports: "simple", q: 10, strips: [fullWidth(6000)] });
+    const { stations } = forces(model).stripForces[0];
+
+    expect(stations[0].V).toBeCloseTo(-60, 3); // −q·B·L/2
+    expect(stations[stations.length - 1].V).toBeCloseTo(60, 3);
+  });
+
+  it("gives each side of a column the shear statics says, however coarse the mesh", () => {
+    for (const maxSize of [1000, 500]) {
+      const model = flatPlate(maxSize, [wholeWidth]);
+      const { stations } = forces(model).stripForces[0];
+      const [left, right] = stations.filter((s) => s.x === 6000);
+      const edge = columnLine(model, 0);
+      const column = columnLine(model, 6000);
+      const load = q * 10 * 6; // kN on the slab left of the column line
+
+      expect(left.segment).toBe(0);
+      expect(right.segment).toBe(1);
+      expect(left.V).toBeCloseTo(load - edge, 1);
+      expect(right.V).toBeCloseTo(load - edge - column, 1);
+    }
+  });
+
+  it("jumps at the column by what the column line takes", () => {
+    const model = flatPlate(1000, [wholeWidth]);
+    const [left, right] = forces(model).stripForces[0].stations.filter((s) => s.x === 6000);
+
+    expect(left.V - right.V).toBeCloseTo(columnLine(model, 6000), 1);
+  });
+
+  it("is a straight line along a span under a uniform load, with no steps", () => {
+    const model = flatPlate(1000, [wholeWidth]);
+    const span = forces(model).stripForces[0].stations.filter((s) => s.segment === 1);
+    const slopes = span.slice(1).map((s, i) => (s.V - span[i].V) / (s.x - span[i].x));
+
+    // V = −dM/dx rises at q·B along the span: 5 kN/m² × 10 m per metre
+    for (const slope of slopes) expect(slope).toBeCloseTo((q * 10) / 1000, 4);
+  });
+
+  it("takes the mean of the two sides at a station on a column inside a segment", () => {
+    const straight: ShellStrip = {
+      ...wholeWidth,
+      points: [spans[0], spans[3]].map((x) => ({ x, y: 5000, z: 0 })),
+    };
+    const model = flatPlate(1000, [straight]);
+    const station = forces(model).stripForces[0].stations.find((s) => s.x === 6000);
+    const [left, right] = forces(flatPlate(1000, [wholeWidth])).stripForces[0].stations.filter(
+      (s) => s.x === 6000,
+    );
+
+    expect(station?.V).toBeCloseTo((left.V + right.V) / 2, 3);
+  });
+
+  it("does not change M, which needs no recovery", () => {
+    const model = flatPlate(1000, [wholeWidth]);
+    const [left, right] = forces(model).stripForces[0].stations.filter((s) => s.x === 6000);
+
+    expect(left.M).toBeCloseTo(right.M, 6);
+  });
+
+  it("stays linear in the loads, so a load twice as large gives twice the shear", () => {
+    const model = flatPlate(1000, [wholeWidth], {
+      combinations: [
+        {
+          id: "U",
+          terms: [
+            { case: "L", factor: 1.2 },
+            { case: "L2", factor: 1.6 },
+          ],
+        },
+      ],
+    });
+    const result = analyze(model);
+    const one = result.cases["L"].stripForces[0].stations;
+    const two = result.cases["L2"].stripForces[0].stations;
+    const combined = result.combinations?.["U"].stripForces[0].stations ?? [];
+
+    one.forEach((station, i) => {
+      expect(two[i].V).toBeCloseTo(2 * station.V, 2);
+      expect(combined[i].V).toBeCloseTo(1.2 * station.V + 1.6 * two[i].V, 2);
+    });
+  });
+
+  it("flips with the way the strip runs", () => {
+    const reversed: ShellStrip = { ...wholeWidth, points: [...wholeWidth.points].reverse() };
+    const forward = forces(flatPlate(1000, [wholeWidth])).stripForces[0].stations;
+    const backward = forces(flatPlate(1000, [reversed])).stripForces[0].stations;
+    const at = (list: typeof forward, x: number) => list.find((s) => s.x === x)?.V ?? NaN;
+
+    expect(at(backward, 9000)).toBeCloseTo(-at(forward, 9000), 3);
+  });
+
+  it("does not take a beam along the strip for a jump at every node", () => {
+    const beam = {
+      id: "B",
+      startNodeId: id(0, 5000),
+      endNodeId: id(18000, 5000),
+      section: { E: 30000, G: 12500, A: 120000, I22: 4e8, I33: 3.6e9, J: 1e9 },
+    };
+    const model = flatPlate(1000, [wholeWidth], { members: [beam] });
+    const span = forces(model).stripForces[0].stations.filter((s) => s.segment === 1);
+    const steps = span.slice(1).map((s, i) => s.V - span[i].V);
+
+    // Steps would show as runs of no change at all, then a jump.
+    expect(steps.filter((step) => Math.abs(step) < 1e-3).length).toBeLessThan(steps.length / 4);
+  });
+
+  it("does not interpolate across a change in what the cut covers", () => {
+    // Two panels side by side in x, the second half as wide: a strip over both changes width.
+    const nodes = [
+      { id: 1, x: 0, y: 0, z: 0 },
+      { id: 2, x: 3000, y: 0, z: 0 },
+      { id: 3, x: 6000, y: 0, z: 0 },
+      { id: 4, x: 0, y: 2000, z: 0 },
+      { id: 5, x: 3000, y: 2000, z: 0 },
+      { id: 6, x: 3000, y: 1000, z: 0 },
+      { id: 7, x: 6000, y: 1000, z: 0 },
+    ];
+    const model: FeaModel = {
+      nodes,
+      restraints: [],
+      lineRestraints: [{ nodeIds: [1, 4], ...all }],
+      shells: [
+        { id: "A", nodeIds: [1, 2, 5, 4], section: concrete, mesh: { maxSize: 500 } },
+        { id: "B", nodeIds: [2, 3, 7, 6], section: concrete, mesh: { maxSize: 500 } },
+      ],
+      loadCases: [{ id: "L" }],
+      areaLoads: ["A", "B"].map((areaId) => ({
+        loadCase: "L",
+        areaId,
+        direction: "Z" as const,
+        q: -10,
+      })),
+      strips: [
+        {
+          id: "T",
+          points: [
+            { x: 0, y: 1000, z: 0 },
+            { x: 6000, y: 1000, z: 0 },
+          ],
+          widthLeft: 1000,
+          widthRight: 1000,
+          maxSpacing: 250,
+        },
+      ],
+    };
+    const { stations } = analyze(model).cases["L"].stripForces[0];
+    const narrow = stations.find((s) => s.x === 4500);
+
+    // The narrow panel is a free cantilever: 10 kN/m² × 1 m × 1.5 m beyond the cut.
+    expect(Math.abs(narrow?.V ?? 0)).toBeCloseTo(15, 0);
+  });
+});

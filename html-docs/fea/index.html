@@ -999,7 +999,7 @@
           <tr><td>Plane</td><td>normal</td><td>The strip lies in the plane through its points normal to <code>normal</code> (default <code>[0, 0, 1]</code>; <code>[0, 1, 0]</code> for a wall in the XZ plane, which gives strip axes 2 = +X and 3 = +Y). A strip up a single flat wall gives its <code>P</code>, <code>Vp</code> and <code>Mp</code>; for walls made of several legs, cores and walls with columns use <a href="#piers" style="color:var(--accent)">piers</a>. It picks up every shell element in that plane (each corner within <code>STRIP_PLANE_TOLERANCE</code>, 10⁻³ of the element's longest side) and ignores the rest: walls under a floor, other floors.</td></tr>
           <tr><td>Axes</td><td>—</td><td>Per segment: 1 along it, 3 = <code>normal</code>, 2 = 3 × 1 across the strip. Independent of the shells' own local axes and <code>angle</code>.</td></tr>
           <tr><td>Stations</td><td>maxSpacing</td><td>Every polyline point, and points no further apart than <code>maxSpacing</code> (mm) along each segment; without it, 20 equal divisions per segment (<code>STRIP_DEFAULT_DIVISIONS</code>). A bend has two stations at the same <code>x</code>, one cut normal to each segment.</td></tr>
-          <tr><td>Integration</td><td>—</td><td>Each element's own force field (no averaging between elements) is integrated along its piece of the cut; a cut lying on a mesh line takes the mean of both sides. V and T include Kirchhoff's edge forces, so <code>V = −dM/dx</code> and a full-width cut matches statics.</td></tr>
+          <tr><td>Integration</td><td>—</td><td>Each element's own force field (no averaging between elements) is integrated along its piece of the cut; a cut lying on a mesh line takes the mean of both sides. V and T include Kirchhoff's edge forces, so a full-width cut matches statics, and are taken at the element centres and joined by straight lines, which reach supports and free ends.</td></tr>
           <tr><td>Openings, edges</td><td>—</td><td>A cut not fully on shells integrates what it covers and reports the covered <code>width</code>; <code>perWidth</code> divides by it.</td></tr>
           <tr><td>Combinations</td><td>—</td><td>Linear in the loads: combinations superpose exactly, and <code>envelope.strips</code> gives the max and min at every station.</td></tr>
         </tbody>
@@ -1061,11 +1061,11 @@
 <span class="c">// result.cases.L.stripForces[0]  ("S1", stations at x = 0, 1500, 3000, 4500, 6000 mm)</span>
 <span class="c">//   x = 3000: { width: 2000, M: 90,   V: 0,   T: 0, P: 0, perWidth: { M: 45,    V: 0, … } }   qBL²/8 = 90 kN·m</span>
 <span class="c">//   x = 1500: { width: 2000, M: 67.5, V: -30, T: 0,       perWidth: { M: 33.75, V: -15, … } }</span>
-<span class="c">//   x = 0:    { width: 2000, M: 0,    V: -55 }   V half an element in from the support (statics: 60 kN)</span>
+<span class="c">//   x = 0:    { width: 2000, M: 0,    V: -60 }   statics: qBL/2 = 60 kN</span>
 <span class="c">//   extremes.M = { max: { value: 90, x: 3000 }, min: { value: 0, x: 0 } }</span>
 <span class="c">// result.cases.L.stripForces[1]  ("S2", half the width)</span>
 <span class="c">//   x = 3000: { width: 1000, M: 45, V: 0, T: 0 }</span>
-<span class="c">//   x = 1500: { width: 1000, M: 33.75, V: -15, T: -2.3019 }   twisting near the free edge</span></pre>
+<span class="c">//   x = 1500: { width: 1000, M: 33.75, V: -15, T: -2.2908 }   twisting near the free edge</span></pre>
       </div>
       <div class="alert alert--warn">
         <span>⚠️</span>
@@ -1073,7 +1073,7 @@
       </div>
       <div class="alert alert--info">
         <span>ℹ️</span>
-        <span>Strip forces are analysis demands. They do not apply Wood–Armer or a code rule for distributing moments between column and middle strips. V at a station on a support line is the shear half an element in from it; check shear at the critical section instead.</span>
+        <span>Strip forces are analysis demands. They do not apply Wood–Armer or a code rule for distributing moments between column and middle strips. V jumps at a support, a member, a nodal load or a wall: put a strip point there to get both sides from the two stations, as a station inside a segment takes their mean. Check shear at the critical section, as the value at a column depends on the mesh.</span>
       </div>
       <div class="alert alert--error">
         <span>⚠️</span>

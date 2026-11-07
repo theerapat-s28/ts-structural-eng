@@ -61,6 +61,22 @@ const autoRestrainedDofs = (system: AnalysisSystem): AutoRestrainedDof[] =>
   });
 
 /** Groups loads by their load case id, keeping the input order within each case. */
+/** The nodes where something other than the shells acts: supports, members and nodal loads. */
+const forceNodes = (model: FeaModel, system: AnalysisSystem): Set<number> => {
+  const nodes = new Set<number>();
+  system.boundary.restrained.forEach((restrained, dof) => {
+    if (restrained) nodes.add(Math.floor(dof / 6));
+  });
+  for (const member of system.members) {
+    nodes.add(member.startIndex);
+    nodes.add(member.endIndex);
+  }
+  for (const load of model.nodalLoads ?? []) {
+    nodes.add(system.nodeIndex.get(load.nodeId) as number);
+  }
+  return nodes;
+};
+
 const groupByCase = <T extends { loadCase: string }>(loads: T[] = []): Map<string, T[]> => {
   const groups = new Map<string, T[]>();
   for (const load of loads) {
@@ -94,7 +110,7 @@ export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): A
   const resolved = resolveCombinations(combinations, new Set(model.loadCases.map((c) => c.id)));
   const withStations = (options.diagrams ?? "full") === "full";
   const fromAreas = areaMemberLoads(model);
-  const strips = prepareStrips(model.strips ?? [], system.shells);
+  const strips = prepareStrips(model.strips ?? [], system.shells, forceNodes(model, system));
   const walls = prepareWalls(model, system);
 
   const states = new Map<string, RawState>();

@@ -51,7 +51,9 @@ export interface FeaMesh {
  * on the face whose outward normal is +1, as a member's internal forces:
  *
  * - `P` axial force along 1, positive in tension (kN)
- * - `V` transverse shear along 3, `V = −dM/dx` as V2 of a member (kN)
+ * - `V` transverse shear along 3, `V = −dM/dx` at element centres, as V2 of a member, and straight
+ *   between them up to supports and ends; two stations at a strip point give each side of a jump
+ *   (kN)
  * - `M` bending moment, positive sagging: tension on the −3 face (kN·m)
  * - `T` torsion about 1, right-hand rule, including the moment of `V` about the centreline (kN·m)
  * - `Vp` in-plane shear along 2 (kN)
