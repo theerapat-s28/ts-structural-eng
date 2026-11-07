@@ -221,7 +221,7 @@ Summarised below; see the [full API reference](https://theerapat-s28.github.io/t
 
 ### FEA — Frame and shell analysis
 
-Linear-elastic 3D analysis by the direct stiffness method, from `@theerapat-s28/ts-structural-eng-tools/fea`. Global axes X, Y, Z (Z up); members and shells use ETABS-style local axes 1, 2, 3. Inputs are in mm, MPa, kN, kN·m and kN/m²; results are in kN, kN·m, mm and rad, and shell forces in kN/m, kN·m/m and MPa, as listed in `result.units`.
+Linear-elastic 3D analysis by the direct stiffness method, from `@theerapat-s28/ts-structural-eng-tools/fea`. Global axes X, Y, Z (Z up); members and shells use local axes 1, 2, 3. Inputs are in mm, MPa, kN, kN·m and kN/m²; results are in kN, kN·m, mm and rad, and shell forces in kN/m, kN·m/m and MPa, as listed in `result.units`.
 
 **Renamed in 3.2.0.** A model may have no frame members at all, e.g. a mat foundation, so the exports that apply to the whole model no longer say "frame": `analyzeFrame` → `analyze`, `createFrameAnalysis` → `createAnalysis`, `validateFrameModel` → `validateModel`, `AnalyzeFrameOptions` → `AnalyzeOptions`, `FrameAnalysis` → `Analysis`, and `Frame` → `Fea` in `FeaModel`, `FeaResult`, `FeaCaseResult`, `FeaEnvelope`, `FeaMesh`, `FeaNode`, `FeaId`, `FeaModelIssue`, `FeaErrorDetails`, `FeaError` and `FeaErrors`. The old names still work as deprecated aliases and are removed in 4.0.0.
 
@@ -235,7 +235,7 @@ Linear-elastic 3D analysis by the direct stiffness method, from `@theerapat-s28/
 - **`memberDemandEnvelope(result, memberId, options?)`** — Reduces a member's diagrams to `MuPositive`, `MuNegative`, `Vu` (optionally from distance `d` off the supports) and `Nu`, enveloped over all combinations (or the `combinations` / `cases` you select), with the `governing` combination of each, for the RC capacity functions.
 - **`rectBeamToSectionProperties(section, options?)`** (from `rc`) — Converts a rectangular RC section into `SectionProperties` (`E`, `G`, `A`, `I22`, `I33`, `J`, `unitWeight`) with the ACI 318-19 6.6.3.1.1 inertia modifiers (0.35 beams, 0.70 columns) and a unit weight for self-weight (default 24 kN/m³, common practice rather than an ACI value).
 - **`beam3dLocalStiffness(E, G, A, I22, I33, J, L)`** — The 12×12 local stiffness matrix exactly as in the reference "Complete Beam Stiffness Matrix". Its bending rotations R2 and R3 follow the opposite sign to the right-hand rule; **`beam3dLocalStiffnessRightHanded`** returns the right-handed form that `analyze` uses.
-- **`memberAxes(start, end, angle?)`** — The ETABS-style local axes of a member as a direction-cosine matrix.
+- **`memberAxes(start, end, angle?)`** — The local axes of a member as a direction-cosine matrix.
 
 #### The model
 
@@ -273,7 +273,7 @@ Both are areas that take `areaLoads`, and they share one id namespace.
 
 #### Strip forces
 
-Draw a design strip over a slab, as in SAFE or ETABS, and `analyze` returns the forces on cuts across it. The front end draws the strip; the engine takes it as data: a centreline polyline `points` (`{ x, y, z }` in mm, at least two) with `widthLeft` and `widthRight` measured from it (left seen from above). The strip lies in the plane through its points normal to `normal` (default `[0, 0, 1]`) and picks up every shell element in that plane; walls and other planes are ignored.
+Draw a design strip over a slab and `analyze` returns the forces on cuts across it. The front end draws the strip; the engine takes it as data: a centreline polyline `points` (`{ x, y, z }` in mm, at least two) with `widthLeft` and `widthRight` measured from it (left seen from above). The strip lies in the plane through its points normal to `normal` (default `[0, 0, 1]`) and picks up every shell element in that plane; walls and other planes are ignored.
 
 Stations sit at every polyline point and no further apart than `maxSpacing` (default: 20 divisions per segment); a bend has two stations, one normal to each segment. At each station the engine integrates each element's own force field along the cut and returns, in strip axes (1 along, 2 across to the left, 3 the normal), `P` (axial, + tension), `V` (shear, `V = −dM/dx`), `M` (bending, + sagging), `T` (torsion about the strip axis), `Vp` and `Mp` (in-plane shear and moment), plus each divided by the covered `width` in `perWidth`. A cut that is not fully on shells (an opening, a slab edge) integrates what it covers and reports its `width`, with a warning. Strip forces are linear, so combinations superpose them, and `envelope.strips` gives the max and min at every station. The [strip forces theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/strip-forces.html) show how each value is calculated.
 
@@ -298,7 +298,7 @@ A strip with a horizontal `normal` also works up a single flat wall (`P`, `Vp`, 
 
 #### Pier and spandrel forces
 
-Group walls into piers and coupling beams into spandrels, as in ETABS, and `analyze` returns one resultant per cut across each group, for wall design. A pier lists vertical shell areas (`areaIds`: wall legs, planar or not, connected or not) and members (`memberIds`: boundary or embedded columns). It is cut at the bottom and top of each lift, between consecutive elevations where any of its areas or members starts or ends: a floor level shared by two lifts gives a `"top"` cut from below and a `"bottom"` cut from above, which differ by what the floor delivers. `cuts` adds elevations. A spandrel lists areas in one vertical plane, plus beams along it, and is cut at its `"left"` and `"right"` ends and at the distances in `cuts`. Every cut must lie on the mesh lines of the areas it meets (error 331 otherwise); separate legs are summed together, as ETABS does.
+Group walls into piers and coupling beams into spandrels and `analyze` returns one resultant per cut across each group, for wall design. A pier lists vertical shell areas (`areaIds`: wall legs, planar or not, connected or not) and members (`memberIds`: boundary or embedded columns). It is cut at the bottom and top of each lift, between consecutive elevations where any of its areas or members starts or ends: a floor level shared by two lifts gives a `"top"` cut from below and a `"bottom"` cut from above, which differ by what the floor delivers. `cuts` adds elevations. A spandrel lists areas in one vertical plane, plus beams along it, and is cut at its `"left"` and `"right"` ends and at the distances in `cuts`. Every cut must lie on the mesh lines of the areas it meets (error 331 otherwise); separate legs are summed together.
 
 Each cut gives `P`, `V2`, `V3`, `T`, `M2`, `M3` (kN, kN·m) about the centroid of the cut section, with the signs of member internal forces: pier axis 1 is up and 2 runs along its longest area (or set it with `angle`); spandrel axis 1 runs along the wall toward +X or +Y (flip it with `reverse`) and 2 is up. Each cut also lists its `section` (each leg's end points and thickness, each member's position and area, the total length, area and centroid) for a later wall design. The forces are the element nodal forces summed at the cut, so they are in exact equilibrium with the loads, and they superpose: `envelope.piers` and `envelope.spandrels` give the max and min at every cut. The [pier and spandrel theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/pier-spandrel.html) show how each value is calculated.
 
@@ -422,7 +422,7 @@ src/
 │   │   ├── index.ts
 │   │   ├── area/             # Null areas: geometry, edge-member chains, area-load distribution
 │   │   ├── elements/         # Reference beam stiffness matrix, fixed-end forces, end releases and partial-fixity condensation
-│   │   ├── transformation/   # ETABS-style local axes and the 12×12 transformation
+│   │   ├── transformation/   # Local axes and the 12×12 transformation
 │   │   ├── solver/           # Member pieces, nodes along members, member-load resolution, member assembly helpers
 │   │   ├── validation/       # Checks on members, member loads and null areas
 │   │   ├── post/             # Member force diagrams
@@ -522,3 +522,7 @@ Releases follow semantic versioning and are published to npm with tags `vX.Y.Z`.
 ## License
 
 [ISC](LICENSE)
+
+## Trademarks
+
+ETABS, SAFE and SAP2000 are registered trademarks of Computers and Structures, Inc. This project is not affiliated with or endorsed by Computers and Structures, Inc.

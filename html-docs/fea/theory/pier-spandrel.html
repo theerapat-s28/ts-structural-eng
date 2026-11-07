@@ -477,7 +477,7 @@
         A shear wall analysed with shell elements gives forces per unit width at the corners of every element. Walls
         are designed section by section: the axial force, shears and moments on a horizontal cut through a
         <strong>pier</strong> (a wall, a group of wall legs, a core, with any columns in it), and the shear and end
-        moments of a <strong>spandrel</strong> (a coupling beam over an opening). As in ETABS, the user groups the
+        moments of a <strong>spandrel</strong> (a coupling beam over an opening). The user groups the
         areas and members into piers and spandrels; the engine cuts across each group and reports one resultant per
         cut, about the centroid of the cut section.
       </p>
@@ -492,7 +492,7 @@
         <tbody>
           <tr><td>Force across a cut</td><td>Nodal forces k·u − f of the elements on one side, at their nodes on the cut</td><td>Statics of a free body of the finite element model</td></tr>
           <tr><td>Members crossing a cut</td><td>The member's internal forces at the crossing (as its diagram)</td><td>Statics of a section cut</td></tr>
-          <tr><td>Reference point</td><td>Geometric centroid of the cut: legs by length × thickness, members by A</td><td>Geometry (ETABS uses the pier section's centroid)</td></tr>
+          <tr><td>Reference point</td><td>Geometric centroid of the cut: legs by length × thickness, members by A</td><td>Geometry</td></tr>
           <tr><td>Axes, signs</td><td>Pier 1 up, spandrel 1 along it; member-diagram signs</td><td>Convention</td></tr>
         </tbody>
       </table>
@@ -513,7 +513,7 @@
           <tr><td>reverse</td><td>boolean</td><td>—</td><td><span class="opt">Optional</span></td><td>Spandrel only: reverse axis 1, swapping its ends</td></tr>
         </tbody>
       </table>
-      <p>An area or member may be in one pier and one spandrel at the same time, as in ETABS, but not in two piers or two spandrels: each force is counted once per kind.</p>
+      <p>An area or member may be in one pier and one spandrel at the same time, but not in two piers or two spandrels: each force is counted once per kind.</p>
     </div>
 
     <!-- ══════════════ Axes & signs ══════════════ -->
@@ -558,7 +558,7 @@
       <p>
         Why a <code>"top"</code> and a <code>"bottom"</code> at the same level: the nodes there also carry the floor (slab,
         beams) and any nodal loads. The force just below the floor and just above it differ by what the floor
-        delivers, so both are reported, as ETABS reports the top of one storey's pier and the bottom of the next.
+        delivers, so both are reported.
       </p>
     </div>
 
@@ -607,8 +607,7 @@ P = F·e<sub>1</sub>, V2 = F·e<sub>2</sub>, V3 = F·e<sub>3</sub>, T = M·e<sub
         Each area with elements on the cut's side gives one <strong>leg</strong>: the segment through its corners on the
         cut, along e<sub>1</sub> × n (n the area's normal), from the smallest to the largest coordinate, oriented up
         (spandrel) or toward +X (+Y if parallel to Y). Each member on the cut gives a <strong>point</strong> with its
-        section area A. Separate legs (walls either side of a door) are simply more legs: they are summed together,
-        as ETABS does.
+        section area A. Separate legs (walls either side of a door) are simply more legs: they are summed together.
       </p>
       <div class="code-block">
         <div class="code-block__label">Centroid</div>

@@ -8,7 +8,7 @@ import { toLoadCaseModel, type SingleCaseModel } from "../analysis/single-case";
 const section = { E: 200000, G: 80000, A: 2000, I22: 2e6, I33: 2e6, J: 1e6 };
 const fixed = { ux: true, uy: true, uz: true, rx: true, ry: true, rz: true };
 const pinned = { r2: true, r3: true } satisfies MemberEndRelease;
-/** ETABS-style truss member: moments released at both ends, torsion at the start. */
+/** Truss member: moments released at both ends, torsion at the start. */
 const trussMember = (id: string, startNodeId: string, endNodeId: string): Member => ({
   id,
   startNodeId,

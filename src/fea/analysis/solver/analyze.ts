@@ -212,7 +212,7 @@ export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): A
  *
  * Units: node coordinates, section properties and positions in mm and MPa; loads in kN, kN·m
  * and kN/m; springs in kN/mm and kN·m/rad; unit weight in kN/m³. Results are in kN, kN·m, mm
- * and rad. Global axes X, Y, Z are right-handed with Z up; members use ETABS-style local axes
+ * and rad. Global axes X, Y, Z are right-handed with Z up; members use local axes
  * 1, 2, 3 (see `memberAxes`). Member end forces and diagrams use right-hand rotations.
  *
  * A member is connected to every model node lying on it between its ends, as if it were split

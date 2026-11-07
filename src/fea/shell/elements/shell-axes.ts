@@ -38,7 +38,7 @@ export interface ShellAxes {
 }
 
 /**
- * Local axes of a four-node shell element, ETABS-style, and its corners on the mean plane.
+ * Local axes of a four-node shell element and its corners on the mean plane.
  *
  * - Local 3 is the unit normal `n ∥ d₁ × d₂` of the diagonals `d₁ = x₃ − x₁`, `d₂ = x₄ − x₂`: the
  *   right-hand rule around the nodes, as for null areas (for four nodes Newell's vector area is

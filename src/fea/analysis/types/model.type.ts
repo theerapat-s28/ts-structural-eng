@@ -70,7 +70,7 @@ export interface LoadCombination {
 }
 
 /**
- * A wall pier, as in ETABS: shell areas (one or more wall legs, planar or not, connected or
+ * A wall pier: shell areas (one or more wall legs, planar or not, connected or
  * not) and members (boundary or embedded columns) whose forces `analyze` sums on horizontal
  * cuts into one resultant per cut (`pierForces`). Cuts are taken at the bottom and top of each
  * lift — between consecutive elevations where any of its areas or members starts or ends — and
@@ -93,7 +93,7 @@ export interface WallPier {
 }
 
 /**
- * A wall spandrel (coupling beam), as in ETABS: shell areas in one vertical plane, and members
+ * A wall spandrel (coupling beam): shell areas in one vertical plane, and members
  * (beams along it), whose forces `analyze` sums on vertical cuts into one resultant per cut
  * (`spandrelForces`): at its left and right ends and at the distances in `cuts`.
  *

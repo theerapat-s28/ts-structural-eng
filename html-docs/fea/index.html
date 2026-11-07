@@ -547,7 +547,7 @@
         <thead><tr><th>Topic</th><th>Convention</th></tr></thead>
         <tbody>
           <tr><td>Global axes</td><td>Right-handed X, Y, Z with Z up. DOFs: UX, UY, UZ, RX, RY, RZ.</td></tr>
-          <tr><td>Local axes</td><td>ETABS-style 1, 2, 3. Local 1 runs from the start node to the end node. DOFs: U1, U2, U3, R1, R2, R3.</td></tr>
+          <tr><td>Local axes</td><td>Axes 1, 2, 3. Local 1 runs from the start node to the end node. DOFs: U1, U2, U3, R1, R2, R3.</td></tr>
           <tr><td>Non-vertical member</td><td>Local 3 = (1 × Z) normalised, horizontal; local 2 = 3 × 1, in the vertical plane pointing up. A member along +X has local 2 = +Z and local 3 = −Y.</td></tr>
           <tr><td>Vertical member</td><td>Local 2 = +X, local 3 = 1 × 2. A column along +Z has local 3 = +Y.</td></tr>
           <tr><td>Member angle</td><td>Rotates local 2 and 3 about local 1 by the right-hand rule, in rad.</td></tr>
@@ -982,7 +982,7 @@
     <div class="section" id="strips">
       <div class="section__title">Strip forces <code style="font-size:13px">shell/post/strip-forces.ts</code></div>
       <p>
-        A <strong>design strip</strong> is a band drawn over a slab, as in SAFE or ETABS: a centreline polyline with a
+        A <strong>design strip</strong> is a band drawn over a slab: a centreline polyline with a
         width on each side. List strips in <code>model.strips</code> and every load case and combination gets
         <code>stripForces</code>: the total moment, shear, torsion and axial force on cuts across each strip, at
         stations along it, for designing the slab strip by strip. The front end draws the strip; the engine takes
@@ -1085,7 +1085,7 @@
     <div class="section" id="piers">
       <div class="section__title">Piers &amp; spandrels <code style="font-size:13px">analysis/post/wall-forces.ts</code></div>
       <p>
-        Wall design forces, as in ETABS. A <strong>pier</strong> groups shell areas (wall legs, planar or not, connected
+        Wall design forces. A <strong>pier</strong> groups shell areas (wall legs, planar or not, connected
         or not) and members (boundary or embedded columns); a <strong>spandrel</strong> groups the areas of a coupling
         beam over an opening, and the beams along it. List them in <code>model.piers</code> and
         <code>model.spandrels</code>, and every load case and combination gets <code>pierForces</code> and
@@ -1104,7 +1104,7 @@
           <tr><td>Pier cuts</td><td>cuts</td><td>At every elevation where one of the pier's areas or members starts or ends: a <code>"top"</code> cut from the elements below it and a <code>"bottom"</code> cut from those above it. A floor level shared by two lifts has both, and they differ by what the floor delivers there. <code>cuts</code> adds elevations (mm, global Z) as <code>"cut"</code>, taken from below.</td></tr>
           <tr><td>Spandrel cuts</td><td>cuts</td><td><code>"left"</code> and <code>"right"</code> at its ends; <code>cuts</code> adds distances from the left end (mm) as <code>"cut"</code>, taken from the left.</td></tr>
           <tr><td>Mesh lines</td><td>—</td><td>Every cut lies on the mesh lines of the areas it meets (a node is on a cut within <code>WALL_CUT_TOLERANCE</code>, 10⁻⁶ of the group's extent): an area that a cut crosses inside an element (lifts broken at different elevations, an extra cut between mesh lines) is an error (331); divide the area there. Members may cross a cut anywhere.</td></tr>
-          <tr><td>Separate legs</td><td>—</td><td>A cut may cross several disconnected legs (walls either side of a door): their forces are summed about the centroid of the whole cut, as ETABS does.</td></tr>
+          <tr><td>Separate legs</td><td>—</td><td>A cut may cross several disconnected legs (walls either side of a door): their forces are summed about the centroid of the whole cut.</td></tr>
           <tr><td>Pier axes</td><td>angle</td><td>1 = +Z (up); 2 horizontal along the pier's longest area (toward +X, or +Y for an area parallel to Y), or global X turned by <code>angle</code> (rad) about +Z; 3 = 1 × 2. A pier of columns only has 2 = +X.</td></tr>
           <tr><td>Spandrel axes</td><td>reverse</td><td>1 horizontal along the wall, toward +X (+Y for a wall parallel to Y), or the other way with <code>reverse: true</code>; the left end is where 1 starts. 2 = +Z; 3 = 1 × 2, out of the wall.</td></tr>
           <tr><td>Reference point</td><td>—</td><td>The geometric centroid of the cut: each leg by length × thickness, each member by its section area A.</td></tr>
@@ -1391,7 +1391,7 @@ s·Δ = member end force                  <span class="c">// at a spring</span><
       </div>
       <div class="alert alert--info">
         <span>ℹ️</span>
-        <span>Only joint rotations that <em>no member</em> resists are held. A mechanism that moves members still throws 304: unsupported translations, and members spinning about their own axes. For a pin-jointed truss member release <code>r2</code> and <code>r3</code> at both ends and <code>r1</code> at one end, as in ETABS. With torsion connected at both ends and no rotational support, the joints and members of a truss can spin together about the member axes — a real rigid-body mechanism.</span>
+        <span>Only joint rotations that <em>no member</em> resists are held. A mechanism that moves members still throws 304: unsupported translations, and members spinning about their own axes. For a pin-jointed truss member release <code>r2</code> and <code>r3</code> at both ends and <code>r1</code> at one end. With torsion connected at both ends and no rotational support, the joints and members of a truss can spin together about the member axes — a real rigid-body mechanism.</span>
       </div>
 
       <div class="alert alert--error">
@@ -2078,7 +2078,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <span class="std-badge" title="Basis: linear-elastic matrix stiffness analysis — not an ACI 318-19 provision">Matrix analysis</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">Returns the member length and the ETABS-style local axes (see <a href="#conventions" style="color:var(--accent)">Axes &amp; conventions</a>) as the rows of a 3×3 direction-cosine matrix.</p>
+          <p class="ex-desc">Returns the member length and the local axes (see <a href="#conventions" style="color:var(--accent)">Axes &amp; conventions</a>) as the rows of a 3×3 direction-cosine matrix.</p>
 
           <div class="sub-label">Parameters</div>
           <table class="param-table">
@@ -2182,7 +2182,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc">A prismatic frame member between two nodes, with ETABS-style local axes (see <a href="#conventions" style="color:var(--accent)">Axes &amp; conventions</a>).</p>
+          <p class="ex-desc">A prismatic frame member between two nodes, with local axes (see <a href="#conventions" style="color:var(--accent)">Axes &amp; conventions</a>).</p>
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
             <tbody>
@@ -2219,7 +2219,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
             <pre>
 <span class="c">// beam pinned at its start, semi-rigid (major axis) at its end</span>
 <span class="k">releases</span>: { <span class="k">start</span>: { <span class="k">r2</span>: <span class="b">true</span>, <span class="k">r3</span>: <span class="b">true</span> }, <span class="k">end</span>: { <span class="k">r3</span>: <span class="n">10000</span> } }  <span class="c">// kN·m/rad</span>
-<span class="c">// truss member (ETABS practice): moments released at both ends, torsion at one</span>
+<span class="c">// truss member: moments released at both ends, torsion at one</span>
 <span class="k">releases</span>: { <span class="k">start</span>: { <span class="k">r1</span>: <span class="b">true</span>, <span class="k">r2</span>: <span class="b">true</span>, <span class="k">r3</span>: <span class="b">true</span> }, <span class="k">end</span>: { <span class="k">r2</span>: <span class="b">true</span>, <span class="k">r3</span>: <span class="b">true</span> } }</pre>
           </div>
           <div class="alert alert--error">
@@ -3655,7 +3655,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">memberConnectivity</td><td>{ intermediateNodes, nearMissNodes, warnings }</td><td>Nodes connected to members and near misses, without analysing</td></tr>
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">beam3dLocalStiffness</td><td>number[][]</td><td>Reference 12×12 local stiffness</td></tr>
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">beam3dLocalStiffnessRightHanded</td><td>number[][]</td><td>Same matrix with right-hand rotations</td></tr>
-          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">memberAxes</td><td>{ length, lambda }</td><td>ETABS-style local axes of a member</td></tr>
+          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">memberAxes</td><td>{ length, lambda }</td><td>Local axes of a member</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FeaModel</td><td>—</td><td>Analysis input (nodes, members, shells, restraints, null areas, load cases, loads, combinations)</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FeaId</td><td>—</td><td>Node, member or area id: string or number</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FeaNode</td><td>—</td><td>Node coordinates</td></tr>

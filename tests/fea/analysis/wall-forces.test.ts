@@ -291,7 +291,7 @@ describe("pier forces: non-planar and grouped sections", () => {
     expect(Math.abs(base.T)).toBeGreaterThan(1); // the torsion is really there
   });
 
-  it("sums separate legs about the centroid of the whole cut, as ETABS", () => {
+  it("sums separate legs about the centroid of the whole cut", () => {
     const loads = [
       { nodeId: "0,3000", fx: 30 },
       { nodeId: "3000,3000", fx: 20, fz: -40 },

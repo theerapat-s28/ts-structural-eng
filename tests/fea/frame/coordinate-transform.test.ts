@@ -8,7 +8,7 @@ import { matMul, transpose } from "@app-utils/matrix";
 const expectRows = (lambda: number[][], rows: number[][]) =>
   rows.forEach((row, i) => row.forEach((v, j) => expect(lambda[i][j]).toBeCloseTo(v, 10)));
 
-describe("memberAxes (ETABS-style local axes)", () => {
+describe("memberAxes (local axes)", () => {
   it("beam along +X: local 2 = +Z, local 3 = −Y", () => {
     const { length, lambda } = memberAxes([0, 0, 0], [5000, 0, 0]);
     expect(length).toBeCloseTo(5000, 10);

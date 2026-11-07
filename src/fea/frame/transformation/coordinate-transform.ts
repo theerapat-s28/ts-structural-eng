@@ -13,7 +13,7 @@ const norm = (a: Vec3) => Math.hypot(a[0], a[1], a[2]);
 const scale = (a: Vec3, s: number): Vec3 => [a[0] * s, a[1] * s, a[2] * s];
 
 /**
- * ETABS-style local axes of a member as the rows of a 3×3 direction-cosine matrix.
+ * Local axes of a member as the rows of a 3×3 direction-cosine matrix.
  *
  * Local 1 runs from the start to the end node. For a non-vertical member local 3 is
  * horizontal (`1 × Z`) and local 2 lies in the vertical plane pointing up; for a vertical

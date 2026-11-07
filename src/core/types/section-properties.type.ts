@@ -1,5 +1,5 @@
 /**
- * Prismatic member properties for frame analysis, using ETABS-style local axes:
+ * Prismatic member properties for frame analysis, using local axes 1, 2, 3:
  * local 1 runs along the member, local 2 and 3 are the transverse axes.
  */
 export interface SectionProperties {

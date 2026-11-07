@@ -1024,7 +1024,7 @@
       <div class="sub-label">Stiffness modifiers</div>
       <p>
         Cracked-section stiffness per ACI 318-19 Table 6.6.3.1.1(a) (walls 0.70 I<sub>g</sub> uncracked or 0.35 I<sub>g</sub> cracked; flat plates and flat slabs 0.25 I<sub>g</sub>)
-        is applied by modifying <strong>D</strong><sub>m</sub> and <strong>D</strong><sub>b</sub> along local 1 and 2, ETABS-style: f11, f22, f12 for membrane and m11, m22, m12 for bending.
+        is applied by modifying <strong>D</strong><sub>m</sub> and <strong>D</strong><sub>b</sub> along local 1 and 2: f11, f22, f12 for membrane and m11, m22, m12 for bending.
         Each matrix becomes <strong>S·D·S</strong> with <strong>S</strong> = diag(√f<sub>11</sub>, √f<sub>22</sub>, √f<sub>12</sub>): D<sub>11</sub>, D<sub>22</sub> and D<sub>33</sub> scale by their own modifier and the
         coupling D<sub>12</sub> by √(f<sub>11</sub>f<sub>22</sub>), so <strong>D</strong> stays symmetric and positive definite and equal modifiers scale it uniformly. The drilling penalty keeps the unmodified G.
         The modifiers are linear, so superposition is unaffected.
