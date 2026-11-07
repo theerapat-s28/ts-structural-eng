@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [3.4.2] — 2026-11-07
+
+### Changed
+
+- **Strip shear and torsion are smooth and reach the supports. `V` and `T` in strip forces change.** They used to be one constant value per element, a stair with steps as long as the elements, stopping half an element short of a support, and a station through a column showed the mean of its two sides, close to zero. Each step was exact at its element's centre, so `V` and `T` are now taken at the element centres and joined by straight lines, extended to supports and free ends. `V` at a simple support now matches statics (−60 kN, was −55 kN on a 500 mm mesh), and on a coarse mesh the shear at a column is far closer to its converged value (99.5 kN at 1000 mm, was 78.7 kN, against 107.3 kN at 125 mm). The lines stop at a jump: a mesh line with a support, a member, a nodal load or a wall in the band. Two stations at a strip point now give the two sides of a jump, so put a point at a column to read both. A station inside a segment exactly on a jump still takes the mean. `M`, `P`, `Vp` and `Mp` are unchanged, and combinations and envelopes still superpose exactly. The [strip forces theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/strip-forces.html#recovery) show how it works.
+
 ## [3.4.1] — 2026-11-07
 
 ### Changed
@@ -281,7 +287,8 @@ Maintenance release with no changes to the library code.
 
 First version, under the unscoped name `ts-structural-eng-tools`: `rectBeamMomentCapacity` (singly and doubly reinforced rectangular beams per ACI 318-19), steel plate jacketing, and concrete property helpers.
 
-[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.4.1...HEAD
+[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.4.2...HEAD
+[3.4.2]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.4.1...v3.4.2
 [3.4.1]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.4.0...v3.4.1
 [3.4.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.3.0...v3.4.0
 [3.3.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.2.0...v3.3.0
