@@ -23,6 +23,7 @@ export {
   memberAxes,
   memberDemandEnvelope,
   memberConnectivity,
+  meshConnectivity,
 } from "./fea";
 export type {
   AnalyzeOptions,
@@ -74,6 +75,9 @@ export type {
   MemberIntermediateNode,
   MemberNearMissNode,
   MemberConnectivity,
+  MeshConnectivity,
+  GeneratedMeshNode,
+  NodeOffMesh,
   ShellCornerForces,
   ShellForceComponent,
   ShellElementForces,

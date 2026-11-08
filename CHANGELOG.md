@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [3.5.0] — 2026-11-08
+
 ### Added
 
 - **`meshConnectivity(model)`: see the nodes the engine generates for shells, and what connects at each.** It meshes the shell areas the way `analyze` does, without analysing, and returns `nodes` (type `GeneratedMeshNode`): only the generated nodes, never your own, each with the `shellIds` and `areaIds` of the elements meeting there and the `members` passing through it (with `x` along the member), so an edge beam under a meshed slab shows each node it is tied to the slab at. It also returns every element in `shells`, the member nodes that lie inside an area but not on its mesh and so are not connected in `disconnectedNodes` (type `NodeOffMesh`, with a "Shell area meshing" warning), and the areas that cannot be meshed in `failedAreaIds`. It never throws for a model that is still being edited, so a frontend can call it on every edit; for a model `analyze` accepts, `nodes` and `shells` match `result.mesh`. Use it with `memberConnectivity`, which lists the model nodes connected to members.
@@ -308,7 +310,8 @@ Maintenance release with no changes to the library code.
 
 First version, under the unscoped name `ts-structural-eng-tools`: `rectBeamMomentCapacity` (singly and doubly reinforced rectangular beams per ACI 318-19), steel plate jacketing, and concrete property helpers.
 
-[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.4.2...HEAD
+[Unreleased]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.5.0...HEAD
+[3.5.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.4.2...v3.5.0
 [3.4.2]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.4.1...v3.4.2
 [3.4.1]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.4.0...v3.4.1
 [3.4.0]: https://github.com/theerapat-s28/ts-structural-eng/compare/v3.3.0...v3.4.0
