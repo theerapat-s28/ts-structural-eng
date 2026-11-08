@@ -539,6 +539,7 @@
         <summary class="nav-section-label">Types — Results</summary>
         <a href="#fea-result"><span class="mbadge m-type">TYPE</span> FeaResult</a>
         <a href="#auto-restrained-dof"><span class="mbadge m-type">TYPE</span> AutoRestrainedDof</a>
+        <a href="#auto-restrained-translation"><span class="mbadge m-type">TYPE</span> AutoRestrainedTranslation</a>
         <a href="#member-intermediate-node"><span class="mbadge m-type">TYPE</span> MemberIntermediateNode</a>
         <a href="#member-near-miss-node"><span class="mbadge m-type">TYPE</span> MemberNearMissNode</a>
         <a href="#fea-case-result"><span class="mbadge m-type">TYPE</span> FeaCaseResult</a>
@@ -1028,11 +1029,43 @@
           <tr><td>Nodes inside an area</td><td>—</td><td>A member node strictly inside an area but not on its mesh is not connected to the shell: a warning names it (<strong>Shell area meshing</strong>). Divide the area through the node.</td></tr>
           <tr><td>Section</td><td>section</td><td><code>{ thickness, E, nu, unitWeight? }</code> in mm, MPa, —, kN/m³ (327 if out of range).</td></tr>
           <tr><td>Drilling rotation</td><td>—</td><td>The rotation about local 3 has real stiffness, so a beam framing into a wall <em>in the wall's plane</em> (a coupling beam, a spandrel) transfers its end moment instead of acting as a pin.</td></tr>
-          <tr><td>Unsupported directions</td><td>type</td><td>A membrane carries nothing out of its plane and a plate nothing in its plane. A translation that nothing resists at a node connected only to shells throws <strong>328</strong>, naming the node, a shell and the DOF: restrain it, connect a member, or use <code>"shell"</code>. Rotations that nothing resists there (e.g. about local 3 in a plate) are held automatically and listed in <code>calculationDetails.autoRestrainedDofs</code>, as at truss joints.</td></tr>
-          <tr><td>Loads</td><td>areaLoads</td><td>An <code>AreaLoad</code> on a shell (normal <code>"3"</code> or global, <code>projected</code> allowed) and self-weight <code>selfWeight · unitWeight · thickness · modifiers.weight</code> per unit area act as forces at the corners, each corner taking <code>∫ Nᵢ dA</code> of the element (a quarter of a parallelogram).</td></tr>
+          <tr><td>Unsupported directions</td><td>type</td><td>A membrane carries nothing out of its plane and a plate nothing in its plane. At a <em>generated</em> mesh node such a translation cannot be restrained, so it is held automatically: it stays 0, carries no force and is listed in <code>calculationDetails.autoRestrainedTranslations</code>. A load along a held direction has no path and throws <strong>332</strong> rather than being lost (gravity on a meshed membrane slab without members on every edge, an in-plane load on a plate). At one of your own nodes connected only to shells it throws <strong>328</strong>, naming the node, a shell and the DOF: restrain it, connect a member, or use <code>"shell"</code>. Rotations that nothing resists there (e.g. about local 3 in a plate) are held automatically and listed in <code>calculationDetails.autoRestrainedDofs</code>, as at truss joints.</td></tr>
+          <tr><td>Loads</td><td>areaLoads</td><td>An <code>AreaLoad</code> on a shell (normal <code>"3"</code> or global, <code>projected</code> allowed) and self-weight <code>selfWeight · unitWeight · thickness · modifiers.weight</code> per unit area act as forces at the corners, each corner taking <code>∫ Nᵢ dA</code> of the element (a quarter of a parallelogram). A <code>"membrane"</code> area, meshed or not, flat and with members along all four edges, is the exception: the part of its loads and self-weight normal to the area goes to those members by two-way tributary area, as for a null area, with a <strong>Membrane area, out-of-plane load</strong> warning, and only the in-plane part acts on the membrane. Without members on every edge, or if it is not flat, the load stays at its nodes and the warning says so.</td></tr>
           <tr><td>Cracked stiffness</td><td>modifiers</td><td>f11, f22, f12 (membrane) and m11, m22, m12 (bending) along local 1 and 2, e.g. 0.25 for a flat slab's bending or 0.35 for a cracked wall (ACI 318-19, 6.6.3.1.1); <code>weight</code> scales self-weight only.</td></tr>
         </tbody>
       </table>
+
+      <div class="sub-label" id="shell-mesh-behaviour">Meshed membrane and plate areas: current behaviour</div>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>This handling is <strong>interim</strong> and may change. Only some cases run. For a meshed slab or wall use <code>"shell"</code>; for a slab that only passes load to its beams use a <a href="#null-areas" style="color:var(--accent)">null area</a>.</span>
+      </div>
+      <table class="param-table">
+        <thead><tr><th>Membrane area with a <code>mesh</code> (stiff in its plane only)</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>In-plane load, e.g. a wall loaded along its length</td><td>Runs.</td></tr>
+          <tr><td>Load normal to the area, e.g. gravity on a slab, flat and with members along all four edges</td><td>Runs. The normal part goes to those members by two-way tributary area, with a warning. A 6 × 6 m area at 5 kN/m² gives 45 kN·m on each continuous edge beam at every mesh tried.</td></tr>
+          <tr><td>Load normal to the area, no member along some edge or not flat</td><td>Throws <strong>332</strong> if a generated node takes the load; otherwise the load stays at the nodes, with a warning.</td></tr>
+          <tr><td>Beams with bending end releases along the meshed edges</td><td>Can throw <strong>304</strong> (unstable), e.g. with <code>divisions: [2, 2]</code>. The same model runs with beams that have no releases, or with <code>"plate"</code> or <code>"shell"</code>.</td></tr>
+        </tbody>
+      </table>
+      <table class="param-table">
+        <thead><tr><th>Plate area, meshed (stiff out of its plane only)</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Exactly flat slab under gravity</td><td>Runs, with the same out-of-plane displacements as <code>"shell"</code>.</td></tr>
+          <tr><td>In-plane area load</td><td>Throws <strong>332</strong>.</td></tr>
+          <tr><td>Sloped or slightly warped under gravity, even a slope of 1:100000 or a corner 0.001 mm off plane</td><td>Throws <strong>332</strong>: the in-plane part of the load has no path.</td></tr>
+          <tr><td>Larger warp, e.g. a corner 10 mm off plane on a 4 × 4 m slab</td><td>Throws <strong>304</strong> (unstable).</td></tr>
+          <tr><td>Vertical plate under self-weight</td><td>Throws <strong>332</strong>.</td></tr>
+          <tr><td>Lateral load on a plate on columns</td><td>Runs. The plate adds no in-plane stiffness, so it does not act as a diaphragm.</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li><strong>Generated nodes.</strong> The direction the type does not resist is held at zero with no force and listed in <code>calculationDetails.autoRestrainedTranslations</code>. A generated node on a member is not held, because the member resists that direction.</li>
+        <li><strong>Your own nodes.</strong> A node connected only to shells needs a restraint or a member, or it throws <strong>328</strong>.</li>
+        <li><strong>Held zeros are not real displacements.</strong> Leave them out of deformed shapes. On a 4 × 4 m plate on four columns with 100 kN of lateral load at a corner, an interior node reports 0 while that corner moves 10.24 mm.</li>
+        <li><strong>Split without a <code>mesh</code>.</strong> An area split by a node on an edge or a meshed neighbour follows these tables too.</li>
+      </ul>
 
       <div class="sub-label">Example — 2 × 6 m cantilever wall meshed by the engine</div>
       <div class="code-block">
@@ -1104,7 +1137,7 @@
       </div>
       <div class="alert alert--error">
         <span>⚠️</span>
-        <span>Throws <strong>FeaError 326</strong> for invalid shell geometry (not 4 distinct corners, not convex, wrong order, or too warped); <strong>327</strong> for an invalid <code>section</code>; <strong>328</strong> for a translation nothing resists at a node connected only to shells; <strong>314</strong> for an invalid <code>type</code>, <code>angle</code> or modifier; <strong>303</strong> for an id used twice among null areas and shells; <strong>302</strong> for an unknown node; <strong>313</strong> for self-weight without <code>unitWeight</code>; <strong>329</strong> when the areas cannot be meshed (no division counts let neighbouring meshes meet node to node, a generated element is not a valid quadrilateral, or a generated id is already used); <strong>314</strong> for an invalid <code>mesh</code> or line restraint value and <strong>302</strong> for a line restraint's unknown node.</span>
+        <span>Throws <strong>FeaError 326</strong> for invalid shell geometry (not 4 distinct corners, not convex, wrong order, or too warped); <strong>327</strong> for an invalid <code>section</code>; <strong>328</strong> for a translation nothing resists at a model node connected only to shells; <strong>332</strong> for a load along a translation held at a generated mesh node; <strong>314</strong> for an invalid <code>type</code>, <code>angle</code> or modifier; <strong>303</strong> for an id used twice among null areas and shells; <strong>302</strong> for an unknown node; <strong>313</strong> for self-weight without <code>unitWeight</code>; <strong>329</strong> when the areas cannot be meshed (no division counts let neighbouring meshes meet node to node, a generated element is not a valid quadrilateral, or a generated id is already used); <strong>314</strong> for an invalid <code>mesh</code> or line restraint value and <strong>302</strong> for a line restraint's unknown node.</span>
       </div>
     </div>
 
@@ -1876,7 +1909,7 @@ self.onmessage = ({ data }) =&gt; {
           </div>
           <div class="alert alert--error">
             <span>⚠️</span>
-            <span>Throws <strong>FeaError 301–317, 326–327, 329–331</strong> for an invalid model, load case or combination, <strong>328</strong> for a translation nothing resists at a node connected only to shells, or an unstable structure (304). The model is checked by <a href="#validate-model" style="color:var(--accent)">validateModel</a> first; the error is the first problem found, its <code>details</code> say where it is, and <code>issues</code> lists every problem. See <a href="#errors" style="color:var(--accent)">the error table</a>.</span>
+            <span>Throws <strong>FeaError 301–317, 326–327, 329–331</strong> for an invalid model, load case or combination, <strong>328</strong> for a translation nothing resists at a model node connected only to shells, <strong>332</strong> for a load along a translation held at a generated mesh node, or an unstable structure (304). The model is checked by <a href="#validate-model" style="color:var(--accent)">validateModel</a> first; the error is the first problem found, its <code>details</code> say where it is, and <code>issues</code> lists every problem. See <a href="#errors" style="color:var(--accent)">the error table</a>.</span>
           </div>
         </div>
       </div>
@@ -3119,10 +3152,11 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>calculationDetails.profileSize</td><td>number</td><td>—</td><td>Stored entries of the banded stiffness factor: a measure of memory and solve work</td></tr>
               <tr><td>calculationDetails.loadCaseCount, combinationCount</td><td>number</td><td>—</td><td>Number of load cases and combinations</td></tr>
               <tr><td>calculationDetails.autoRestrainedDofs</td><td>AutoRestrainedDof[]</td><td>—</td><td>Joint rotations held because no member resists them, e.g. at truss joints; empty when there are none. See <a href="#auto-restrained-dof" style="color:var(--accent)">AutoRestrainedDof</a></td></tr>
+              <tr><td>calculationDetails.autoRestrainedTranslations</td><td>AutoRestrainedTranslation[]</td><td>—</td><td>Translations held at generated mesh nodes of membrane and plate areas, which the shells there do not resist; empty when there are none. See <a href="#auto-restrained-translation" style="color:var(--accent)">AutoRestrainedTranslation</a></td></tr>
               <tr><td>calculationDetails.intermediateNodes</td><td>MemberIntermediateNode[]</td><td>—</td><td>Model nodes lying on a member between its ends that were connected to it, member by member from its start; empty when there are none. See <a href="#member-intermediate-node" style="color:var(--accent)">MemberIntermediateNode</a></td></tr>
               <tr><td>calculationDetails.nearMissNodes</td><td>MemberNearMissNode[]</td><td>—</td><td>Model nodes close to a member but not on it, so not connected, each with a <strong>Member connectivity</strong> warning; empty when there are none. See <a href="#member-near-miss-node" style="color:var(--accent)">MemberNearMissNode</a></td></tr>
               <tr><td>units</td><td>object</td><td>—</td><td><code>{ force: "kN", moment: "kN·m", length: "mm", rotation: "rad", forcePerLength: "kN/m", momentPerLength: "kN·m/m", stress: "MPa" }</code></td></tr>
-              <tr><td>warnings</td><td>Warnings</td><td>—</td><td>Null-area warnings, member-connectivity warnings (nodes close to a member but not on it), shell-meshing warnings, then every case and combination warning prefixed with its id</td></tr>
+              <tr><td>warnings</td><td>Warnings</td><td>—</td><td>Null-area warnings, member-connectivity warnings (nodes close to a member but not on it), shell-meshing warnings, membrane out-of-plane load warnings, then every case and combination warning prefixed with its id</td></tr>
             </tbody>
           </table>
         </div>
@@ -3142,6 +3176,25 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>nodeId</td><td>FeaId</td><td>—</td><td>The joint</td></tr>
               <tr><td>axis</td><td>[number, number, number]</td><td>—</td><td>Unit vector of the held rotation axis in global X, Y, Z (9 decimals; largest component positive)</td></tr>
               <tr><td>dof</td><td>"rx" | "ry" | "rz" | undefined</td><td>—</td><td>The global rotation DOF when <code>axis</code> is a global axis; absent for an inclined axis</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="auto-restrained-translation">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">AutoRestrainedTranslation</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">A translation direction at a generated mesh node that the shells there do not resist: out of plane for a membrane, in plane for a plate. No restraint can name a generated node, so <code>analyze</code> holds the direction with a spring that carries no force. The node's reported displacement along it is 0. A load along it throws <strong>332</strong>.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>nodeId</td><td>FeaId</td><td>—</td><td>The generated node</td></tr>
+              <tr><td>axis</td><td>[number, number, number]</td><td>—</td><td>Unit vector of the held direction in global X, Y, Z (9 decimals; largest component positive)</td></tr>
+              <tr><td>dof</td><td>"ux" | "uy" | "uz" | undefined</td><td>—</td><td>The global translation DOF when <code>axis</code> is a global axis; absent for an inclined direction</td></tr>
             </tbody>
           </table>
         </div>
@@ -3870,7 +3923,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
               <tr><td>edge</td><td>number</td><td>—</td><td>An area's edge index (edge <code>i</code> runs from <code>nodeIds[i]</code> to <code>nodeIds[i + 1]</code>)</td></tr>
               <tr><td>loadCaseId, combinationId</td><td>string</td><td>—</td><td>The load case or combination concerned</td></tr>
               <tr><td>field</td><td>string</td><td>—</td><td>The offending input field, e.g. <code>"x"</code>, <code>"w"</code>, <code>"direction"</code>, <code>"supportEdges"</code></td></tr>
-              <tr><td>dof</td><td>"ux" | "uy" | "uz" | "rx" | "ry" | "rz"</td><td>—</td><td>For an unstable structure (304): a DOF of the mechanism; for 328 the unresisted translation</td></tr>
+              <tr><td>dof</td><td>"ux" | "uy" | "uz" | "rx" | "ry" | "rz"</td><td>—</td><td>For an unstable structure (304): a DOF of the mechanism; for 328 the unresisted translation; for 332 the held translation the load acts along</td></tr>
             </tbody>
           </table>
         </div>
@@ -3918,9 +3971,10 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td class="path-cell">317</td><td class="path-cell">INVALID_AREA_DISTRIBUTION</td><td><code>supportEdges</code> does not fit the distribution (two-way takes none; one-way needs its unsupported edges all parallel and at least one of them; cantilever takes exactly one), or a cantilever load acts along its support edge.</td></tr>
           <tr><td class="path-cell">326</td><td class="path-cell">INVALID_SHELL_GEOMETRY</td><td>A shell area does not have 4 distinct corners in order around a convex quadrilateral, or a corner is more than 0.1·√A off the mean plane.</td></tr>
           <tr><td class="path-cell">327</td><td class="path-cell">INVALID_SHELL_SECTION</td><td>A shell section's thickness or E is not positive, ν is outside [0, 0.5), or <code>unitWeight</code> is negative; <code>details.field</code> names it.</td></tr>
-          <tr><td class="path-cell">328</td><td class="path-cell">SHELL_DOF_UNSUPPORTED</td><td>A node connected only to shells has a translation nothing resists — a membrane's out-of-plane or a plate's in-plane direction. <code>details</code> names the node, a shell and the DOF; every such node is in <code>issues</code>. Restrain the DOF, connect a member, or use type <code>"shell"</code>. Found when the stiffness is assembled, not by <code>validateModel</code>.</td></tr>
+          <tr><td class="path-cell">328</td><td class="path-cell">SHELL_DOF_UNSUPPORTED</td><td>A model node connected only to shells has a translation nothing resists — a membrane's out-of-plane or a plate's in-plane direction. At a generated mesh node the translation is held instead. <code>details</code> names the node, a shell and the DOF; every such node is in <code>issues</code>. Restrain the DOF, connect a member, or use type <code>"shell"</code>. Found when the stiffness is assembled, not by <code>validateModel</code>.</td></tr>
           <tr><td class="path-cell">329</td><td class="path-cell">INVALID_SHELL_MESH</td><td>Shell areas cannot be meshed: no division counts make the meshes of areas sharing edges meet node to node, a generated element is not a valid quadrilateral, or a generated id is already used by a node or shell. <code>details.shellId</code> names the area. Divide the areas so they meet edge to edge, or change their mesh sizes.</td></tr>
           <tr><td class="path-cell">330</td><td class="path-cell">INVALID_STRIP_GEOMETRY</td><td>A strip has fewer than 2 points, points off its plane, a zero-length segment or one turning straight back on the previous one, a zero <code>normal</code>, a negative width, or both widths 0. <code>details.stripId</code> and <code>details.field</code> name it. See <a href="#strips" style="color:var(--accent)">Strip forces</a>.</td></tr>
+          <tr><td class="path-cell">332</td><td class="path-cell">SHELL_LOAD_UNSUPPORTED</td><td>A load case acts on generated mesh nodes along a direction their shells cannot carry, so the load has no path: gravity on a meshed membrane slab without members on every edge, an in-plane load or sloped self-weight on a meshed plate. <code>details</code> names the node, a shell, the DOF and the load case; every such node is in <code>issues</code>. Use type <code>"shell"</code>, the type that carries this load, or a null area to pass it to members. Found when the load case is solved, not by <code>validateModel</code>.</td></tr>
           <tr><td class="path-cell">331</td><td class="path-cell">INVALID_PIER_GEOMETRY</td><td>A pier or spandrel lists an unknown area or member, one twice, or one already in another pier (or spandrel); a pier has no area or member, or a spandrel no area; a pier area is not vertical or a pier member is horizontal; a spandrel's areas are not in one vertical plane, or a member is normal to its axis 1; an extra cut misses the group; or a cut crosses an area between its mesh lines. <code>details.pierId</code> / <code>details.spandrelId</code>, <code>areaId</code>, <code>memberId</code>, <code>field</code> and <code>position</code> say where. See <a href="#piers" style="color:var(--accent)">Piers &amp; spandrels</a>.</td></tr>
         </tbody>
       </table>
@@ -3982,6 +4036,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">DemandEnvelopeOptions</td><td>—</td><td>Selection and shear critical distance</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FeaResult</td><td>—</td><td>Analysis output</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">AutoRestrainedDof</td><td>—</td><td>Joint rotation held because no member resists it</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">AutoRestrainedTranslation</td><td>—</td><td>Translation held at a generated mesh node of a membrane or plate</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberIntermediateNode</td><td>—</td><td>Model node on a member that was connected to it</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberNearMissNode</td><td>—</td><td>Model node close to a member but not connected to it</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FeaCaseResult</td><td>—</td><td>Results of one load case or combination</td></tr>

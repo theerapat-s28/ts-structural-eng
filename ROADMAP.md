@@ -13,7 +13,7 @@ This roadmap lists what the `fea` engine still needs to be a dependable analysis
 Every feature added must conform to the following core principles:
 
 1. **Linear in the loads**: Every load-case result must be linear in that case's loads, so load combinations (superposition of raw states) stay exact.
-   - **One documented exception — linearized P-Δ**: a single user-named P-Δ load set fixes the geometric stiffness $\mathbf{K}_g$ once; every case is then solved linearly against $\mathbf{K} + \mathbf{K}_g$, so superposition still holds (the ETABS approach).
+   - **One documented exception — linearized P-Δ**: a single user-named P-Δ load set fixes the geometric stiffness $\mathbf{K}_g$ once; every case is then solved linearly against $\mathbf{K} + \mathbf{K}_g$, so superposition still holds (a common approach in building analysis).
    - Modal, buckling and response-spectrum results are separate result kinds, not load cases; response-spectrum peaks enter combinations only through envelope-type combinations.
    - Still excluded: anything whose stiffness depends on the case being solved (tension-only members, gaps, plasticity).
 2. **Validated with location**: Every new input field must be validated in [`src/fea/analysis/validation/validate-model.ts`](src/fea/analysis/validation/validate-model.ts) (member and null-area fields in [`src/fea/frame/validation/`](src/fea/frame/validation/), shell fields in [`src/fea/shell/validation/validate-shells.ts`](src/fea/shell/validation/validate-shells.ts), both called from it) and report errors with `details` pinpointing the exact `nodeId`, `memberId`, `loadCase`, or `field`.
@@ -138,7 +138,7 @@ A published report that shows, problem by problem, how the engine compares with 
   - [x] [`auto-restraint.ts`](src/fea/shared/solver/auto-restraint.ts): per-joint 3×3 rotational block, Jacobi eigen-decomposition, spring `k·n·nᵀ` on each null direction (exact: the PSD member stiffness makes that column zero)
   - [x] Per-load-case check: a moment about a held axis throws 304 with `nodeId`, `dof`, `loadCaseId`
   - [x] `calculationDetails.autoRestrainedDofs: { nodeId, axis, dof? }[]`
-  - [x] Scope decision: only rotations that *no member at the joint* resists are held. Member rigid-body motions (e.g. a truss with torsion connected at both ends spinning about the member axes, or a beam without torsional support) still throw 304 — release `r1` at one end as in ETABS
+  - [x] Scope decision: only rotations that *no member at the joint* resists are held. Member rigid-body motions (e.g. a truss with torsion connected at both ends spinning about the member axes, or a beam without torsional support) still throw 304 — release `r1` at one end
   - [x] Tests in `tests/fea/shared/auto-restraint.test.ts`: truss vs method of joints, manual-restraint equivalence, inclined null axis, load-on-held-axis 304, no restraint at continuous columns or springs
 
 - [x] **Projected Loads** (was 2.4)
@@ -209,7 +209,7 @@ Replaces the earlier "envelope sets" item: an envelope combination does that job
 - [ ] `LoadCombination.type?: "linear" | "envelope"` (default `"linear"`).
   - `linear`: the current factored sum.
   - `envelope`: max/min of its terms (each factored), e.g. `WIND = Env(Wx+, Wx−, Wy+, Wy−)`.
-- [ ] A linear combination may reference an envelope combination, e.g. `1.2D + 1.0L + 1.0·WIND`. The result is then a max/min pair, not one state (ETABS behaviour): track `{ max, min }` raw states per result quantity and combine them term by term (positive factors keep max/min, negative factors swap them).
+- [ ] A linear combination may reference an envelope combination, e.g. `1.2D + 1.0L + 1.0·WIND`. The result is then a max/min pair, not one state: track `{ max, min }` raw states per result quantity and combine them term by term (positive factors keep max/min, negative factors swap them).
 - [ ] `FeaCaseResult.kind` gains `"envelope"`; envelope results carry `max` / `min` instead of a single state, and no displaced shape.
 - [ ] Keep the default `result.envelope` over all combinations unchanged.
 - [ ] `memberDemandEnvelope(result, memberId, { combination?: string })` reads any combination, including envelope-type ones.
@@ -230,7 +230,7 @@ Replaces the earlier "envelope sets" item: an envelope combination does that job
 
 The FEA part of the [Verification Report](#verification-report-all-modules), which sets out the infrastructure and the report page for all modules.
 - [ ] `tests/fea/verification/` with one file per published problem, each citing its source.
-- [ ] Sources: CSI SAP2000 / ETABS verification manuals (frame problems), McGuire–Gallagher–Ziemian *Matrix Structural Analysis*, Kassimali *Matrix Analysis of Structures*.
+- [ ] Sources: verification manuals of commercial analysis programs (frame problems), McGuire–Gallagher–Ziemian *Matrix Structural Analysis*, Kassimali *Matrix Analysis of Structures*.
 - [ ] Coverage grows with each phase: 2D/3D frames, trusses, releases, springs, end offsets, diaphragms, P-Δ (AISC 360 Appendix benchmark frames), modal (periods of cantilever and shear-building benchmarks).
 - [ ] A results table (problem, quantity, reference, engine, % difference) in `html-docs/fea/index.html`, with values produced by running the suite.
 
@@ -334,7 +334,7 @@ The shared transformation mechanism behind diaphragms (3.2), and usable on its o
 - [ ] Tests: multistory frame lateral load vs stiff-truss bracing oracle; eccentric floor torsion; story shear equals applied lateral load.
 
 ### 3.3 Linearized P-Δ
-- [ ] `AnalyzeOptions.pDelta?: { terms: CombinationTerm[], iterate?: boolean }`: the gravity load set that sets member axial forces (e.g. $1.2D + 0.5L$ as in ETABS practice).
+- [ ] `AnalyzeOptions.pDelta?: { terms: CombinationTerm[], iterate?: boolean }`: the gravity load set that sets member axial forces (e.g. $1.2D + 0.5L$ as in common practice).
 - [ ] Solve that set first (optionally iterating until the axial forces converge), build the member geometric stiffness $\mathbf{K}_g$ (consistent 12×12, P-Δ only), then factorise $\mathbf{K} + \mathbf{K}_g$ once and solve every case against it. Results stay linear, so combinations stay exact.
 - [ ] Member P-δ is not captured inside one element: document that members should be subdivided where P-δ matters, and warn for slender compression members.
 - [ ] `calculationDetails.pDelta`: axial forces used, iteration count, and per-story amplification (second-order / first-order drift) when diaphragms exist.
@@ -383,7 +383,7 @@ Flat four-node shell elements with membrane, plate and shell behaviour, so walls
 - **Behaviour on the area**: `ShellArea.type?: "shell" | "membrane" | "plate"` (default `"shell"`).
 - **Section inline on each area**: `ShellArea.section: { thickness, E, nu, unitWeight? }`, like `Member.section`. When 1.1 lands, `ShellArea.sectionId` references a shell entry (thickness and material) in `FeaModel.sections`, and exactly one of the two is given.
 - **Loads through `AreaLoad`**: `areaId` may name a null area or a shell area (one id namespace across `areas` and `shells`). Loads are routed by the kind of area: null-area loads go to the edge members through `distributeAreaLoads` as today; shell loads become equivalent nodal loads on the shell elements. `distributeAreaLoads` ignores loads on shells.
-- **Unsupported DOFs are errors, not auto-fixed**: a translation that nothing resists at a node connected only to membrane (or only to plate) shells throws 328, naming the node, a shell and the DOF, with a message that explains the behaviour (a membrane has no out-of-plane stiffness; a plate has no in-plane stiffness). Unresisted rotations there are held as at truss joints and reported in `autoRestrainedDofs`.
+- **Unsupported DOFs are errors at model nodes, held at generated nodes (interim, see Technical Debt)**: a translation that nothing resists at a model node connected only to membrane (or only to plate) shells throws 328, naming the node, a shell and the DOF, with a message that explains the behaviour (a membrane has no out-of-plane stiffness; a plate has no in-plane stiffness). At a generated mesh node, which no restraint can name, it is held and reported in `autoRestrainedTranslations`, and a load along it throws 332. Unresisted rotations there are held as at truss joints and reported in `autoRestrainedDofs`.
 
 ### 5.0 Generic Element Assembly (Refactor)
 - [x] Assembly, RCM adjacency, skyline profile and auto-restraint take elements with any number of nodes (6 DOFs each) instead of 2-node members.
@@ -444,7 +444,7 @@ API decisions: supports along meshed edges by line restraints; members along mes
 - [ ] Openings: documented approach (divide the area around the opening) or automatic subdivision.
 
 ### 5.9 Strip Forces
-API decisions: strips are a field on the model (`FeaModel.strips`), so `analyze` returns their forces for every case and combination from the unrounded shell forces; a strip is a centreline polyline with left and right widths, as SAFE design strips; it picks up every shell element in its plane; each element's own force field is integrated (no nodal averaging); a cut not fully on shells integrates what it covers and warns.
+API decisions: strips are a field on the model (`FeaModel.strips`), so `analyze` returns their forces for every case and combination from the unrounded shell forces; a strip is a centreline polyline with left and right widths, as design strips; it picks up every shell element in its plane; each element's own force field is integrated (no nodal averaging); a cut not fully on shells integrates what it covers and warns.
 
 - [x] Types `ShellStrip` (`id`, `points`, `widthLeft`, `widthRight`, `normal?` default +Z, `maxSpacing?`), `StripPoint` ([`shell/types/model.type.ts`](src/fea/shell/types/model.type.ts)); results `StripForces`, `StripStation`, `StripResultants`, `StripForceComponent`, `StripExtremeValue` ([`shell/types/results.type.ts`](src/fea/shell/types/results.type.ts)).
 - [x] [`shell/post/strip-forces.ts`](src/fea/shell/post/strip-forces.ts): elements in the strip's plane (corners within `STRIP_PLANE_TOLERANCE` = 10⁻³ of the element size); stations at every polyline point and at most `maxSpacing` apart (default `STRIP_DEFAULT_DIVISIONS` = 20 per segment), two at a bend; cut clipped to each element (Cyrus–Beck), mean of both sides on a mesh line; inverse bilinear map; forces rotated to the strip axes (σ = ±1 for the element's local 3 against the normal); 4-point Gauss–Legendre per piece. Resultants P, V, M, T, Vp, Mp and `perWidth`, as fixed coefficients on the raw corner forces, so combinations superpose exactly.
@@ -456,16 +456,16 @@ API decisions: strips are a field on the model (`FeaModel.strips`), so `analyze`
 - [x] V and T recovered along the strip: straight lines through the element centres, extended to supports and ends, never across a jump (a support, member, nodal load or wall in the band). V at a support now matches statics (−60 kN, was −55 kN on a 500 mm mesh).
 
 ### 5.10 Pier & Spandrel Forces
-Design forces for shear walls, as ETABS piers and spandrels: one resultant per cut across a whole wall group (planar, L, C or core, columns included), for wall design (ACI 318-19 11.5, 18.10) and coupling beams (18.10.7). Strips (5.9) already work on a single planar wall (`normal` horizontal: `P`, `Vp`, `Mp`); document that, and use piers for anything grouped or non-planar.
+Design forces for shear walls, as piers and spandrels: one resultant per cut across a whole wall group (planar, L, C or core, columns included), for wall design (ACI 318-19 11.5, 18.10) and coupling beams (18.10.7). Strips (5.9) already work on a single planar wall (`normal` horizontal: `P`, `Vp`, `Mp`); document that, and use piers for anything grouped or non-planar.
 
 API decisions:
-- **Groups on the model**: `FeaModel.piers?: WallPier[]` and `FeaModel.spandrels?: WallSpandrel[]`, each `{ id, areaIds, memberIds?, cuts? }`, plus `angle?` on a pier and `reverse?` on a spandrel. Members count in the resultant (boundary and embedded columns in piers, beams in spandrels). An area may be in one pier and one spandrel at the same time (as ETABS), never in two piers or two spandrels; members likewise.
+- **Groups on the model**: `FeaModel.piers?: WallPier[]` and `FeaModel.spandrels?: WallSpandrel[]`, each `{ id, areaIds, memberIds?, cuts? }`, plus `angle?` on a pier and `reverse?` on a spandrel. Members count in the resultant (boundary and embedded columns in piers, beams in spandrels). An area may be in one pier and one spandrel at the same time, never in two piers or two spandrels; members likewise.
 - **Cuts**: automatic at the group's area boundaries plus optional extra ones (`cuts`: elevations in mm for a pier, distances from the left end in mm for a spandrel). Pier: the *bottom* and *top* of each lift, a lift running between consecutive elevations where any of the pier's areas starts or ends. A floor level shared by two lifts therefore gives two cuts, the lower lift's top (elements below) and the upper lift's bottom (elements above); they differ by what the floor delivers there. Spandrel: left and right ends. A user cut inside an area gives one value, since both sides match.
 - **Method: nodal-force summation**, not stress integration. At a cut, sum the element nodal forces ($\mathbf{f}_e = \mathbf{k}_e \mathbf{u}_e - \mathbf{f}_{e,\text{load}}$) of the group's shell elements on the lift's side at the nodes on the cut, plus the internal forces of the group's members where they cross the cut (end forces at a member end, the diagram station otherwise), and transfer the total to the reference point. Exact equilibrium, the same for non-planar sections and members, and linear in the loads (computed from each `RawState`, so combinations superpose).
-- **Separate legs** (as ETABS): a pier cut may cross several disconnected legs (e.g. two walls either side of a door); their forces are summed about the centroid of the whole cut.
+- **Separate legs**: a pier cut may cross several disconnected legs (e.g. two walls either side of a door); their forces are summed about the centroid of the whole cut.
 - **Reference point**: the geometric centroid of the cut, shell legs weighted by length × thickness and members by section area A (geometric, not modulus-weighted).
 - **Axes**: pier 1 = global +Z (up); 2 = along the longest shell leg of the cut, or global X rotated by `angle` (rad, about +Z) when given; 3 = 1 × 2. Spandrel 1 = horizontal along the wall plane, pointing toward +X (toward +Y for a wall parallel to Y), reversed by `reverse: true`; its *left* end is where 1 starts. 2 = global +Z; 3 = 1 × 2, out of the wall plane.
-- **Signs: as member diagrams** (`MemberStation`): forces act on the +1 face of the cut, the axial force named `P` (as ETABS and `StripResultants`, where members say `N`), positive in tension, `V2`, `V3`, `T`, `M2`, `M3` as on a member with the same local axes. A pier reads like a column and a spandrel like a beam with the same orientation.
+- **Signs: as member diagrams** (`MemberStation`): forces act on the +1 face of the cut, the axial force named `P` (as `StripResultants`, where members say `N`), positive in tension, `V2`, `V3`, `T`, `M2`, `M3` as on a member with the same local axes. A pier reads like a column and a spandrel like a beam with the same orientation.
 - **Results per cut**: `P`, `V2`, `V3`, `T`, `M2`, `M3` (kN, kN·m), the position (`z` for a pier, `x` from the left end for a spandrel, mm), the face (`"bottom"` / `"top"` / `"cut"` for piers, `"left"` / `"right"` / `"cut"` for spandrels) and the cut section: each shell leg (end points, thickness), each member (id, position, A), and the total length, area and centroid. That is enough for a front end or a later wall P–M design to rebuild the section.
 - **Placement**: [`analysis/`](src/fea/analysis/), because piers mix members and shells and `frame`/`shell` cannot see each other: types in `analysis/types/`, `analysis/post/wall-forces.ts`, `analysis/validation/validate-walls.ts`. Element nodal forces come from the factorised system's element stiffness and the per-case element loads.
 - **Validation**: new error **331** `INVALID_PIER_GEOMETRY` with `details.pierId` / `details.spandrelId` (and `areaId`, `memberId`, `z` where they help locate it):
@@ -489,11 +489,21 @@ API decisions:
 
 ## Technical Debt & Pending Verifications
 
-- [ ] **ETABS local-axis convention check**: confirm the local 3 rule ($1 \times Z$ for non-vertical, $+X$ for vertical) matches CSI ETABS v21 documentation exactly.
+- [ ] **Meshed plate and membrane areas: replace the interim fix** (accepted for now, 2026-11-09, so these areas can run). Translations they do not resist are held at generated nodes only (`autoRestrainedTranslations`, error 332 for a load along one). The mechanics are sound: a zero-stiffness direction is decoupled from every other DOF. The rest is still to do:
+  - **Near-flat and warped plates**: a uniform slope of 1:100000 or a corner 0.001 mm off plane is rejected under gravity (332), and a corner 10 mm off plane on a 4 × 4 m slab fails as unstable (304). Treat nearly flat meshes as flat, with a stated tolerance.
+  - **Loads a plate cannot carry**: take the normal component and ignore the rest only on near-flat slabs. Dropping it removes about s² of the vertical load at slope s (0.01 % at 1:100, 25 % at 30°), so keep the error on real slopes.
+  - **Membranes under gravity without members on every edge, or not flat**: [`membrane-tributary-loads.ts`](src/fea/analysis/solver/membrane-tributary-loads.ts) distributes the load only with members along all four edges. Decide what these areas should do; a meshed one throws 332 today.
+  - **Membrane mesh on beams with bending end releases**: throws 304 at `divisions: [2, 2]`, though the same model runs with no releases or as `"plate"` or `"shell"`. Find out why.
+  - **Same rule at every node**: model nodes still throw 328 for the same DOF that is held at a generated node. Decide between holding everywhere and restraints inherited from the parent area.
+  - **Front-end**: the held zeros are not real displacements (a plate on columns under lateral load reported 0 at an interior node while its corner moved 10.24 mm), so hide them in deformed shapes.
+  - **Verification**: so far only flat rectangular meshes compared with the engine's own `"shell"` type. Add independent benchmarks, including inclined held directions.
+  - **Check against commercial building software, not yet done**: the sources do not settle how such software treats interior joints of a meshed plate floor. Run a 6 × 6 m, 200 mm plate slab on four corner columns with auto mesh and read interior `ux` under lateral load, then a membrane slab on edge beams and read the beam moments under gravity.
+  - **References**: analysis manuals of commercial software say the user must restrain these DOFs or make them unavailable, and that meshed elements can inherit the parent's restraints; their floor-meshing help describes membrane slabs using tributary area; [Pamidi & Turner, NASA N87-27232](https://ntrs.nasa.gov/api/citations/19870017799/downloads/19870017799.pdf) describes automatic single-point constraints in a general finite element code.
+- [ ] **Member local-axis convention check**: confirm the local 3 rule ($1 \times Z$ for non-vertical, $+X$ for vertical) against commercial building software.
 - [ ] **Cook's membrane reference**: our plane-stress set-up (E = 1, ν = 1/3, t = 1, unit uniform shear) converges to ≈ 25.2 with three element types, against the published 23.9–23.96. Find the published set-up (load distribution, ν, mesh) before quoting a value in the docs.
-- [ ] **Shell stiffness modifiers vs ETABS**: we apply f11/f22 (and m11/m22) as $\mathbf{SDS}$, so the Poisson coupling scales by $\sqrt{f_{11} f_{22}}$; confirm how ETABS treats the coupling term before documenting modifiers as ETABS-equivalent.
+- [ ] **Shell stiffness modifiers vs commercial software**: we apply f11/f22 (and m11/m22) as $\mathbf{SDS}$, so the Poisson coupling scales by $\sqrt{f_{11} f_{22}}$; confirm how commercial software treats the coupling term before claiming equivalence.
 - [ ] **Mesher search cost**: hard points (every node against every area edge) and member splits (every member against every generated node) are brute force; add a spatial index if large models slow down (they take about 12 ms of the 1 600-element benchmark's 1.1 s).
-- [ ] **ETABS area local-axis convention check**: confirm the shell local 1/2 default (5.3) against the CSI documentation before shells ship.
+- [ ] **Area local-axis convention check**: confirm the shell local 1/2 default (5.3) against commercial building software.
 - [ ] **ACI 318-19 Table 6.6.3.1.1 verification**: confirm the cracked moment of inertia factors before quoting them in the 1.2 docs and in [`src/rc/`](src/rc/).
 - [ ] **ACI 318-19 second-order limit**: confirm the clause number of the 1.4 × first-order moment limit used by the 3.3 warning.
 - [ ] **Null area distribution assumptions**: confirm with practising structural engineers whether two-way bisector or moment-coefficient methods are expected.
@@ -530,10 +540,11 @@ Codes 301–314 are the existing validation and solver errors in [`fea.error.ts`
 | **325** | `EIGEN_NOT_CONVERGED` | Modal, buckling | Eigensolver did not converge within the iteration limit |
 | **326** | `INVALID_SHELL_GEOMETRY` | Shell elements *(3.0.0)* | Not 4 distinct nodes (3 allowed from 5.8), non-convex, $\det \mathbf{J} \le 0$, or warping beyond the limit |
 | **327** | `INVALID_SHELL_SECTION` | Shell elements *(3.0.0)* | Thickness or $E$ not positive, $\nu$ outside $[0, 0.5)$, or negative `unitWeight` |
-| **328** | `SHELL_DOF_UNSUPPORTED` | Shell elements *(3.0.0)* | A translation nothing resists at a node connected only to membrane (or only to plate) shells |
+| **328** | `SHELL_DOF_UNSUPPORTED` | Shell elements *(3.0.0)* | A translation nothing resists at a model node connected only to membrane (or only to plate) shells |
 | **329** | `INVALID_SHELL_MESH` | Engine meshing *(3.0.0)* | No conforming division counts, a bad generated element, or a generated id already in use |
 | **330** | `INVALID_STRIP_GEOMETRY` | Strip forces *(Unreleased)* | Fewer than 2 points, points off the strip's plane, a zero-length or doubled-back segment, a zero normal, a negative width or both widths 0 |
 | **331** | `INVALID_PIER_GEOMETRY` | Pier & spandrel forces *(Unreleased)* | Unknown or doubly assigned area/member, empty group, non-vertical pier area, non-coplanar spandrel, a cut off the mesh lines |
+| **332** | `SHELL_LOAD_UNSUPPORTED` | Meshed plates and membranes *(Unreleased, interim)* | A load along a translation held at a generated mesh node |
 
 ---
 

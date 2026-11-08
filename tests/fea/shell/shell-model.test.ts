@@ -249,6 +249,161 @@ describe("328: translations that nothing resists at nodes connected only to shel
   });
 });
 
+describe("meshed plates and membranes: translations nothing resists at generated nodes", () => {
+  const corners: FeaNode[] = [
+    { id: "a", x: 0, y: 0, z: 0 },
+    { id: "b", x: 4000, y: 0, z: 0 },
+    { id: "c", x: 4000, y: 4000, z: 0 },
+    { id: "d", x: 0, y: 4000, z: 0 },
+  ];
+  const cornerIds = corners.map((n) => n.id);
+  const slab = (type: ShellType): FeaModel => ({
+    nodes: corners,
+    members: [],
+    // simply supported edges; the corners hold the slab in its plane
+    restraints: cornerIds.map((nodeId) => ({ nodeId, ux: true, uy: true })),
+    lineRestraints: [0, 1, 2, 3].map((i) => ({
+      nodeIds: [cornerIds[i], cornerIds[(i + 1) % 4]] as [string, string],
+      uz: true,
+    })),
+    shells: [{ id: "A", nodeIds: cornerIds, section: concrete, type, mesh: { divisions: [4, 4] } }],
+    loadCases: [{ id: "L" }],
+    areaLoads: [{ loadCase: "L", areaId: "A", direction: "Z", q: -5 }],
+  });
+  const wall = (type: ShellType): FeaModel => ({
+    nodes: [
+      { id: "a", x: 0, y: 0, z: 0 },
+      { id: "b", x: 3000, y: 0, z: 0 },
+      { id: "c", x: 3000, y: 0, z: 3000 },
+      { id: "d", x: 0, y: 0, z: 3000 },
+    ],
+    members: [],
+    restraints: [
+      { nodeId: "a", ...fixed },
+      { nodeId: "b", ...fixed },
+      // the top corners are model nodes: only the generated nodes may be held for the user
+      { nodeId: "c", uy: true },
+      { nodeId: "d", uy: true },
+    ],
+    lineRestraints: [{ nodeIds: ["a", "b"], ...fixed }],
+    shells: [
+      {
+        id: "W",
+        nodeIds: ["a", "b", "c", "d"],
+        section: concrete,
+        type,
+        mesh: { divisions: [3, 3] },
+      },
+    ],
+    loadCases: [{ id: "L" }],
+    nodalLoads: [{ loadCase: "L", nodeId: "c", fx: 10 }],
+  });
+
+  it("a meshed plate slab analyses, and bends exactly as a meshed shell slab", () => {
+    const plate = analyze(slab("plate"));
+    const shell = analyze(slab("shell"));
+    const uz = (r: typeof plate) => r.cases.L.nodalDisplacements.map((d) => [d.nodeId, d.uz]);
+    expect(uz(plate)).toEqual(uz(shell));
+    expect(Math.min(...plate.cases.L.nodalDisplacements.map((d) => d.uz))).toBeLessThan(0);
+    expect(sumReactions(plate, "L", "fz")).toBeCloseTo(5 * 16, 3);
+  });
+
+  it("lists every held translation, only at generated nodes, in global axes", () => {
+    const { autoRestrainedTranslations: held } = analyze(slab("plate")).calculationDetails;
+    expect(held.length).toBeGreaterThan(0);
+    expect(new Set(held.map((h) => h.dof))).toEqual(new Set(["ux", "uy"]));
+    expect(held.some((h) => cornerIds.includes(h.nodeId as string))).toBe(false);
+    expect(
+      held
+        .filter((h) => h.nodeId === "A:2,2")
+        .map((h) => h.dof)
+        .sort(),
+    ).toEqual(["ux", "uy"]);
+  });
+
+  it("a held translation stays zero and adds no reaction", () => {
+    const r = analyze(slab("plate")).cases.L;
+    expect(r.nodalDisplacements.find((d) => d.nodeId === "A:2,2")).toMatchObject({ ux: 0, uy: 0 });
+    const reaction = r.reactions.find((x) => x.nodeId === "A:2,2");
+    expect([reaction?.fx ?? 0, reaction?.fy ?? 0]).toEqual([0, 0]);
+  });
+
+  it("a meshed plate slab on four columns analyses and reaches the supports in full", () => {
+    const column = (nodeId: string, i: number) => ({
+      id: `C${i}`,
+      startNodeId: `base${i}`,
+      endNodeId: nodeId,
+      section: { A: 160000, E: 30000, G: 12500, J: 3.6e9, I22: 2.13e9, I33: 2.13e9 },
+    });
+    const model: FeaModel = {
+      ...slab("plate"),
+      nodes: [...corners, ...corners.map((n, i) => ({ id: `base${i}`, x: n.x, y: n.y, z: -3000 }))],
+      members: cornerIds.map(column),
+      restraints: cornerIds.map((_, i) => ({ nodeId: `base${i}`, ...fixed })),
+      lineRestraints: [],
+    };
+    const r = analyze(model);
+    expect(sumReactions(r, "L", "fz")).toBeCloseTo(5 * 16, 3);
+    expect(r.calculationDetails.autoRestrainedTranslations.length).toBeGreaterThan(0);
+  });
+
+  it("a meshed membrane wall analyses, and moves in its plane exactly as a meshed shell wall", () => {
+    const membrane = analyze(wall("membrane")).cases.L.nodalDisplacements;
+    const shell = analyze(wall("shell")).cases.L.nodalDisplacements;
+    const top = (d: typeof membrane) => d.find((x) => x.nodeId === "c")!.ux;
+    expect(top(membrane)).toBeGreaterThan(0);
+    expect(top(membrane)).toBe(top(shell));
+  });
+
+  it("a shell mesh holds nothing", () => {
+    expect(analyze(slab("shell")).calculationDetails.autoRestrainedTranslations).toEqual([]);
+  });
+
+  it("still throws 328 at a model node, which the user can restrain", () => {
+    const model = slab("plate");
+    model.restraints = [];
+    const error = thrown(model);
+    expect(error.code).toBe(328);
+    expect(new Set(error.issues.map((i) => i.details.nodeId))).toEqual(new Set(cornerIds));
+  });
+
+  describe("332: a load with no path at a held direction", () => {
+    it("gravity on a membrane slab: names the generated node, the shell, the DOF and the case", () => {
+      const model = slab("membrane");
+      model.restraints = cornerIds.map((nodeId) => ({ nodeId, ...fixed }));
+      const error = thrown(model);
+      expect(error.code).toBe(332);
+      expect(new Set(error.issues.map((i) => i.details.dof))).toEqual(new Set(["uz"]));
+      expect(error.issues.map((i) => i.details.nodeId)).toContain("A:2,2");
+      expect(error.details.loadCaseId).toBe("L");
+      expect(error.details.shellId).toBeDefined();
+      expect(error.message).toContain("no path");
+    });
+
+    it("an in-plane area load on a plate slab", () => {
+      const model = slab("plate");
+      model.areaLoads = [{ loadCase: "L", areaId: "A", direction: "X", q: 2 }];
+      const error = thrown(model);
+      expect(error.code).toBe(332);
+      expect(new Set(error.issues.map((i) => i.details.dof))).toEqual(new Set(["ux"]));
+    });
+
+    it("self-weight on a plate wall, which acts in its plane", () => {
+      const model = wall("plate");
+      model.restraints = model.restraints.map((r) => ({ ...r, ux: true, uz: true }));
+      model.nodalLoads = [];
+      model.loadCases = [{ id: "L", selfWeight: 1 }];
+      expect(thrown(model).code).toBe(332);
+    });
+
+    it("a load case that puts nothing along the held direction is not rejected", () => {
+      const model = slab("plate");
+      model.loadCases = [{ id: "L" }, { id: "empty" }];
+      expect(analyze(model).cases.empty.reactions.every((x) => x.fz === 0)).toBe(true);
+    });
+  });
+});
+
 describe("loads on shells", () => {
   // true area 4 m × 3.6056 m, plan area 12 m², normal (0, −0.5547, 0.83205)
   const trueArea = 4 * Math.hypot(3, 2);

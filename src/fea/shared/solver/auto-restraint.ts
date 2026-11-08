@@ -122,13 +122,15 @@ export const findAutoRestraints = (
 export interface UnresistedTranslation {
   node: number; // node index
   axis: [number, number, number]; // unit vector, global
+  stiffness: number; // N/mm of a holding spring k·axis·axisᵀ, should the direction be held
 }
 
 /**
  * Finds the translations that nothing resists at the given nodes: the null directions of each
  * node's free translational block (3×3, global) of the assembled element stiffness plus
  * translational springs, by the same eigen-decomposition as `findAutoRestraints`. Such a
- * direction is decoupled from every other DOF, so the structure is a mechanism there.
+ * direction is decoupled from every other DOF, so the structure is a mechanism there unless the
+ * direction is held, and a spring holding it carries no force unless a load acts along it.
  *
  * @param nodes - Node indices to check, e.g. nodes connected only to shells
  * @param elements - Node indices and global stiffness (6 DOFs per node) of every element
@@ -156,6 +158,16 @@ export const findUnresistedTranslations = (
     });
   }
 
+  // fallback spring for a node whose whole translational block is zero (every modifier 0)
+  const modelScale = Math.max(
+    1,
+    ...[...blocks.values()].flatMap((b) => [
+      Math.abs(b[0][0]),
+      Math.abs(b[1][1]),
+      Math.abs(b[2][2]),
+    ]),
+  );
+
   const unresisted: UnresistedTranslation[] = [];
   blocks.forEach((block, node) => {
     const free = [0, 1, 2].filter((i) => !boundary.fixed[6 * node + i]);
@@ -171,7 +183,7 @@ export const findUnresistedTranslations = (
       free.forEach((i, k) => (axis[i] = vectors[e][k]));
       const lead = axis.reduce((best, c, i) => (Math.abs(c) > Math.abs(axis[best]) ? i : best), 0);
       if (axis[lead] < 0) axis.forEach((c, i) => (axis[i] = -c));
-      unresisted.push({ node, axis });
+      unresisted.push({ node, axis, stiffness: scale > 0 ? scale : modelScale });
     });
   });
   return unresisted;

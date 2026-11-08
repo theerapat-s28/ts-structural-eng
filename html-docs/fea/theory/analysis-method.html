@@ -736,7 +736,8 @@
         <thead><tr><th>Check</th><th>Test</th><th>Result</th></tr></thead>
         <tbody>
           <tr><td>Pivot of the factorisation</td><td>The pivot K<sub>jj</sub> − Σ U<sub>kj</sub>² is at or below <code>SINGULARITY_TOLERANCE</code> (10⁻⁹) times its own diagonal term K<sub>jj</sub></td><td><code>FeaError</code> 304, with the node and DOF of that equation</td></tr>
-          <tr><td>Translation at a node connected only to shells</td><td>A null direction of the node's 3 × 3 translational stiffness (for example the out-of-plane direction of a membrane)</td><td><code>FeaError</code> 328, with the node, shell and DOF</td></tr>
+          <tr><td>Translation at a model node connected only to shells</td><td>A null direction of the node's 3 × 3 translational stiffness (for example the out-of-plane direction of a membrane)</td><td><code>FeaError</code> 328, with the node, shell and DOF</td></tr>
+          <tr><td>The same translation at a generated mesh node</td><td>The same null direction; no restraint can name such a node</td><td>Held by a spring that carries no force, listed in <code>calculationDetails.autoRestrainedTranslations</code>; a load along it throws <code>FeaError</code> 332, with the node, shell, DOF and load case</td></tr>
           <tr><td>Joint rotation that nothing resists</td><td>A null direction of the node's 3 × 3 rotational stiffness</td><td>Held by a spring that carries no force (<a href="#auto-restraint">below</a>), listed in <code>calculationDetails.autoRestrainedDofs</code></td></tr>
         </tbody>
       </table>

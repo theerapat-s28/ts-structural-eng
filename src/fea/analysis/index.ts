@@ -25,6 +25,7 @@ export type {
   NodalDisplacement,
   NodalReaction,
   AutoRestrainedDof,
+  AutoRestrainedTranslation,
   GoverningValue,
   GoverningExtremeValue,
   Bound,

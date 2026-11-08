@@ -47,6 +47,18 @@ export interface AutoRestrainedDof {
   dof?: "rx" | "ry" | "rz";
 }
 
+/**
+ * A translation direction at a generated mesh node, held by `analyze` because the shells there
+ * do not resist it (a membrane's out-of-plane or a plate's in-plane direction).
+ */
+export interface AutoRestrainedTranslation {
+  nodeId: FeaId;
+  /** Unit vector of the held direction, global X, Y, Z. */
+  axis: [number, number, number];
+  /** The global translation DOF when `axis` is a global axis. */
+  dof?: "ux" | "uy" | "uz";
+}
+
 /** Max or min of a result across combinations, with the combination that produces it. */
 export interface GoverningValue {
   value: number;
@@ -248,6 +260,8 @@ export interface FeaResult {
     combinationCount: number;
     /** Joint rotations held because every member there releases them (e.g. truss joints). */
     autoRestrainedDofs: AutoRestrainedDof[];
+    /** Translations held at generated mesh nodes of membrane and plate areas; they stay 0. */
+    autoRestrainedTranslations: AutoRestrainedTranslation[];
     /**
      * Model nodes lying on a member between its ends that were connected to it (see
      * `Member.connectIntermediateNodes`), member by member from its start.

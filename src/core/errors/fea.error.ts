@@ -149,7 +149,7 @@ export const FeaErrors: Record<string, FeaErrorType> = {
   SHELL_DOF_UNSUPPORTED: {
     code: 328,
     message:
-      'A node connected only to shells has a translation that nothing resists: a membrane carries no load out of its plane and a plate none in its plane. Restrain that DOF, connect a member, or use type "shell".',
+      'A model node connected only to shells has a translation that nothing resists: a membrane carries no load out of its plane and a plate none in its plane. Restrain that DOF, connect a member, or use type "shell".',
   },
   INVALID_SHELL_MESH: {
     code: 329,
@@ -165,6 +165,11 @@ export const FeaErrors: Record<string, FeaErrorType> = {
     code: 331,
     message:
       "A pier or spandrel must list existing shell areas and members, each at most once and in no other pier (or spandrel); a pier needs at least one area or member, a spandrel at least one area. Pier areas must be vertical and pier members not horizontal; a spandrel's areas must lie in one vertical plane and its members must not be normal to its length. Every cut must lie within the group and on the mesh lines of its areas: divide an area that a cut crosses.",
+  },
+  SHELL_LOAD_UNSUPPORTED: {
+    code: 332,
+    message:
+      'A load case acts on generated mesh nodes along a direction their shells cannot carry, so the load has no path: a membrane carries no load out of its plane and a plate none in its plane. Use type "shell", the type that carries this load, or a null area to pass it to members.',
   },
 };
 

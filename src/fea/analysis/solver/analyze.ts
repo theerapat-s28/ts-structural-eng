@@ -12,11 +12,17 @@ import { prepareWalls } from "../post/wall-forces";
 import { presentMemberDiagram, presentState } from "../post/present-state";
 import type { FeaModel, NodalLoad } from "../types/model.type";
 import { expandModel } from "../mesh/expand-model";
-import type { AutoRestrainedDof, FeaCaseResult, FeaResult } from "../types/results.type";
+import type {
+  AutoRestrainedDof,
+  AutoRestrainedTranslation,
+  FeaCaseResult,
+  FeaResult,
+} from "../types/results.type";
 import { validateModel } from "../validation/validate-model";
 import { resolveCombinations } from "./combinations";
 import { prepareAnalysisSystem, type AnalysisSystem } from "./analysis-system";
 import { combineStates, solveLoadCase, type RawState } from "./load-case-solver";
+import { membraneTributaryLoads } from "./membrane-tributary-loads";
 
 export interface AnalyzeOptions {
   /** Number of evenly spaced stations per member diagram (default 21). */
@@ -47,18 +53,30 @@ export interface Analysis {
 }
 
 const ROTATION_DOFS = ["rx", "ry", "rz"] as const;
+const TRANSLATION_DOFS = ["ux", "uy", "uz"] as const;
+
+/** The presented form of a held direction: rounded axis, and its DOF when it is a global axis. */
+const presentHeld = <Dof extends string>(
+  system: AnalysisSystem,
+  { node, axis }: { node: number; axis: [number, number, number] },
+  dofs: readonly [Dof, Dof, Dof],
+) => {
+  const rounded = axis.map((c) => roundToDecimalPlaces(c, 9) + 0) as [number, number, number];
+  const aligned = rounded.findIndex((c) => Math.abs(c) === 1);
+  return {
+    nodeId: system.nodes[node].id,
+    axis: rounded,
+    ...(aligned >= 0 ? { dof: dofs[aligned] } : {}),
+  };
+};
 
 /** The presented form of the joint rotations held by the solver. */
 const autoRestrainedDofs = (system: AnalysisSystem): AutoRestrainedDof[] =>
-  system.autoRestraints.map(({ node, axis }) => {
-    const rounded = axis.map((c) => roundToDecimalPlaces(c, 9) + 0) as [number, number, number];
-    const aligned = rounded.findIndex((c) => Math.abs(c) === 1);
-    return {
-      nodeId: system.nodes[node].id,
-      axis: rounded,
-      ...(aligned >= 0 ? { dof: ROTATION_DOFS[aligned] } : {}),
-    };
-  });
+  system.autoRestraints.map((held) => presentHeld(system, held, ROTATION_DOFS));
+
+/** The presented form of the translations held at generated mesh nodes. */
+const autoRestrainedTranslations = (system: AnalysisSystem): AutoRestrainedTranslation[] =>
+  system.heldTranslations.map((held) => presentHeld(system, held, TRANSLATION_DOFS));
 
 /** Groups loads by their load case id, keeping the input order within each case. */
 /** The nodes where something other than the shells acts: supports, members and nodal loads. */
@@ -97,19 +115,24 @@ const groupByCase = <T extends { loadCase: string }>(loads: T[] = []): Map<strin
  * @param options - Diagram station count and detail
  * @returns `{ result, memberDiagram }`
  * @throws {FeaError} 301–317, 326, 327 and 329–331 for an invalid model (with `details` and
- *   every problem in `issues`), 328 for a translation nothing resists at a node connected only
- *   to shells, 304 for an unstable structure
+ *   every problem in `issues`), 328 for a translation nothing resists at a model node connected
+ *   only to shells, 332 for a load along a translation held at a generated mesh node, 304 for an
+ *   unstable structure
  */
 export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): Analysis => {
   const issues = validateModel(model);
   if (issues.length > 0) throwIssues(issues);
 
   const expanded = expandModel(model);
-  const system = prepareAnalysisSystem(expanded.model);
+  const system = prepareAnalysisSystem(
+    expanded.model,
+    new Set(expanded.mesh?.nodes.map((n) => n.id)),
+  );
   const combinations = model.combinations ?? [];
   const resolved = resolveCombinations(combinations, new Set(model.loadCases.map((c) => c.id)));
   const withStations = (options.diagrams ?? "full") === "full";
   const fromAreas = areaMemberLoads(model);
+  const fromMembranes = membraneTributaryLoads(model, system);
   const strips = prepareStrips(model.strips ?? [], system.shells, forceNodes(model, system));
   const walls = prepareWalls(model, system);
 
@@ -119,6 +142,7 @@ export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): A
   const memberByCase = groupByCase<MemberLoad>([
     ...(model.memberLoads ?? []),
     ...fromAreas.memberLoads,
+    ...fromMembranes.memberLoads,
   ]);
   // area loads on shells load the shell elements; those on null areas became member loads
   const shellByCase = groupByCase<AreaLoad>(
@@ -129,6 +153,7 @@ export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): A
       nodalLoads: nodalByCase.get(loadCase.id) ?? [],
       memberLoads: memberByCase.get(loadCase.id) ?? [],
       shellLoads: shellByCase.get(loadCase.id) ?? [],
+      tributaryShells: fromMembranes.shells,
     });
     states.set(loadCase.id, state);
     cases[loadCase.id] = presentState(
@@ -162,6 +187,7 @@ export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): A
 
   const warnings: Warnings = [
     ...fromAreas.warnings,
+    ...fromMembranes.warnings,
     ...expanded.warnings,
     ...strips.warnings,
     ...[...Object.values(cases), ...Object.values(combinationResults)].flatMap((r) =>
@@ -188,6 +214,7 @@ export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): A
       loadCaseCount: model.loadCases.length,
       combinationCount: combinations.length,
       autoRestrainedDofs: autoRestrainedDofs(system),
+      autoRestrainedTranslations: autoRestrainedTranslations(system),
       intermediateNodes: expanded.connectivity.intermediateNodes,
       nearMissNodes: expanded.connectivity.nearMissNodes,
     },
@@ -240,7 +267,9 @@ export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): A
  * Area loads on null areas (`areas`, `areaLoads`) are first turned into member loads on the
  * members along each area's edges (see `distributeAreaLoads`); the areas add no stiffness.
  * Shell areas (`shells`) are four-node flat shell elements with their own stiffness; area loads
- * and self-weight on them act as forces at their corners. Strips (`strips`) integrate the shell
+ * and self-weight on them act as forces at their corners, except that a membrane area passes
+ * the out-of-plane part to the members along its edges by tributary area (see
+ * `membraneTributaryLoads`). Strips (`strips`) integrate the shell
  * forces across cuts at stations along them (`stripForces`), for strip design of slabs.
  * Piers and spandrels (`piers`, `spandrels`) sum the nodal forces of their shell elements and
  * members on cuts across them (`pierForces`, `spandrelForces`), for wall design.
@@ -253,8 +282,9 @@ export const createAnalysis = (model: FeaModel, options: AnalyzeOptions = {}): A
  * @returns `cases` and `combinations` keyed by id, `envelope` over the combinations,
  *   `calculationDetails`, `units` and `warnings`
  * @throws {FeaError} 301–317, 326, 327 and 329–331 for an invalid model (with `details` and
- *   every problem in `issues`), 328 for a translation nothing resists at a node connected only
- *   to shells, 304 for an unstable structure
+ *   every problem in `issues`), 328 for a translation nothing resists at a model node connected
+ *   only to shells, 332 for a load along a translation held at a generated mesh node, 304 for an
+ *   unstable structure
  */
 export const analyze = (model: FeaModel, options: AnalyzeOptions = {}): FeaResult =>
   createAnalysis(model, options).result;

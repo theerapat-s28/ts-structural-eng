@@ -21,6 +21,8 @@ const GLOBAL_DIRECTIONS: Record<"X" | "Y" | "Z", [number, number, number]> = {
  * @param shellsByArea - Element indices of each shell area
  * @param loads - The load case's area loads on shell areas
  * @param selfWeight - The load case's self-weight multiplier
+ * @param tributaryShells - Elements whose out-of-plane load goes to members instead (see
+ *   `membraneTributaryLoads`): only the in-plane part of their load acts at the corners
  * @returns The surface load of each shell element as a global vector (kN/m²); its corner `i`
  *   takes `p · 10⁻³ · cornerAreas[i]` (N)
  */
@@ -30,6 +32,7 @@ export const addShellLoads = (
   shellsByArea: Map<FeaId, number[]>,
   loads: AreaLoad[],
   selfWeight: number,
+  tributaryShells: ReadonlySet<number> = new Set(),
 ): [number, number, number][] => {
   // kN/m² as a global vector per shell, then N at the corners
   const shellPressure = shells.map((): [number, number, number] => [0, 0, 0]);
@@ -53,6 +56,11 @@ export const addShellLoads = (
         selfWeight * unitWeight * thickness * (shell.modifiers.weight ?? 1) * 1e-3;
     }
     const p = shellPressure[s];
+    if (tributaryShells.has(s)) {
+      const n = shell.element.axes.lambda[2];
+      const outOfPlane = p[0] * n[0] + p[1] * n[1] + p[2] * n[2];
+      for (let k = 0; k < 3; k++) p[k] -= outOfPlane * n[k];
+    }
     if (p[0] === 0 && p[1] === 0 && p[2] === 0) return;
     shell.nodeIndices.forEach((node, i) => {
       // kN/m² = 10⁻³ N/mm², times mm²

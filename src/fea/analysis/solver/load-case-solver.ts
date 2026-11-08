@@ -5,7 +5,7 @@ import { memberDofs, scatterMemberForces } from "@app-fea/frame/solver/member-as
 import { memberPieceLoads, scaleMemberLoad } from "@app-fea/frame/solver/member-loads";
 import type { MemberLoad } from "@app-fea/frame/types/model.type";
 import { elementDofs } from "@app-fea/shared/solver/global-assembly";
-import type { AreaLoad } from "@app-fea/shared/types/model.type";
+import type { AreaLoad, FeaId } from "@app-fea/shared/types/model.type";
 import { modelIssue, throwIssues } from "@app-fea/shared/validation/issues";
 import { shellRawForces } from "@app-fea/shell/post/shell-forces";
 import { addShellLoads } from "@app-fea/shell/solver/shell-loads";
@@ -41,12 +41,19 @@ export interface RawState {
  *
  * @throws {FeaError} 304 if a load has a moment about a joint rotation that nothing
  *   resists (an auto-restrained axis), 308 for a load outside its member, 313 if self-weight is
- *   requested for a member without `unitWeight`
+ *   requested for a member without `unitWeight`, 332 if a load acts along a translation held at a
+ *   generated mesh node
  */
 export const solveLoadCase = (
   system: AnalysisSystem,
   loadCase: LoadCase,
-  loads: { nodalLoads: NodalLoad[]; memberLoads: MemberLoad[]; shellLoads?: AreaLoad[] },
+  loads: {
+    nodalLoads: NodalLoad[];
+    memberLoads: MemberLoad[];
+    shellLoads?: AreaLoad[];
+    /** Elements whose out-of-plane load is already in `memberLoads`. */
+    tributaryShells?: ReadonlySet<number>;
+  },
 ): RawState => {
   const { members, dofCount, boundary, equation, free, factor, nodeIndex, memberIndex } = system;
   const F = new Array<number>(dofCount).fill(0);
@@ -73,6 +80,7 @@ export const solveLoadCase = (
     system.shellsByArea,
     loads.shellLoads ?? [],
     selfWeight,
+    loads.tributaryShells,
   );
 
   for (const load of loads.nodalLoads) {
@@ -97,6 +105,39 @@ export const solveLoadCase = (
           loadCaseId: loadCase.id,
         }),
       ]);
+    }
+  }
+
+  // A held translation is decoupled too: a load along it would vanish into the holding spring.
+  if (system.heldTranslations.length > 0) {
+    let forceScale = 0;
+    for (let n = 0; n < system.nodes.length; n++) {
+      for (let k = 0; k < 3; k++) forceScale = Math.max(forceScale, Math.abs(F[6 * n + k]));
+    }
+    const lost = system.heldTranslations.filter(
+      ({ node, axis }) =>
+        Math.abs(axis.reduce((sum, a, i) => sum + a * F[6 * node + i], 0)) >
+        SINGULARITY_TOLERANCE * forceScale,
+    );
+    if (lost.length > 0) {
+      const shellAt = new Map<number, FeaId>();
+      for (const shell of system.shells) {
+        for (const node of shell.nodeIndices) if (!shellAt.has(node)) shellAt.set(node, shell.id);
+      }
+      throwIssues(
+        lost.map(({ node, axis }) => {
+          const lead = axis.reduce(
+            (best, a, i) => (Math.abs(a) > Math.abs(axis[best]) ? i : best),
+            0,
+          );
+          return modelIssue(FeaErrors.SHELL_LOAD_UNSUPPORTED, {
+            nodeId: system.nodes[node].id,
+            shellId: shellAt.get(node),
+            dof: (["ux", "uy", "uz"] as const)[lead],
+            loadCaseId: loadCase.id,
+          });
+        }),
+      );
     }
   }
 

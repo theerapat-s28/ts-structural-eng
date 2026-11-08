@@ -68,6 +68,7 @@ export type {
   ReleaseDeformation,
   MemberReleaseDeformations,
   AutoRestrainedDof,
+  AutoRestrainedTranslation,
   MemberStation,
   StationComponent,
   ExtremeValue,
