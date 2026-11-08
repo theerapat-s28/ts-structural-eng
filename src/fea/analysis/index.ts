@@ -6,6 +6,9 @@ export { distributeAreaLoads } from "./solver/distribute-area-loads";
 export { memberDemandEnvelope } from "./post/demand-envelope";
 export { memberConnectivity } from "./mesh/member-connectivity";
 export type { MemberConnectivity } from "./mesh/member-connectivity";
+export { meshConnectivity } from "./mesh/mesh-connectivity";
+export type { MeshConnectivity, GeneratedMeshNode } from "./mesh/mesh-connectivity";
+export type { NodeOffMesh } from "./mesh/expand-model";
 export type { MemberDemandEnvelope, DemandEnvelopeOptions } from "./post/demand-envelope";
 export type {
   LineRestraint,

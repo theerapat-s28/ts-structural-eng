@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **`meshConnectivity(model)`: see the nodes the engine generates for shells, and what connects at each.** It meshes the shell areas the way `analyze` does, without analysing, and returns `nodes` (type `GeneratedMeshNode`): only the generated nodes, never your own, each with the `shellIds` and `areaIds` of the elements meeting there and the `members` passing through it (with `x` along the member), so an edge beam under a meshed slab shows each node it is tied to the slab at. It also returns every element in `shells`, the member nodes that lie inside an area but not on its mesh and so are not connected in `disconnectedNodes` (type `NodeOffMesh`, with a "Shell area meshing" warning), and the areas that cannot be meshed in `failedAreaIds`. It never throws for a model that is still being edited, so a frontend can call it on every edit; for a model `analyze` accepts, `nodes` and `shells` match `result.mesh`. Use it with `memberConnectivity`, which lists the model nodes connected to members.
+
+### Fixed
+
+- **Faster connection of members on flat models.** Finding the nodes along each member could check every node of a flat model (a slab with all nodes at one elevation) for every beam, so `analyze` spent about a quarter of a second on a 14 400-element slab before solving, and `memberConnectivity` slowed down the same way on flat models with many nodes. Both now check only the nodes near each member. Results are unchanged.
+
 ## [3.4.2] — 2026-11-07
 
 ### Changed

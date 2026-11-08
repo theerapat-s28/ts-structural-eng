@@ -382,6 +382,7 @@
       <a href="#distribute-area-loads"><span class="mbadge m-fn">FN</span> distributeAreaLoads</a>
       <a href="#member-demand-envelope"><span class="mbadge m-fn">FN</span> memberDemandEnvelope</a>
       <a href="#member-connectivity"><span class="mbadge m-fn">FN</span> memberConnectivity</a>
+      <a href="#mesh-connectivity"><span class="mbadge m-fn">FN</span> meshConnectivity</a>
 
       <div class="nav-section-label">Element</div>
       <a href="#beam-3d-local-stiffness"><span class="mbadge m-fn">FN</span> beam3dLocalStiffness</a>
@@ -463,6 +464,9 @@
       <a href="#analysis-type"><span class="mbadge m-type">TYPE</span> Analysis</a>
       <a href="#member-demand-envelope-type"><span class="mbadge m-type">TYPE</span> MemberDemandEnvelope</a>
       <a href="#member-connectivity-type"><span class="mbadge m-type">TYPE</span> MemberConnectivity</a>
+      <a href="#mesh-connectivity-type"><span class="mbadge m-type">TYPE</span> MeshConnectivity</a>
+      <a href="#generated-mesh-node"><span class="mbadge m-type">TYPE</span> GeneratedMeshNode</a>
+      <a href="#node-off-mesh"><span class="mbadge m-type">TYPE</span> NodeOffMesh</a>
       <div class="nav-section-label">Types — Validation</div>
       <a href="#fea-model-issue"><span class="mbadge m-type">TYPE</span> FeaModelIssue</a>
       <a href="#fea-error-details"><span class="mbadge m-type">TYPE</span> FeaErrorDetails</a>
@@ -892,7 +896,7 @@
           <tr><td>Corners</td><td>nodeIds</td><td>Exactly 4 distinct nodes in order around the shell, forming a convex quadrilateral. A slightly warped quad is allowed: it is built on its mean plane and linked rigidly to its corners, up to each corner being <code>SHELL_WARPING_LIMIT</code> (0.1, exported from <code>core</code>) × √A off that plane. Rejected otherwise (326).</td></tr>
           <tr><td>Meshing</td><td>mesh</td><td><code>{ maxSize }</code> (mm, the largest element side) or <code>{ divisions: [n1, n2] }</code> (at least n1 elements along edge 0–1 and n2 along edge 1–2). Without <code>mesh</code> an area is one element. Mesh walls and slabs: one element through a wall's depth is about ten times too stiff.</td></tr>
           <tr><td>Conforming meshes</td><td>—</td><td>Areas that share an edge, or meet it at a node (a slab edge on two wall panels), share their mesh nodes: division counts may grow beyond <code>maxSize</code> or <code>divisions</code> so that opposite edges of every area match, and an area without <code>mesh</code> is divided too when a neighbour needs it. Any model node lying on an area edge (a column, a beam end) becomes a mesh node. Edge nodes are evenly spaced between such nodes; interior nodes follow the edges (transfinite interpolation).</td></tr>
-          <tr><td>Generated ids</td><td>—</td><td>Elements <code>"&lt;areaId&gt;:&lt;i&gt;,&lt;j&gt;"</code> (i along edge 0–1, j along edge 1–2, from corner 0); interior nodes the same; edge nodes <code>"&lt;a&gt;~&lt;b&gt;:&lt;k&gt;"</code>, the k-th node from model node a to b. An area that stays one element keeps its own id. <code>result.mesh</code> lists the generated nodes and every element; displacements and reactions include the generated nodes.</td></tr>
+          <tr><td>Generated ids</td><td>—</td><td>Elements <code>"&lt;areaId&gt;:&lt;i&gt;,&lt;j&gt;"</code> (i along edge 0–1, j along edge 1–2, from corner 0); interior nodes the same; edge nodes <code>"&lt;a&gt;~&lt;b&gt;:&lt;k&gt;"</code>, the k-th node from model node a to b. An area that stays one element keeps its own id. <code>result.mesh</code> lists the generated nodes and every element; displacements and reactions include the generated nodes. <a href="#mesh-connectivity" style="color:var(--accent)">meshConnectivity</a> gives the same mesh without analysing, with the elements and members connected at each generated node.</td></tr>
           <tr><td>Edge supports</td><td>lineRestraints</td><td><code>{ nodeIds: [a, b], ux?…rz? }</code> fixes those DOFs at every node on the straight segment from a to b, generated nodes included, e.g. a wall base along a foundation. Combined with a point restraint at the same node, a fixed DOF stays fixed. Values are <code>true</code>/<code>false</code> only (no line springs).</td></tr>
           <tr><td>Members along meshed edges</td><td>—</td><td>A member with generated nodes inside it (an edge beam under a meshed slab, a beam on a wall top) is split there internally so it shares them with the shells. Its results stay under its own id: end forces at its real ends, releases only there, member loads applied along its whole length, and one diagram stitched along it, which shows the jumps where the shells feed load in.</td></tr>
           <tr><td>Nodes inside an area</td><td>—</td><td>A member node strictly inside an area but not on its mesh is not connected to the shell: a warning names it (<strong>Shell area meshing</strong>). Divide the area through the node.</td></tr>
@@ -2007,7 +2011,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
                <span class="k">message</span>: <span class="s">'Node "N5" is 12 mm from member "G" (4500 mm from its start) but not on it, …'</span> }]
 }</pre>
           </div>
-          <p>See <a href="#member-connectivity-type" style="color:var(--accent)">MemberConnectivity</a>. The lists are identical to <code>calculationDetails.intermediateNodes</code> and <code>nearMissNodes</code> of <code>analyze</code> for the same model. Shell-mesh nodes are not included; they are in <code>result.mesh</code>.</p>
+          <p>See <a href="#member-connectivity-type" style="color:var(--accent)">MemberConnectivity</a>. The lists are identical to <code>calculationDetails.intermediateNodes</code> and <code>nearMissNodes</code> of <code>analyze</code> for the same model. Shell-mesh nodes are not included; they are in <code>result.mesh</code> and <a href="#mesh-connectivity" style="color:var(--accent)">meshConnectivity</a>.</p>
           <div class="alert alert--warn">
             <span>⚠️</span>
             <span>Returns a warning for each model node that lies close to a member but not on it — <strong>Member connectivity</strong>.</span>
@@ -2015,6 +2019,103 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <div class="alert alert--info">
             <span>ℹ️</span>
             <span>Never throws for an invalid model: it reports what it can check, so it can run on every edit. Use <a href="#validate-model" style="color:var(--accent)">validateModel</a> for the input problems.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-card" id="mesh-connectivity">
+        <div class="export-card__header">
+          <span class="kind m-fn">FN</span>
+          <span class="ex-sig">meshConnectivity(model)</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Finds the nodes and elements the engine generates by meshing the shell areas, without analysing: the same meshing <code>analyze</code> does (see <a href="#shell-areas" style="color:var(--accent)">Shell areas</a>), cheap enough to run on every edit. It lists <strong>only the generated nodes</strong>, never your own, and for each one the shell elements, areas and members connected there. A frontend can draw them so the user sees which elements connect to each other and which do not.</p>
+          <ul>
+            <li><strong>Edge nodes</strong> <code>"&lt;a&gt;~&lt;b&gt;:&lt;k&gt;"</code> join the elements on both sides of an edge, the elements of a neighbouring area that shares it, and every member along it. A member along a meshed edge is split at these nodes even with <code>connectIntermediateNodes: false</code>.</li>
+            <li><strong>Interior nodes</strong> <code>"&lt;areaId&gt;:&lt;i&gt;,&lt;j&gt;"</code> join four elements of one area and no member.</li>
+            <li><strong>Not connected:</strong> a member end node inside an area but not on its mesh is listed in <code>disconnectedNodes</code>, with the same warning <code>analyze</code> gives.</li>
+          </ul>
+          <p>Model nodes connected to members (a beam framing into a girder, a column under a slab corner) are listed by <a href="#member-connectivity" style="color:var(--accent)">memberConnectivity</a>; call both to show every connection.</p>
+
+          <div class="sub-label">Parameters</div>
+          <table class="param-table">
+            <thead><tr><th>Param</th><th>Type</th><th>Unit</th><th>Required?</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>model</td><td>FeaModel</td><td>—</td><td><span class="req">Required</span></td><td>The model; only <code>nodes</code>, <code>members</code> and <code>shells</code> are used. It need not be valid: nodes with invalid coordinates, shell areas with invalid corners or <code>mesh</code> settings, and members with an unknown or invalid end node are skipped (<code>validateModel</code> reports them)</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Example</div>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript</div>
+            <pre>
+<span class="c">// 6 × 4 m slab S1 meshed at 2000 mm (3 × 2 elements), edge beam B1 along N1–N2,</span>
+<span class="c">// and a column C whose top C1 is inside the slab but off its mesh lines</span>
+<span class="b">const</span> c = <span class="u">meshConnectivity</span>({
+  <span class="k">nodes</span>: [
+    { <span class="k">id</span>: <span class="s">"N1"</span>, <span class="k">x</span>: <span class="n">0</span>, <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">0</span> },
+    { <span class="k">id</span>: <span class="s">"N2"</span>, <span class="k">x</span>: <span class="n">6000</span>, <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">0</span> },   <span class="c">// mm</span>
+    { <span class="k">id</span>: <span class="s">"N3"</span>, <span class="k">x</span>: <span class="n">6000</span>, <span class="k">y</span>: <span class="n">4000</span>, <span class="k">z</span>: <span class="n">0</span> },
+    { <span class="k">id</span>: <span class="s">"N4"</span>, <span class="k">x</span>: <span class="n">0</span>, <span class="k">y</span>: <span class="n">4000</span>, <span class="k">z</span>: <span class="n">0</span> },
+    { <span class="k">id</span>: <span class="s">"C1"</span>, <span class="k">x</span>: <span class="n">3000</span>, <span class="k">y</span>: <span class="n">1000</span>, <span class="k">z</span>: <span class="n">0</span> },
+    { <span class="k">id</span>: <span class="s">"C0"</span>, <span class="k">x</span>: <span class="n">3000</span>, <span class="k">y</span>: <span class="n">1000</span>, <span class="k">z</span>: -<span class="n">3000</span> },
+  ],
+  <span class="k">members</span>: [
+    { <span class="k">id</span>: <span class="s">"B1"</span>, <span class="k">startNodeId</span>: <span class="s">"N1"</span>, <span class="k">endNodeId</span>: <span class="s">"N2"</span>, <span class="k">section</span> },
+    { <span class="k">id</span>: <span class="s">"C"</span>, <span class="k">startNodeId</span>: <span class="s">"C0"</span>, <span class="k">endNodeId</span>: <span class="s">"C1"</span>, <span class="k">section</span> },
+  ],
+  <span class="k">shells</span>: [{ <span class="k">id</span>: <span class="s">"S1"</span>, <span class="k">nodeIds</span>: [<span class="s">"N1"</span>, <span class="s">"N2"</span>, <span class="s">"N3"</span>, <span class="s">"N4"</span>], <span class="k">section</span>: slab, <span class="k">mesh</span>: { <span class="k">maxSize</span>: <span class="n">2000</span> } }],
+  <span class="k">restraints</span>: [],
+  <span class="k">loadCases</span>: [],
+});</pre>
+          </div>
+
+          <div class="sub-label">Returns</div>
+          <div class="code-block">
+            <div class="code-block__label">Result</div>
+            <pre>
+{
+  <span class="k">nodes</span>: [                                     <span class="c">// 8 generated nodes, none of yours</span>
+    { <span class="k">id</span>: <span class="s">"N1~N2:1"</span>, <span class="k">x</span>: <span class="n">2000</span>, <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">0</span>,
+      <span class="k">shellIds</span>: [<span class="s">"S1:0,0"</span>, <span class="s">"S1:1,0"</span>], <span class="k">areaIds</span>: [<span class="s">"S1"</span>],
+      <span class="k">members</span>: [{ <span class="k">memberId</span>: <span class="s">"B1"</span>, <span class="k">x</span>: <span class="n">2000</span> }] },          <span class="c">// B1 is split here</span>
+    { <span class="k">id</span>: <span class="s">"N1~N2:2"</span>, <span class="k">x</span>: <span class="n">4000</span>, <span class="k">y</span>: <span class="n">0</span>, <span class="k">z</span>: <span class="n">0</span>,
+      <span class="k">shellIds</span>: [<span class="s">"S1:1,0"</span>, <span class="s">"S1:2,0"</span>], <span class="k">areaIds</span>: [<span class="s">"S1"</span>],
+      <span class="k">members</span>: [{ <span class="k">memberId</span>: <span class="s">"B1"</span>, <span class="k">x</span>: <span class="n">4000</span> }] },
+    { <span class="k">id</span>: <span class="s">"N2~N3:1"</span>, <span class="k">x</span>: <span class="n">6000</span>, <span class="k">y</span>: <span class="n">2000</span>, <span class="k">z</span>: <span class="n">0</span>,
+      <span class="k">shellIds</span>: [<span class="s">"S1:2,0"</span>, <span class="s">"S1:2,1"</span>], <span class="k">areaIds</span>: [<span class="s">"S1"</span>], <span class="k">members</span>: [] },
+    <span class="c">// … "N3~N4:1", "N3~N4:2", "N1~N4:1" on the other edges</span>
+    { <span class="k">id</span>: <span class="s">"S1:1,1"</span>, <span class="k">x</span>: <span class="n">2000</span>, <span class="k">y</span>: <span class="n">2000</span>, <span class="k">z</span>: <span class="n">0</span>,                   <span class="c">// interior: four elements</span>
+      <span class="k">shellIds</span>: [<span class="s">"S1:0,0"</span>, <span class="s">"S1:1,0"</span>, <span class="s">"S1:0,1"</span>, <span class="s">"S1:1,1"</span>], <span class="k">areaIds</span>: [<span class="s">"S1"</span>], <span class="k">members</span>: [] },
+    <span class="c">// … "S1:2,1"</span>
+  ],
+  <span class="k">shells</span>: [
+    { <span class="k">id</span>: <span class="s">"S1:0,0"</span>, <span class="k">areaId</span>: <span class="s">"S1"</span>, <span class="k">nodeIds</span>: [<span class="s">"N1"</span>, <span class="s">"N1~N2:1"</span>, <span class="s">"S1:1,1"</span>, <span class="s">"N1~N4:1"</span>] },
+    <span class="c">// … 6 elements</span>
+  ],
+  <span class="k">disconnectedNodes</span>: [{ <span class="k">nodeId</span>: <span class="s">"C1"</span>, <span class="k">areaId</span>: <span class="s">"S1"</span> }],      <span class="c">// column C is not connected</span>
+  <span class="k">failedAreaIds</span>: [],
+  <span class="k">warnings</span>: [{ <span class="k">reference</span>: <span class="s">"Shell area meshing"</span>,
+               <span class="k">message</span>: <span class="s">'Node "C1" lies inside shell area "S1" but not on its mesh, so its members are not connected to the shell; …'</span> }]
+}</pre>
+          </div>
+          <p>See <a href="#mesh-connectivity-type" style="color:var(--accent)">MeshConnectivity</a>. For a model that <code>analyze</code> accepts, <code>nodes</code> (their ids and coordinates) and <code>shells</code> are identical to <code>result.mesh</code>, and the warnings to the <strong>Shell area meshing</strong> warnings of <code>analyze</code>. A generated interior node and an element can share an id, such as <code>"S1:1,1"</code> above; nodes and elements are separate lists.</p>
+          <div class="code-block">
+            <div class="code-block__label">TypeScript — show the connections on every edit</div>
+            <pre>
+<span class="b">const</span> mesh = <span class="u">meshConnectivity</span>(model);
+<span class="u">drawElements</span>(mesh.shells);                                   <span class="c">// your drawing code</span>
+<span class="u">markMeshNodes</span>(mesh.nodes.filter((n) =&gt; n.members.length &gt; 0));  <span class="c">// shells tied to a beam</span>
+<span class="u">markNotConnected</span>(mesh.disconnectedNodes);                     <span class="c">// e.g. in a warning colour</span></pre>
+          </div>
+          <div class="alert alert--warn">
+            <span>⚠️</span>
+            <span>Returns a warning for each member end node that lies inside a shell area but not on its mesh — <strong>Shell area meshing</strong>.</span>
+          </div>
+          <div class="alert alert--info">
+            <span>ℹ️</span>
+            <span>Never throws for an invalid model. Areas that cannot be meshed are listed in <code>failedAreaIds</code> (<code>analyze</code> throws <strong>329</strong> for them); when division counts cannot be made to match, <code>nodes</code> and <code>shells</code> are empty. Use <a href="#validate-model" style="color:var(--accent)">validateModel</a> for the input problems.</span>
           </div>
         </div>
       </div>
@@ -3237,7 +3338,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <span class="scope-badge s-public">Public API</span>
         </div>
         <div class="export-card__body">
-          <p class="ex-desc"><code>result.mesh</code>: what the engine analysed for the shell areas, to draw the elements and contour their results.</p>
+          <p class="ex-desc"><code>result.mesh</code>: what the engine analysed for the shell areas, to draw the elements and contour their results. <a href="#mesh-connectivity" style="color:var(--accent)">meshConnectivity</a> returns the same nodes and elements before analysing.</p>
           <table class="param-table">
             <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
             <tbody>
@@ -3546,6 +3647,66 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
         </div>
       </div>
 
+      <div class="export-card" id="mesh-connectivity-type">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">MeshConnectivity</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">Returned by <a href="#mesh-connectivity" style="color:var(--accent)">meshConnectivity</a>: the nodes and elements the engine generates by meshing a model's shell areas.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>nodes</td><td>GeneratedMeshNode[]</td><td>mm</td><td>Every generated node, none from the model, with the elements and members connected at it; in the order of <code>result.mesh.nodes</code>. See <a href="#generated-mesh-node" style="color:var(--accent)">GeneratedMeshNode</a></td></tr>
+              <tr><td>shells</td><td>{ id, areaId, nodeIds }[]</td><td>—</td><td>Every shell element, area by area in model order, with its four nodes (model or generated), as in <a href="#fea-mesh" style="color:var(--accent)">FeaMesh</a></td></tr>
+              <tr><td>disconnectedNodes</td><td>NodeOffMesh[]</td><td>—</td><td>Member end nodes inside a shell area but not on its mesh, so not connected to the shell. See <a href="#node-off-mesh" style="color:var(--accent)">NodeOffMesh</a></td></tr>
+              <tr><td>failedAreaIds</td><td>FeaId[]</td><td>—</td><td>Shell areas that cannot be meshed; <code>analyze</code> throws 329 for them</td></tr>
+              <tr><td>warnings</td><td>Warnings</td><td>—</td><td>One <strong>Shell area meshing</strong> warning per disconnected node</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="generated-mesh-node">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">GeneratedMeshNode</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">A node the engine generated to mesh the shell areas, and what connects at it. Extends <code>FeaNode</code>.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>id</td><td>string</td><td>—</td><td><code>"&lt;a&gt;~&lt;b&gt;:&lt;k&gt;"</code> on an edge between model nodes a and b, <code>"&lt;areaId&gt;:&lt;i&gt;,&lt;j&gt;"</code> inside an area</td></tr>
+              <tr><td>x, y, z</td><td>number</td><td>mm</td><td>Global coordinates (unrounded, as in <code>result.mesh.nodes</code>)</td></tr>
+              <tr><td>shellIds</td><td>FeaId[]</td><td>—</td><td>Shell elements with a corner at the node, in the order of <code>shells</code>: two on an area edge, four inside an area, more where areas share the edge</td></tr>
+              <tr><td>areaIds</td><td>FeaId[]</td><td>—</td><td>The shell areas of those elements, each once, in model order</td></tr>
+              <tr><td>members</td><td>{ memberId, x }[]</td><td>mm</td><td>Members passing through the node, split there, with <code>x</code> from the member start (3 decimals); empty when no member runs along it</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="export-card" id="node-off-mesh">
+        <div class="export-card__header">
+          <span class="kind m-type">TYPE</span>
+          <span class="ex-sig">NodeOffMesh</span>
+          <span class="scope-badge s-public">Public API</span>
+        </div>
+        <div class="export-card__body">
+          <p class="ex-desc">A member end node lying inside a shell area, strictly within its corners and in its plane, but not on its mesh, so its members are <em>not</em> connected to the shell. Divide the area through the node to connect it.</p>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>nodeId</td><td>FeaId</td><td>—</td><td>The model node</td></tr>
+              <tr><td>areaId</td><td>FeaId</td><td>—</td><td>The shell area it lies inside</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="sub-label" style="margin-top:28px">Validation</div>
 
       <div class="export-card" id="fea-model-issue">
@@ -3653,6 +3814,7 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">distributeAreaLoads</td><td>{ memberLoads, warnings }</td><td>The member loads that the null areas send to their edge members</td></tr>
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">memberDemandEnvelope</td><td>{ MuPositive, MuNegative, Vu, Nu, governing, … }</td><td>Design demands of a member over combinations, with the governing one</td></tr>
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">memberConnectivity</td><td>{ intermediateNodes, nearMissNodes, warnings }</td><td>Nodes connected to members and near misses, without analysing</td></tr>
+          <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">meshConnectivity</td><td>{ nodes, shells, disconnectedNodes, failedAreaIds, warnings }</td><td>Generated shell-mesh nodes with the elements and members connected at each, without analysing</td></tr>
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">beam3dLocalStiffness</td><td>number[][]</td><td>Reference 12×12 local stiffness</td></tr>
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">beam3dLocalStiffnessRightHanded</td><td>number[][]</td><td>Same matrix with right-hand rotations</td></tr>
           <tr><td><span class="kind m-fn">FN</span></td><td class="path-cell">memberAxes</td><td>{ length, lambda }</td><td>Local axes of a member</td></tr>
@@ -3727,6 +3889,9 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">Analysis</td><td>—</td><td>Result plus on-demand <code>memberDiagram</code></td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberDemandEnvelope</td><td>—</td><td>Mu⁺, Mu⁻, Vu, Nu with the governing combination</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MemberConnectivity</td><td>—</td><td>Result of memberConnectivity: connected nodes, near misses, warnings</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">MeshConnectivity</td><td>—</td><td>Result of meshConnectivity: generated nodes, elements, disconnected nodes, failed areas, warnings</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">GeneratedMeshNode</td><td>—</td><td>A generated node with its shell elements, areas and members</td></tr>
+          <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">NodeOffMesh</td><td>—</td><td>A member node inside a shell area but not on its mesh</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FeaModelIssue</td><td>—</td><td>One validation problem (core)</td></tr>
           <tr><td><span class="kind m-type">TYPE</span></td><td class="path-cell">FeaErrorDetails</td><td>—</td><td>Location of a problem (core)</td></tr>
           <tr><td><span class="kind m-error">ERR</span></td><td class="path-cell">FeaError, FeaErrors</td><td>—</td><td>Error class (code, message, details, issues) and coded entries 301–317 and 326–329 (core)</td></tr>

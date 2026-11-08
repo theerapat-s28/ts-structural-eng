@@ -28,14 +28,26 @@ const lowerBound = (values: Float64Array, v: number): number => {
   return lo;
 };
 
+/** First index of the sorted `values` that is above `v`. */
+const upperBound = (values: Float64Array, v: number): number => {
+  let lo = 0;
+  let hi = values.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (values[mid] <= v) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+};
+
 /**
  * For each member, the candidate nodes lying within `reach` of its axis whose projection falls
  * strictly between its ends (more than the on-member tolerance from either end), in order from
  * its start. A member's own end nodes are skipped.
  *
  * The candidates are sorted once along each global axis; each member scans only the candidates
- * inside its bounding box (grown by its reach) along the axis where that box is thinnest, so
- * the search stays fast for models with many nodes.
+ * inside its bounding box (grown by its reach), along the axis where the fewest of them fall in
+ * the box, so the search stays fast for models with many nodes.
  *
  * @param members - Members with valid geometry (non-zero length)
  * @param position - Coordinates (mm) of every member end node
@@ -69,11 +81,19 @@ export const nodesAlongMembers = (
     const tolerance = AREA_GEOMETRY_TOLERANCE * L;
     const lo = [0, 1, 2].map((k) => Math.min(P[k], Q[k]) - r);
     const hi = [0, 1, 2].map((k) => Math.max(P[k], Q[k]) + r);
-    const axis = [0, 1, 2].reduce((best, k) => (hi[k] - lo[k] < hi[best] - lo[best] ? k : best), 0);
+    // scan along the axis with the fewest candidates in range: in a flat model every node
+    // shares one coordinate, so the thinnest box side alone can pick the axis that holds them all
+    const range = [0, 1, 2].map((k) => [
+      lowerBound(sorted[k], lo[k]),
+      upperBound(sorted[k], hi[k]),
+    ]);
+    const axis = [0, 1, 2].reduce(
+      (best, k) => (range[k][1] - range[k][0] < range[best][1] - range[best][0] ? k : best),
+      0,
+    );
 
     const found: NodeAlongMember[] = [];
-    for (let j = lowerBound(sorted[axis], lo[axis]); j < candidates.length; j++) {
-      if (sorted[axis][j] > hi[axis]) break;
+    for (let j = range[axis][0]; j < range[axis][1]; j++) {
       const node = candidates[order[axis][j]];
       if (node.id === member.startNodeId || node.id === member.endNodeId) continue;
       const X: Point = [node.x, node.y, node.z];
