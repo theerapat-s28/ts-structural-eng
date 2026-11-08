@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analysis Method — Theory Notes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #f0f2f6;
+      --border: #e2e5ec;
+      --accent: #3b63d8;
+      --accent-dim: rgba(59, 99, 216, 0.08);
+      --green: #1f9d63;
+      --green-dim: rgba(31, 157, 99, 0.10);
+      --red: #d9463c;
+      --red-dim: rgba(217, 70, 60, 0.08);
+      --yellow: #b97d0a;
+      --yellow-dim: rgba(230, 160, 30, 0.12);
+      --purple: #8a4fd0;
+      --purple-dim: rgba(138, 79, 208, 0.10);
+      --text: #1f2430;
+      --text-muted: #5c6474;
+      --text-dim: #8a90a0;
+      --code-bg: #f8f9fb;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ─────────────────────────────────────── */
+    .sidebar {
+      width: 252px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px 40px;
+    }
+    .sidebar__brand { padding: 0 10px 18px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .brand-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .sidebar__brand h2 { font-size: 13.5px; font-weight: 600; }
+    .nav-section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      padding: 0 10px;
+      margin-bottom: 6px;
+    }
+    /* Foldable nav groups: <details class="nav-group" open><summary class="nav-section-label"> */
+    .nav-group + .nav-group,
+    nav > a + .nav-group { margin-top: 8px; }
+    summary.nav-section-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      list-style: none;
+      border-radius: 5px;
+      user-select: none;
+    }
+    summary.nav-section-label::-webkit-details-marker { display: none; }
+    summary.nav-section-label::after {
+      content: "▾";
+      font-size: 11px;
+      letter-spacing: 0;
+      transition: transform 0.15s;
+    }
+    .nav-group:not([open]) > summary.nav-section-label::after { transform: rotate(-90deg); }
+    summary.nav-section-label:hover { color: var(--text-muted); }
+    summary.nav-section-label:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      margin-bottom: 2px;
+    }
+    nav a:hover { background: var(--accent-dim); color: var(--text); }
+
+    /* ── Kind badges ─────────────────────────────────── */
+    .mbadge, .kind {
+      font-family: var(--mono);
+      font-weight: 700;
+      border-radius: 5px;
+      flex-shrink: 0;
+    }
+    .mbadge { font-size: 9.5px; padding: 2px 6px; min-width: 34px; text-align: center; }
+    .kind { font-size: 11.5px; padding: 3px 9px; }
+    .m-fn { color: var(--green); background: var(--green-dim); }
+    .m-type { color: var(--accent); background: var(--accent-dim); }
+    .m-const { color: var(--yellow); background: var(--yellow-dim); }
+    .m-error { color: var(--red); background: var(--red-dim); }
+
+    /* ── Scope badges ────────────────────────────────── */
+    .scope-badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .s-public { color: var(--accent); background: var(--accent-dim); }
+    .s-internal { color: var(--purple); background: var(--purple-dim); }
+
+    .std-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+      color: var(--yellow);
+      background: var(--yellow-dim);
+    }
+
+    /* ── Main ────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 40px 48px 120px;
+      min-width: 0;
+    }
+
+    .page-header { margin-bottom: 36px; }
+    .import-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .import-tag .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+    }
+    .import-tag code { background: none; padding: 0; font-size: 12.5px; }
+    .page-header h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+    .page-header p { color: var(--text-muted); max-width: 640px; }
+
+    .section { margin-bottom: 44px; scroll-margin-top: 24px; }
+    .section__title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section p { color: var(--text-muted); margin-bottom: 12px; }
+
+    /* ── Export cards ────────────────────────────────── */
+    .export-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 20px;
+      overflow: hidden;
+      scroll-margin-top: 24px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .export-card__header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .ex-sig { font-family: var(--mono); font-size: 13.5px; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+    .export-card__body { padding: 18px 20px 20px; }
+    .ex-desc { color: var(--text-muted); margin-bottom: 16px; }
+    .sub-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin: 18px 0 8px;
+    }
+    .sub-label:first-of-type { margin-top: 0; }
+
+    /* ── Code blocks ─────────────────────────────────── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .code-block__label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .code-block pre {
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .k { color: #0e7490; }
+    .s { color: #2f7d32; }
+    .n { color: var(--yellow); }
+    .b { color: var(--purple); }
+    .nl { color: var(--text-dim); }
+    .c { color: var(--text-dim); font-style: italic; }
+    .u { color: var(--accent); }
+
+    /* ── Inline code ─────────────────────────────────── */
+    code {
+      font-family: var(--mono);
+      font-size: 0.86em;
+      background: var(--surface-2);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+    pre code { background: none; padding: 0; color: inherit; }
+
+    /* ── Tables ──────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 13.5px; }
+    th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      font-weight: 600;
+      padding: 8px 12px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      color: var(--text-muted);
+    }
+    tr:last-child td { border-bottom: none; }
+    .param-table, .summary-table {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: block;
+      overflow-x: auto;
+    }
+    .param-table td:first-child {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .param-table td:nth-child(2) { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+    .req { color: var(--red); font-size: 12px; font-weight: 500; }
+    .opt { color: var(--text-dim); font-size: 12px; }
+    .summary-table .path-cell { font-family: var(--mono); font-size: 12.5px; color: var(--text); white-space: nowrap; }
+
+    /* ── Alerts ──────────────────────────────────────── */
+    .alert {
+      display: flex;
+      gap: 10px;
+      padding: 11px 14px;
+      border-radius: var(--radius);
+      font-size: 13.5px;
+      margin-bottom: 10px;
+      border: 1px solid;
+      color: var(--text-muted);
+    }
+    .alert strong { color: var(--text); }
+    .alert--error { background: var(--red-dim); border-color: rgba(217, 70, 60, 0.25); }
+    .alert--warn { background: var(--yellow-dim); border-color: rgba(185, 125, 10, 0.25); }
+    .alert--info { background: var(--accent-dim); border-color: rgba(59, 99, 216, 0.25); }
+
+    /* ── Flow steps ──────────────────────────────────── */
+    .flow-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 12px; }
+    .flow-step {
+      display: flex;
+      gap: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .step-num {
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-body { color: var(--text-muted); font-size: 13.5px; }
+    .step-body strong { color: var(--text); }
+
+    /* ── Model grid ──────────────────────────────────── */
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .model-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .model-card__title { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    .model-card__desc { font-size: 12.5px; color: var(--text-muted); }
+    /* ── Theory notes: lists, equations, matrices, figures ── */
+    .section ul, .section ol { color: var(--text-muted); margin: 0 0 12px 22px; }
+    .section li { margin-bottom: 6px; }
+    .section li strong, .section p strong { color: var(--text); }
+
+    .eq {
+      font-family: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', 'Times New Roman', serif;
+      font-size: 16.5px;
+      line-height: 2.1;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      margin-bottom: 12px;
+      overflow-x: auto;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .eq + .eq { margin-top: -4px; }
+    .eq .note { font-family: 'Inter', sans-serif; font-size: 12.5px; color: var(--text-dim); margin-left: 14px; }
+    .mat {
+      display: inline-grid;
+      vertical-align: middle;
+      column-gap: 14px;
+      padding: 2px 10px;
+      margin: 0 3px;
+      position: relative;
+      text-align: center;
+      line-height: 1.55;
+    }
+    .mat::before, .mat::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+      border: 1.4px solid var(--text);
+    }
+    .mat::before { left: 0; border-right: none; }
+    .mat::after { right: 0; border-left: none; }
+    .mat.c1 { grid-template-columns: auto; }
+    .mat.c2 { grid-template-columns: repeat(2, auto); }
+    .mat.c3 { grid-template-columns: repeat(3, auto); }
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      vertical-align: middle;
+      text-align: center;
+      line-height: 1.3;
+      margin: 0 3px;
+    }
+    .frac > span + span { border-top: 1px solid var(--text); }
+
+    .figure {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 16px 12px;
+      margin-bottom: 12px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .figure svg { max-width: 100%; height: auto; }
+    .figure figcaption { font-size: 12.5px; color: var(--text-muted); margin-top: 6px; }
+    .dg-edge { fill: var(--accent-dim); stroke: var(--text); stroke-width: 1.5; }
+    .dg-dash { fill: none; stroke: var(--text-dim); stroke-width: 1; stroke-dasharray: 4 3; }
+    .dg-arrow { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+    .dg-arrowhead { fill: var(--accent); }
+    .dg-node { fill: var(--accent); }
+    .dg-mid { fill: var(--surface); stroke: var(--yellow); stroke-width: 1.8; }
+    .dg-gauss { fill: var(--green); }
+    .dg-text { font-family: 'Inter', sans-serif; font-size: 12px; fill: var(--text-muted); }
+    .dg-label { font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; fill: var(--text); }
+    .dg-math { font-family: 'STIX Two Math', 'Cambria Math', 'Times New Roman', serif; font-size: 14px; font-style: italic; fill: var(--text); }
+
+
+    /* ── Notice banner: scope and responsibility, on every page ── */
+    .notice-banner {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 14px;
+      margin: -12px 0 28px;
+      border-radius: var(--radius);
+      background: var(--yellow-dim);
+      border: 1px solid rgba(185, 125, 10, 0.25);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .notice-banner strong { color: var(--text); }
+    .notice-banner a { color: var(--accent); font-weight: 500; text-decoration: none; }
+    .notice-banner a:hover { text-decoration: underline; }
+
+    /* ── Collapsible sidebar: toggle button, folded state, phone drawer ── */
+    .sidebar__brand { padding-right: 40px; }
+    .nav-toggle {
+      position: fixed;
+      top: 14px;
+      left: 208px;
+      z-index: 50;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .nav-toggle:hover { background: var(--accent-dim); color: var(--text); }
+    .nav-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .nav-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      background: rgba(20, 24, 40, 0.35);
+    }
+    .nav-backdrop[hidden] { display: none; }
+    @media (min-width: 801px) {
+      html.nav-collapsed .sidebar { display: none; }
+      html.nav-collapsed .nav-toggle { left: 12px; }
+    }
+    @media print {
+      .nav-toggle, .nav-backdrop { display: none; }
+    }
+
+    @media (max-width: 800px) {
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 40;
+        transform: translateX(-100%);
+        visibility: hidden;
+        transition: transform 0.2s ease, visibility 0.2s;
+        box-shadow: 4px 0 16px rgba(20, 24, 40, 0.12);
+      }
+      html.nav-open .sidebar { transform: none; visibility: visible; }
+      html:not(.nav-open) .nav-toggle { left: 12px; }
+      .main { padding: 60px 20px 80px; }
+    }
+  </style>
+
+  <script>
+    // Restore the folded sidebar before the first paint, so the page does not flash open.
+    try { if (localStorage.getItem("docs-nav-collapsed") === "1") document.documentElement.classList.add("nav-collapsed"); } catch (e) {}
+  </script>
+</head>
+<body>
+<button class="nav-toggle" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Hide navigation" title="Hide navigation">«</button>
+<div class="nav-backdrop" hidden></div>
+<div class="layout">
+
+  <!-- ══════════════ Sidebar ══════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__brand">
+      <div class="brand-label">Theory Notes</div>
+      <h2>Analysis Method</h2>
+    </div>
+    <nav>
+      <a href="../../"><span style="font-size:14px">←</span> All modules</a>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Getting Started</summary>
+        <a href="#overview"><span style="font-size:14px">◈</span> Overview</a>
+        <a href="#steps"><span style="font-size:14px">▶</span> Steps</a>
+        <a href="#equations"><span style="font-size:14px">=</span> Equilibrium equations</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">The System</summary>
+        <a href="#model-expansion"><span style="font-size:14px">⋯</span> Model expansion</a>
+        <a href="#supports"><span style="font-size:14px">⊥</span> Supports &amp; springs</a>
+        <a href="#assembly"><span style="font-size:14px">▦</span> Assembly</a>
+        <a href="#ordering"><span style="font-size:14px">⇅</span> Node ordering</a>
+        <a href="#skyline"><span style="font-size:14px">▙</span> Skyline Cholesky</a>
+        <a href="#stability"><span style="font-size:14px">⚠</span> Stability checks</a>
+        <a href="#auto-restraint"><span style="font-size:14px">⊙</span> Unresisted rotations</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Load Cases</summary>
+        <a href="#load-vector"><span style="font-size:14px">↓</span> Load vector</a>
+        <a href="#null-areas"><span style="font-size:14px">▭</span> Null areas</a>
+        <a href="#solve"><span style="font-size:14px">⇆</span> Solve &amp; recover</a>
+        <a href="#equilibrium"><span style="font-size:14px">∑</span> Equilibrium check</a>
+        <a href="#combinations"><span style="font-size:14px">✚</span> Combinations</a>
+        <a href="#envelope"><span style="font-size:14px">⊓</span> Envelope</a>
+        <a href="#rounding"><span style="font-size:14px">≈</span> Rounding</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Checks</summary>
+        <a href="#verification"><span style="font-size:14px">✔</span> Verification</a>
+        <a href="#limitations"><span style="font-size:14px">⚠</span> Limitations</a>
+        <a href="#review"><span style="font-size:14px">✎</span> Points for review</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Reference</summary>
+        <a href="#references"><span style="font-size:14px">☷</span> References</a>
+        <a href="#summary"><span style="font-size:14px">☰</span> Summary</a>
+      </details>
+    </nav>
+  </aside>
+
+  <!-- ══════════════ Main ══════════════ -->
+  <main class="main">
+
+    <div class="page-header">
+      <div class="import-tag">
+        <span class="label">Status</span>
+        <code>@theerapat-s28/ts-structural-eng-tools/fea — analyze</code>
+      </div>
+      <h1>Analysis Method — Theory Notes</h1>
+      <p>How <code>analyze</code> turns a model of members and shells into displacements, reactions and forces: the direct stiffness method, the supports, the sparse solver, the stability checks, and the superposition behind load combinations and envelopes.</p>
+    </div>
+
+    <div class="notice-banner" role="note">
+      <span>⚠️</span>
+      <span><strong>A calculation aid, not a substitute for engineering judgement.</strong> Results must be checked and accepted by the qualified engineer responsible for the design. <a href="../../about/#limitations">Scope, assumptions and limitations →</a></span>
+    </div>
+
+    <!-- ══════════════ Overview ══════════════ -->
+    <div class="section" id="overview">
+      <div class="section__title">Overview</div>
+      <p>
+        The engine analyses the whole model, members and shells together, by the <strong>direct stiffness
+        method</strong>. Each element contributes a stiffness matrix in global axes; these are added into one structure
+        stiffness matrix K, the supports remove or stiffen degrees of freedom, and the equilibrium equations
+        K·U = F are solved for the displacements U of each load case. Everything else (reactions, end forces,
+        diagrams, shell forces) is recovered from U.
+      </p>
+      <p>
+        The element formulations are on their own pages: <a href="frame-element.html">Frame element</a> and
+        <a href="shell-element.html">Shell element</a>. This page covers what happens at the level of the structure.
+      </p>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>The basis is the finite element method and numerical linear algebra, not a code provision <span class="std-badge" title="Basis: direct stiffness method, linear elastic, small displacements — not an ACI 318-19 provision">FEM</span>. The formulas are read from <code>src/fea/analysis/</code> and <code>src/utils/skyline.ts</code>; the checks quoted are in <code>tests/fea/</code>.</span>
+      </div>
+
+      <div class="sub-label">Basis</div>
+      <table class="summary-table">
+        <thead><tr><th>Quantity</th><th>Basis</th><th>Code or adaptation</th></tr></thead>
+        <tbody>
+          <tr><td>Structure stiffness</td><td>Sum of element stiffnesses in global axes, 6 DOF per node</td><td>Direct stiffness method</td></tr>
+          <tr><td>Supports</td><td>Fixed DOFs removed from the equations; springs added to the diagonal</td><td>Direct stiffness method</td></tr>
+          <tr><td>Solver</td><td>Cholesky factorisation in skyline storage, nodes in reverse Cuthill–McKee order</td><td>Numerical method</td></tr>
+          <tr><td>Load combinations</td><td>Superposition of the unrounded load case solutions</td><td>Linear elasticity</td></tr>
+          <tr><td>Envelope</td><td>Maximum and minimum of each result over the combinations</td><td>Post-processing</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════ Steps ══════════════ -->
+    <div class="section" id="steps">
+      <div class="section__title">Steps <code style="font-size:13px">solver/analyze.ts</code></div>
+      <div class="flow-steps">
+        <div class="flow-step"><div class="step-num">1</div><div class="step-body"><strong>Validate</strong><br/>Every input is checked first (<code>validateModel</code>): ids, references, finite numbers, allowed options, geometry. All problems are reported together, each with <code>details</code> that locate it. Nothing is analysed if one is found.</div></div>
+        <div class="flow-step"><div class="step-num">2</div><div class="step-body"><strong>Expand the model</strong><br/>Shell areas are meshed into elements, members are connected to the nodes lying on them, and line restraints are spread to the nodes along each line.</div></div>
+        <div class="flow-step"><div class="step-num">3</div><div class="step-body"><strong>Build and factorise the system once</strong><br/>Element stiffnesses are assembled into K in skyline storage, springs and held rotations are added, and K is factorised as U<sup>T</sup>U. The factor serves every load case.</div></div>
+        <div class="flow-step"><div class="step-num">4</div><div class="step-body"><strong>Solve each load case</strong><br/>The load vector is formed from nodal loads, member loads, area loads and self-weight, and solved by forward and back substitution. Reactions, end forces and shell forces are recovered, unrounded.</div></div>
+        <div class="flow-step"><div class="step-num">5</div><div class="step-body"><strong>Form the combinations</strong><br/>Each combination is the factored sum of the unrounded load-case solutions; its member diagrams are rebuilt from the combined forces.</div></div>
+        <div class="flow-step"><div class="step-num">6</div><div class="step-body"><strong>Present</strong><br/>Results are converted to kN, kN·m, mm and rad, rounded, checked for global equilibrium, and the envelope over the combinations is taken.</div></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ Equations ══════════════ -->
+    <div class="section" id="equations">
+      <div class="section__title">Equilibrium equations</div>
+      <p>Each node has six degrees of freedom in global axes, in the order u<sub>x</sub>, u<sub>y</sub>, u<sub>z</sub>, r<sub>x</sub>, r<sub>y</sub>, r<sub>z</sub>, so global DOF 6n + k belongs to node n. With the element stiffnesses K<sub>e</sub> and the element DOF maps:</p>
+      <div class="eq">
+        K = Σ<sub>e</sub> K<sub>e</sub>,&nbsp;&nbsp; K · U = F<span class="note">assembled over members and shells</span>
+      </div>
+      <p>Splitting the DOFs into free (f) and fixed (s) ones, with no prescribed displacement at the fixed DOFs:</p>
+      <div class="eq">
+        <span class="mat c2"><span>K<sub>ff</sub></span><span>K<sub>fs</sub></span><span>K<sub>sf</sub></span><span>K<sub>ss</sub></span></span>
+        <span class="mat c1"><span>U<sub>f</sub></span><span>0</span></span>
+        =
+        <span class="mat c1"><span>F<sub>f</sub></span><span>F<sub>s</sub> + R<sub>s</sub></span></span>
+        &nbsp;&nbsp;⇒&nbsp;&nbsp; K<sub>ff</sub> U<sub>f</sub> = F<sub>f</sub>,&nbsp;&nbsp; R<sub>s</sub> = K<sub>sf</sub> U<sub>f</sub> − F<sub>s</sub>
+      </div>
+      <p>Only K<sub>ff</sub>, including the springs, is stored and factorised. The fixed DOFs get no equation number, so they never enter the solver; this is exact, unlike a large-number penalty.</p>
+    </div>
+
+    <!-- ══════════════ Model expansion ══════════════ -->
+    <div class="section" id="model-expansion">
+      <div class="section__title">Model expansion <code style="font-size:13px">mesh/expand-model.ts</code></div>
+      <ul>
+        <li><strong>Shell meshing.</strong> Each shell area is divided into four-node elements, matched along shared edges so that neighbouring areas and the members along them share nodes. The generated nodes are listed in <code>result.mesh</code>; see <a href="shell-element.html#meshing">Shell element</a>.</li>
+        <li><strong>Members through nodes.</strong> A member is connected to every node lying on it between its ends and is analysed as a chain of pieces; see <a href="frame-element.html#pieces">Frame element</a>.</li>
+        <li><strong>Line restraints</strong> (<code>lineRestraints</code>) fix the chosen DOFs at every node on the segment between two nodes, generated mesh nodes included, for example a wall base fixed along its length. Combined with a point restraint at the same node, a fixed DOF stays fixed.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ Supports ══════════════ -->
+    <div class="section" id="supports">
+      <div class="section__title">Supports and springs <code style="font-size:13px">shared/solver/boundary-conditions.ts</code></div>
+      <p>Each restraint DOF is <code>true</code> (fixed), a positive number (a spring) or absent (free):</p>
+      <table class="summary-table">
+        <thead><tr><th>Value</th><th>Effect on the system</th><th>Unit of the spring</th></tr></thead>
+        <tbody>
+          <tr><td><code>true</code></td><td>The DOF is removed from the equations (U = 0) and gets a reaction</td><td>—</td></tr>
+          <tr><td>number &gt; 0</td><td>The stiffness is added to the diagonal of K<sub>ff</sub>; the DOF stays free and gets a reaction equal to the spring force</td><td>kN/mm (translations), kN·m/rad (rotations)</td></tr>
+          <tr><td>absent, <code>false</code> or 0</td><td>Free</td><td>—</td></tr>
+        </tbody>
+      </table>
+      <p>Springs are converted to N/mm (× 10³) and N·mm/rad (× 10⁶) before assembly. Supports act along the global axes and in both directions; skewed supports and support settlement are not yet available.</p>
+    </div>
+
+    <!-- ══════════════ Assembly ══════════════ -->
+    <div class="section" id="assembly">
+      <div class="section__title">Assembly <code style="font-size:13px">solver/analysis-system.ts</code></div>
+      <p>
+        Every element that adds stiffness is treated alike: the nodes it connects and its 6n × 6n stiffness in global
+        axes (<code>StiffnessElement</code>). A member is a 2-node element with K<sub>e</sub> = T<sup>T</sup>k*T; a shell is
+        a 4-node element. For every pair of element DOFs (a, b) that are both free, K<sub>e</sub>[a][b] is added to
+        K<sub>ff</sub> at the equation numbers of a and b. Only the upper triangle is stored, since K is symmetric.
+      </p>
+      <p>Null areas add no stiffness and no DOFs: they only produce member loads (<a href="#null-areas">below</a>).</p>
+    </div>
+
+    <!-- ══════════════ Ordering ══════════════ -->
+    <div class="section" id="ordering">
+      <div class="section__title">Node ordering <code style="font-size:13px">utils/skyline.ts</code></div>
+      <p>
+        The cost of the factorisation depends on how far each equation reaches from the diagonal, and that depends on
+        the order of the nodes. The engine numbers the nodes in <strong>reverse Cuthill–McKee</strong> (RCM) order of
+        the node connectivity graph (two nodes are neighbours when an element joins them):
+      </p>
+      <ol>
+        <li>For each connected part of the graph, start from a pseudo-peripheral node: run a breadth-first search, move to the farthest node of lowest degree, and repeat while the depth still grows (at most 8 times).</li>
+        <li>Number the nodes breadth-first from that start, visiting the neighbours of each node in order of increasing degree.</li>
+        <li>Reverse the whole order.</li>
+      </ol>
+      <p>The six DOFs of each node then take consecutive equation numbers, skipping the fixed ones. The ordering changes only the work and memory, never the result. The stored size is reported as <code>calculationDetails.profileSize</code>.</p>
+    </div>
+
+    <!-- ══════════════ Skyline ══════════════ -->
+    <div class="section" id="skyline">
+      <div class="section__title">Skyline storage and Cholesky factorisation</div>
+      <p>
+        Column j of the upper triangle is stored from its first nonzero row f<sub>j</sub> down to the diagonal (the
+        skyline, or column profile). f<sub>j</sub> is the lowest equation number among all the elements that touch
+        equation j. No dense n × n matrix is ever built. K<sub>ff</sub> is symmetric positive definite for a stable
+        structure and is factorised in place as
+      </p>
+      <div class="eq">
+        K<sub>ff</sub> = U<sup>T</sup> U,&nbsp;&nbsp; U upper triangular with the same profile
+      </div>
+      <div class="eq">
+        U<sub>ij</sub> = <span class="frac"><span>K<sub>ij</sub> − Σ<sub>k</sub> U<sub>ki</sub> U<sub>kj</sub></span><span>U<sub>ii</sub></span></span> (i &lt; j),&nbsp;&nbsp;
+        U<sub>jj</sub> = √( K<sub>jj</sub> − Σ<sub>k&lt;j</sub> U<sub>kj</sub>² )
+      </div>
+      <p>
+        The sums run only over rows inside both columns' profiles, since entries above a profile stay zero in the
+        factor. Each load case is then two triangular solves, U<sup>T</sup>y = F<sub>f</sub> and U·U<sub>f</sub> = y,
+        so adding load cases costs little once the factor exists.
+      </p>
+    </div>
+
+    <!-- ══════════════ Stability ══════════════ -->
+    <div class="section" id="stability">
+      <div class="section__title">Stability checks</div>
+      <p>A structure that can move without resistance (a mechanism) has a singular K<sub>ff</sub>. The engine finds it in three places and reports where:</p>
+      <table class="summary-table">
+        <thead><tr><th>Check</th><th>Test</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Pivot of the factorisation</td><td>The pivot K<sub>jj</sub> − Σ U<sub>kj</sub>² is at or below <code>SINGULARITY_TOLERANCE</code> (10⁻⁹) times its own diagonal term K<sub>jj</sub></td><td><code>FeaError</code> 304, with the node and DOF of that equation</td></tr>
+          <tr><td>Translation at a node connected only to shells</td><td>A null direction of the node's 3 × 3 translational stiffness (for example the out-of-plane direction of a membrane)</td><td><code>FeaError</code> 328, with the node, shell and DOF</td></tr>
+          <tr><td>Joint rotation that nothing resists</td><td>A null direction of the node's 3 × 3 rotational stiffness</td><td>Held by a spring that carries no force (<a href="#auto-restraint">below</a>), listed in <code>calculationDetails.autoRestrainedDofs</code></td></tr>
+        </tbody>
+      </table>
+      <p>The node and DOF reported for error 304 are the equation where the factorisation failed; the mechanism involves that DOF, but may involve others too.</p>
+    </div>
+
+    <!-- ══════════════ Auto restraint ══════════════ -->
+    <div class="section" id="auto-restraint">
+      <div class="section__title">Unresisted joint rotations <code style="font-size:13px">shared/solver/auto-restraint.ts</code></div>
+      <p>
+        At a pin-jointed truss joint, or wherever every member releases the same rotation, the joint's rotation has
+        no stiffness. The structure is still stable, but K<sub>ff</sub> is singular. The engine finds such rotations and
+        holds them:
+      </p>
+      <ol>
+        <li>For each node, add the 3 × 3 rotational blocks of every element meeting there, plus any rotational springs, over the free rotations: B.</li>
+        <li>Decompose B by cyclic Jacobi rotations. Every eigenvector n whose eigenvalue is at or below 10⁻⁹ times the largest diagonal term of B is a null direction.</li>
+        <li>Add k·n·n<sup>T</sup> to the node's rotations, with k the largest diagonal term (or the largest in the model when B is zero).</li>
+      </ol>
+      <p>
+        Each element stiffness is positive semi-definite, so n<sup>T</sup>Bn = 0 means that the whole stiffness column
+        of n is zero. The rotation along n is then decoupled from every other DOF, and the spring carries no force,
+        so the results are unchanged. A load with a moment along n has no load path and throws
+        <code>FeaError</code> 304 for that load case.
+      </p>
+    </div>
+
+    <!-- ══════════════ Load vector ══════════════ -->
+    <div class="section" id="load-vector">
+      <div class="section__title">Load vector <code style="font-size:13px">solver/load-case-solver.ts</code></div>
+      <p>For each load case, the global load vector F (N and N·mm) is the sum of:</p>
+      <ul>
+        <li><strong>Nodal loads</strong>: forces × 10³ and moments × 10⁶ at the node's DOFs.</li>
+        <li><strong>Member loads and member self-weight</strong>: the equivalent nodal loads −T<sup>T</sup>f*<sub>fixed</sub> of each member piece, from the condensed fixed-end forces (<a href="frame-element.html#fixed-end">Frame element</a>).</li>
+        <li><strong>Area loads on shells and shell self-weight</strong>: forces at the element corners (<a href="shell-element.html#loads">Shell element</a>).</li>
+        <li><strong>Area loads on null areas</strong>: first turned into member loads, then treated as member loads.</li>
+      </ul>
+      <p>Each load names its load case, so a case is solved from exactly the loads tagged with it. A load case without loads gives zero results.</p>
+    </div>
+
+    <!-- ══════════════ Null areas ══════════════ -->
+    <div class="section" id="null-areas">
+      <div class="section__title">Null areas <code style="font-size:13px">frame/area/area-member-loads.ts</code></div>
+      <p>
+        A null area carries an area load (kN/m²) to the members along its edges and does nothing else. It is a load
+        distribution, done before the analysis, not an element:
+      </p>
+      <table class="summary-table">
+        <thead><tr><th>Distribution</th><th>Rule</th><th>What the edge members receive</th></tr></thead>
+        <tbody>
+          <tr><td><code>twoWay</code></td><td>Each point of the area goes to the nearest edge, so the area is split along the corner bisectors</td><td>A rectangle gives trapezoids on the long edges and triangles on the short, peaking at q·L<sub>short</sub>/2</td></tr>
+          <tr><td><code>oneWay</code></td><td>Strips span between the support edges, parallel to the unsupported edges, and send half their load to each end</td><td>A rectangle on its long edges gives q·L/2 on each</td></tr>
+          <tr><td><code>cantilever</code></td><td>The whole area goes to one support edge</td><td>A line load q·c and a torque q·c²/2 per unit length, with c the depth from the edge</td></tr>
+        </tbody>
+      </table>
+      <p>The line load along each edge is the tributary width times q. The width is linear between the polygon's vertices, so the resulting trapezoidal member loads are exact for the chosen rule. The <a href="../#null-areas">FEA reference</a> has the geometry rules and <code>distributeAreaLoads</code> shows the member loads of a model.</p>
+      <div class="alert alert--warn">
+        <span>⚠️</span>
+        <span>A null area adds <strong>no in-plane stiffness</strong>: it does not tie the edge members together and does not act as a diaphragm. Lateral loads need a lateral system in the model.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Solve ══════════════ -->
+    <div class="section" id="solve">
+      <div class="section__title">Solve and recover</div>
+      <p>After U<sub>f</sub> = K<sub>ff</sub>⁻¹F<sub>f</sub> (by the two triangular solves), the remaining quantities follow without further solving:</p>
+      <div class="eq">
+        f<sub>member</sub> = k* · T · U<sub>e</sub> + f*<sub>fixed</sub><span class="note">end forces of each member piece, local axes</span>
+      </div>
+      <div class="eq">
+        R = (Σ<sub>e</sub> K<sub>e</sub> U<sub>e</sub>) − F at every restrained DOF (fixed or spring), 0 elsewhere
+      </div>
+      <p>
+        K·U is summed from the element forces, without the support springs, so at a spring DOF R is the force in the
+        spring. Shell forces are recovered element by element from the element displacements
+        (<a href="shell-element.html#results">Shell element</a>). All of these are kept unrounded, in N and mm, as the
+        state of the load case.
+      </p>
+    </div>
+
+    <!-- ══════════════ Equilibrium check ══════════════ -->
+    <div class="section" id="equilibrium">
+      <div class="section__title">Global equilibrium check <code style="font-size:13px">post/present-state.ts</code></div>
+      <p>Every load case and combination is checked: the applied loads F (including the equivalent nodal loads) plus the reactions R must have no resultant force and no resultant moment about the origin.</p>
+      <div class="eq">
+        r<sub>F</sub> = | Σ<sub>n</sub> (F<sub>n</sub> + R<sub>n</sub>) |,&nbsp;&nbsp;
+        r<sub>M</sub> = | Σ<sub>n</sub> (M<sub>n</sub> + x<sub>n</sub> × (F<sub>n</sub> + R<sub>n</sub>)) |
+      </div>
+      <p>
+        A warning is added when r<sub>F</sub> exceeds <code>EQUILIBRIUM_TOLERANCE</code> (10⁻⁶) times the sum of the
+        absolute applied nodal forces, or r<sub>M</sub> exceeds the same times the largest node distance from the origin.
+        The residual is always reported as <code>equilibriumResidual</code>. A warning points to an ill-conditioned
+        stiffness, typically from very different stiffnesses side by side (a very stiff spring on a flexible member).
+      </p>
+    </div>
+
+    <!-- ══════════════ Combinations ══════════════ -->
+    <div class="section" id="combinations">
+      <div class="section__title">Load combinations <code style="font-size:13px">solver/combinations.ts</code></div>
+      <p>
+        A combination lists terms, each a load case or another combination with a factor. Nested combinations are
+        expanded first into net factors α<sub>c</sub> on load cases (a loop throws <code>FeaError</code> 310). Because
+        every result is linear in the loads, the combination is exact:
+      </p>
+      <div class="eq">
+        S<sub>combo</sub> = Σ<sub>c</sub> α<sub>c</sub> · S<sub>c</sub><span class="note">S = U, R, F, member end forces, shell forces</span>
+      </div>
+      <p>
+        The superposition is done on the unrounded states, so rounding errors do not accumulate. The member diagrams of
+        a combination are not summed: they are rebuilt from the combined end forces and the factored member loads of all
+        its cases, so their extremes are found exactly (<a href="frame-element.html#diagrams">Frame element</a>).
+        Combinations are linear only: an envelope-type combination is planned.
+      </p>
+      <div class="alert alert--warn">
+        <span>⚠️</span>
+        <span>Superposition holds only while every result is linear in the loads. The engine keeps it so by design: it has no tension-only members, gaps or other nonlinear behaviour. A future linearized P-Δ would fix the geometric stiffness from one named load set so that superposition still holds.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Envelope ══════════════ -->
+    <div class="section" id="envelope">
+      <div class="section__title">Envelope <code style="font-size:13px">post/envelope.ts</code></div>
+      <p>
+        When the model has combinations, <code>result.envelope</code> holds the maximum and minimum of each result
+        over all of them, with the combination that governs each value: displacements and reactions per node, member
+        diagram extremes with their position, and shell forces per element. When two combinations give the same value,
+        the first one listed wins. Load cases are not part of the envelope; list them as single-term combinations if needed.
+      </p>
+      <p><code>memberDemandEnvelope</code> uses the same results to give the design demands of each member (the largest sagging and hogging M<sub>3</sub>, the largest |V<sub>2</sub>| and the governing N, each with the combination or case that produces it) for the <code>rc</code> capacity functions.</p>
+    </div>
+
+    <!-- ══════════════ Rounding ══════════════ -->
+    <div class="section" id="rounding">
+      <div class="section__title">Units and rounding</div>
+      <p>
+        The solver works in N and mm throughout. Results are converted to kN, kN·m, mm and rad only when they are
+        presented, and rounded there: forces and moments to 4 decimals, displacements to 5 and rotations to 8. Every intermediate
+        quantity, including the states that combinations superpose, stays unrounded.
+      </p>
+    </div>
+
+    <!-- ══════════════ Verification ══════════════ -->
+    <div class="section" id="verification">
+      <div class="section__title">Verification</div>
+      <table class="summary-table">
+        <thead><tr><th>Check</th><th>Reference</th><th>Test file</th></tr></thead>
+        <tbody>
+          <tr><td>Skyline Cholesky solves banded systems like the dense Cholesky; the first failing pivot of a singular matrix is reported; RCM narrows the band</td><td>Dense Cholesky; known solutions</td><td><code>tests/utils/skyline.test.ts</code></td></tr>
+          <tr><td>Element assembly of 2-node and 4-node elements</td><td>DOF maps and block sums</td><td><code>tests/fea/shared/global-assembly.test.ts</code></td></tr>
+          <tr><td>Pin-jointed truss solves without error 304; holding rotations gives the same result as restraining them by hand; a moment about a held axis is rejected</td><td>Method of joints; hand-restrained model</td><td><code>tests/fea/shared/auto-restraint.test.ts</code></td></tr>
+          <tr><td>Combinations equal the factored sum of cases; nested combinations; independent of case order</td><td>Superposition</td><td><code>tests/fea/analysis/load-combinations.test.ts</code></td></tr>
+          <tr><td>Combined diagrams find the true zero-shear peak and keep point-load jumps</td><td>Closed-form diagrams of the combined load</td><td><code>tests/fea/analysis/load-combinations.test.ts</code></td></tr>
+          <tr><td>Envelope max/min with the governing combination</td><td>Direct comparison over combinations</td><td><code>tests/fea/analysis/load-combinations.test.ts</code></td></tr>
+          <tr><td>Reactions balance the applied loads, including area loads on null areas</td><td>Statics (Σ reactions = q·A)</td><td><code>tests/fea/frame/area-loads.test.ts</code></td></tr>
+          <tr><td>Validation errors with located details</td><td>Expected error codes</td><td><code>tests/fea/analysis/validation.test.ts</code>, <code>fea-errors.test.ts</code></td></tr>
+        </tbody>
+      </table>
+      <p>A consolidated verification report against published benchmark problems is planned; see <a href="../../about/#verification">Verification status</a>.</p>
+    </div>
+
+    <!-- ══════════════ Limitations ══════════════ -->
+    <div class="section" id="limitations">
+      <div class="section__title">Limitations</div>
+      <ul>
+        <li><strong>Linear static only.</strong> No P-Δ, no buckling, no modal or response-spectrum analysis, no time history. These are planned or outside the engine's basis; see the <a href="../../about/#features-fea">feature matrix</a>.</li>
+        <li><strong>No constraints.</strong> There are no rigid diaphragms, rigid links or equal-DOF constraints yet. A floor is rigid in its plane only if its modelled stiffness makes it so.</li>
+        <li><strong>No prescribed displacements.</strong> Fixed DOFs are held at zero; support settlement is planned.</li>
+        <li><strong>Conditioning.</strong> The solver works in double precision. Stiffness ratios beyond about 10⁹ between neighbouring elements can trigger the singularity test or the equilibrium warning. Use moderate spring values for "rigid" connections.</li>
+        <li><strong>Memory.</strong> The skyline profile grows with the width of the model's node graph. Very large shell models can be slow in a browser; run them in a Web Worker and use <code>diagrams: "extremes"</code> to keep results small.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ Review ══════════════ -->
+    <div class="section" id="review">
+      <div class="section__title">Points for review</div>
+      <ul>
+        <li><strong>Mechanism location.</strong> Error 304 names the equation where the factorisation failed. For a mechanism spread over several DOFs this may not be the DOF a user expects; a fuller diagnosis (the null vector) would help.</li>
+        <li><strong>Equilibrium scale.</strong> The equilibrium tolerance is scaled by the applied nodal forces. A load case with moments only has a force scale of 1 N, so its check is stricter than intended.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ References ══════════════ -->
+    <div class="section" id="references">
+      <div class="section__title">References</div>
+      <ol>
+        <li>McGuire, W., Gallagher, R. H. &amp; Ziemian, R. D. (2000). <em>Matrix Structural Analysis</em>, 2nd ed. Wiley. (Direct stiffness method, supports, superposition.)</li>
+        <li>Bathe, K.-J. (2014). <em>Finite Element Procedures</em>, 2nd ed. (Skyline storage and the active-column solution of the equilibrium equations.)</li>
+        <li>Cuthill, E. &amp; McKee, J. (1969). Reducing the bandwidth of sparse symmetric matrices. <em>Proceedings of the 24th ACM National Conference</em>, 157–172.</li>
+        <li>George, A. &amp; Liu, J. W. H. (1981). <em>Computer Solution of Large Sparse Positive Definite Systems</em>. Prentice-Hall. (Reverse Cuthill–McKee, pseudo-peripheral nodes, envelope methods.)</li>
+        <li>Golub, G. H. &amp; Van Loan, C. F. (2013). <em>Matrix Computations</em>, 4th ed. Johns Hopkins. (Cholesky factorisation, Jacobi eigenvalue method.)</li>
+      </ol>
+    </div>
+
+    <!-- ══════════════ Summary ══════════════ -->
+    <div class="section" id="summary">
+      <div class="section__title">Summary</div>
+      <table class="summary-table">
+        <thead><tr><th>Step</th><th>Operation</th><th>Source file</th></tr></thead>
+        <tbody>
+          <tr><td>Validation</td><td>Every input checked, all issues reported with details</td><td class="path-cell">analysis/validation/validate-model.ts</td></tr>
+          <tr><td>Expansion</td><td>Shell meshing, nodes along members, line restraints</td><td class="path-cell">analysis/mesh/expand-model.ts</td></tr>
+          <tr><td>System</td><td>RCM order, skyline K<sub>ff</sub>, springs, held rotations, U<sup>T</sup>U</td><td class="path-cell">analysis/solver/analysis-system.ts</td></tr>
+          <tr><td>Load case</td><td>F, U<sub>f</sub> = K<sub>ff</sub>⁻¹F<sub>f</sub>, R, end forces, shell forces</td><td class="path-cell">analysis/solver/load-case-solver.ts</td></tr>
+          <tr><td>Combinations</td><td>S = Σ α<sub>c</sub> S<sub>c</sub> on unrounded states</td><td class="path-cell">analysis/solver/combinations.ts</td></tr>
+          <tr><td>Presentation</td><td>Units, rounding, diagrams, equilibrium check</td><td class="path-cell">analysis/post/present-state.ts</td></tr>
+          <tr><td>Envelope</td><td>Max/min over combinations with the governing one</td><td class="path-cell">analysis/post/envelope.ts</td></tr>
+        </tbody>
+      </table>
+      <p>Paths are under <code>src/fea/</code>. See the <a href="../#analyze" style="color:var(--accent)">FEA reference</a> for <code>analyze</code>, its options and its result.</p>
+    </div>
+
+  </main>
+</div>
+<script>
+  // Sidebar: fold it away on wide screens (remembered), open it as a drawer on phones,
+  // and remember which nav groups are folded on this page. Works without storage too.
+  (function () {
+    var root = document.documentElement;
+    var button = document.querySelector(".nav-toggle");
+    var sidebar = document.getElementById("sidebar");
+    var backdrop = document.querySelector(".nav-backdrop");
+    if (!button || !sidebar || !backdrop) return;
+    var phone = window.matchMedia("(max-width: 800px)");
+    var read = function (key) { try { return localStorage.getItem(key); } catch (e) { return null; } };
+    var write = function (key, value) { try { localStorage.setItem(key, value); } catch (e) {} };
+
+    var isOpen = function () {
+      return phone.matches ? root.classList.contains("nav-open") : !root.classList.contains("nav-collapsed");
+    };
+    var sync = function () {
+      var open = isOpen();
+      var label = open ? "Hide navigation" : "Show navigation";
+      button.setAttribute("aria-expanded", String(open));
+      button.setAttribute("aria-label", label);
+      button.title = label;
+      button.textContent = open ? "«" : "☰";
+      backdrop.hidden = !(phone.matches && open);
+    };
+    var closeDrawer = function () { root.classList.remove("nav-open"); sync(); };
+
+    button.addEventListener("click", function () {
+      if (phone.matches) root.classList.toggle("nav-open");
+      else write("docs-nav-collapsed", root.classList.toggle("nav-collapsed") ? "1" : "0");
+      sync();
+    });
+    backdrop.addEventListener("click", closeDrawer);
+    sidebar.addEventListener("click", function (event) {
+      if (phone.matches && event.target.closest && event.target.closest("a")) closeDrawer();
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && root.classList.contains("nav-open")) { closeDrawer(); button.focus(); }
+    });
+    if (phone.addEventListener) phone.addEventListener("change", closeDrawer);
+    else if (phone.addListener) phone.addListener(closeDrawer);
+
+    // Folded nav groups, per page, by their label.
+    var key = "docs-nav-folded:" + location.pathname;
+    var folded = [];
+    try { folded = JSON.parse(read(key) || "[]"); } catch (e) { folded = []; }
+    var groups = Array.prototype.slice.call(sidebar.querySelectorAll("details.nav-group"));
+    var labelOf = function (group) { return group.querySelector("summary").textContent.trim(); };
+    groups.forEach(function (group) {
+      if (folded.indexOf(labelOf(group)) >= 0) group.open = false;
+      group.addEventListener("toggle", function () {
+        write(key, JSON.stringify(groups.filter(function (g) { return !g.open; }).map(labelOf)));
+      });
+    });
+
+    sync();
+  })();
+</script>
+</body>
+</html>

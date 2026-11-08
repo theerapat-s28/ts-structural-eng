@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RC Beam Design — Theory Notes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #f0f2f6;
+      --border: #e2e5ec;
+      --accent: #3b63d8;
+      --accent-dim: rgba(59, 99, 216, 0.08);
+      --green: #1f9d63;
+      --green-dim: rgba(31, 157, 99, 0.10);
+      --red: #d9463c;
+      --red-dim: rgba(217, 70, 60, 0.08);
+      --yellow: #b97d0a;
+      --yellow-dim: rgba(230, 160, 30, 0.12);
+      --purple: #8a4fd0;
+      --purple-dim: rgba(138, 79, 208, 0.10);
+      --text: #1f2430;
+      --text-muted: #5c6474;
+      --text-dim: #8a90a0;
+      --code-bg: #f8f9fb;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ─────────────────────────────────────── */
+    .sidebar {
+      width: 252px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px 40px;
+    }
+    .sidebar__brand { padding: 0 10px 18px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .brand-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .sidebar__brand h2 { font-size: 13.5px; font-weight: 600; }
+    .nav-section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      padding: 0 10px;
+      margin-bottom: 6px;
+    }
+    /* Foldable nav groups: <details class="nav-group" open><summary class="nav-section-label"> */
+    .nav-group + .nav-group,
+    nav > a + .nav-group { margin-top: 8px; }
+    summary.nav-section-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      list-style: none;
+      border-radius: 5px;
+      user-select: none;
+    }
+    summary.nav-section-label::-webkit-details-marker { display: none; }
+    summary.nav-section-label::after {
+      content: "▾";
+      font-size: 11px;
+      letter-spacing: 0;
+      transition: transform 0.15s;
+    }
+    .nav-group:not([open]) > summary.nav-section-label::after { transform: rotate(-90deg); }
+    summary.nav-section-label:hover { color: var(--text-muted); }
+    summary.nav-section-label:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      margin-bottom: 2px;
+    }
+    nav a:hover { background: var(--accent-dim); color: var(--text); }
+
+    /* ── Kind badges ─────────────────────────────────── */
+    .mbadge, .kind {
+      font-family: var(--mono);
+      font-weight: 700;
+      border-radius: 5px;
+      flex-shrink: 0;
+    }
+    .mbadge { font-size: 9.5px; padding: 2px 6px; min-width: 34px; text-align: center; }
+    .kind { font-size: 11.5px; padding: 3px 9px; }
+    .m-fn { color: var(--green); background: var(--green-dim); }
+    .m-type { color: var(--accent); background: var(--accent-dim); }
+    .m-const { color: var(--yellow); background: var(--yellow-dim); }
+    .m-error { color: var(--red); background: var(--red-dim); }
+
+    /* ── Scope badges ────────────────────────────────── */
+    .scope-badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .s-public { color: var(--accent); background: var(--accent-dim); }
+    .s-internal { color: var(--purple); background: var(--purple-dim); }
+
+    .std-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+      color: var(--yellow);
+      background: var(--yellow-dim);
+    }
+
+    /* ── Main ────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 40px 48px 120px;
+      min-width: 0;
+    }
+
+    .page-header { margin-bottom: 36px; }
+    .import-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .import-tag .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+    }
+    .import-tag code { background: none; padding: 0; font-size: 12.5px; }
+    .page-header h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+    .page-header p { color: var(--text-muted); max-width: 640px; }
+
+    .section { margin-bottom: 44px; scroll-margin-top: 24px; }
+    .section__title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section p { color: var(--text-muted); margin-bottom: 12px; }
+
+    /* ── Export cards ────────────────────────────────── */
+    .export-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 20px;
+      overflow: hidden;
+      scroll-margin-top: 24px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .export-card__header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .ex-sig { font-family: var(--mono); font-size: 13.5px; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+    .export-card__body { padding: 18px 20px 20px; }
+    .ex-desc { color: var(--text-muted); margin-bottom: 16px; }
+    .sub-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin: 18px 0 8px;
+    }
+    .sub-label:first-of-type { margin-top: 0; }
+
+    /* ── Code blocks ─────────────────────────────────── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .code-block__label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .code-block pre {
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .k { color: #0e7490; }
+    .s { color: #2f7d32; }
+    .n { color: var(--yellow); }
+    .b { color: var(--purple); }
+    .nl { color: var(--text-dim); }
+    .c { color: var(--text-dim); font-style: italic; }
+    .u { color: var(--accent); }
+
+    /* ── Inline code ─────────────────────────────────── */
+    code {
+      font-family: var(--mono);
+      font-size: 0.86em;
+      background: var(--surface-2);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+    pre code { background: none; padding: 0; color: inherit; }
+
+    /* ── Tables ──────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 13.5px; }
+    th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      font-weight: 600;
+      padding: 8px 12px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      color: var(--text-muted);
+    }
+    tr:last-child td { border-bottom: none; }
+    .param-table, .summary-table {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: block;
+      overflow-x: auto;
+    }
+    .param-table td:first-child {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .param-table td:nth-child(2) { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+    .req { color: var(--red); font-size: 12px; font-weight: 500; }
+    .opt { color: var(--text-dim); font-size: 12px; }
+    .summary-table .path-cell { font-family: var(--mono); font-size: 12.5px; color: var(--text); white-space: nowrap; }
+
+    /* ── Alerts ──────────────────────────────────────── */
+    .alert {
+      display: flex;
+      gap: 10px;
+      padding: 11px 14px;
+      border-radius: var(--radius);
+      font-size: 13.5px;
+      margin-bottom: 10px;
+      border: 1px solid;
+      color: var(--text-muted);
+    }
+    .alert strong { color: var(--text); }
+    .alert--error { background: var(--red-dim); border-color: rgba(217, 70, 60, 0.25); }
+    .alert--warn { background: var(--yellow-dim); border-color: rgba(185, 125, 10, 0.25); }
+    .alert--info { background: var(--accent-dim); border-color: rgba(59, 99, 216, 0.25); }
+
+    /* ── Flow steps ──────────────────────────────────── */
+    .flow-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 12px; }
+    .flow-step {
+      display: flex;
+      gap: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .step-num {
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-body { color: var(--text-muted); font-size: 13.5px; }
+    .step-body strong { color: var(--text); }
+
+    /* ── Model grid ──────────────────────────────────── */
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .model-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .model-card__title { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    .model-card__desc { font-size: 12.5px; color: var(--text-muted); }
+    /* ── Theory notes: lists, equations, matrices, figures ── */
+    .section ul, .section ol { color: var(--text-muted); margin: 0 0 12px 22px; }
+    .section li { margin-bottom: 6px; }
+    .section li strong, .section p strong { color: var(--text); }
+
+    .eq {
+      font-family: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', 'Times New Roman', serif;
+      font-size: 16.5px;
+      line-height: 2.1;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      margin-bottom: 12px;
+      overflow-x: auto;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .eq + .eq { margin-top: -4px; }
+    .eq .note { font-family: 'Inter', sans-serif; font-size: 12.5px; color: var(--text-dim); margin-left: 14px; }
+    .mat {
+      display: inline-grid;
+      vertical-align: middle;
+      column-gap: 14px;
+      padding: 2px 10px;
+      margin: 0 3px;
+      position: relative;
+      text-align: center;
+      line-height: 1.55;
+    }
+    .mat::before, .mat::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+      border: 1.4px solid var(--text);
+    }
+    .mat::before { left: 0; border-right: none; }
+    .mat::after { right: 0; border-left: none; }
+    .mat.c1 { grid-template-columns: auto; }
+    .mat.c2 { grid-template-columns: repeat(2, auto); }
+    .mat.c3 { grid-template-columns: repeat(3, auto); }
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      vertical-align: middle;
+      text-align: center;
+      line-height: 1.3;
+      margin: 0 3px;
+    }
+    .frac > span + span { border-top: 1px solid var(--text); }
+
+    .figure {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 16px 12px;
+      margin-bottom: 12px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .figure svg { max-width: 100%; height: auto; }
+    .figure figcaption { font-size: 12.5px; color: var(--text-muted); margin-top: 6px; }
+    .dg-edge { fill: var(--accent-dim); stroke: var(--text); stroke-width: 1.5; }
+    .dg-dash { fill: none; stroke: var(--text-dim); stroke-width: 1; stroke-dasharray: 4 3; }
+    .dg-arrow { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+    .dg-arrowhead { fill: var(--accent); }
+    .dg-node { fill: var(--accent); }
+    .dg-mid { fill: var(--surface); stroke: var(--yellow); stroke-width: 1.8; }
+    .dg-gauss { fill: var(--green); }
+    .dg-text { font-family: 'Inter', sans-serif; font-size: 12px; fill: var(--text-muted); }
+    .dg-label { font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; fill: var(--text); }
+    .dg-math { font-family: 'STIX Two Math', 'Cambria Math', 'Times New Roman', serif; font-size: 14px; font-style: italic; fill: var(--text); }
+
+
+    /* ── Notice banner: scope and responsibility, on every page ── */
+    .notice-banner {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 14px;
+      margin: -12px 0 28px;
+      border-radius: var(--radius);
+      background: var(--yellow-dim);
+      border: 1px solid rgba(185, 125, 10, 0.25);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .notice-banner strong { color: var(--text); }
+    .notice-banner a { color: var(--accent); font-weight: 500; text-decoration: none; }
+    .notice-banner a:hover { text-decoration: underline; }
+
+    /* ── Collapsible sidebar: toggle button, folded state, phone drawer ── */
+    .sidebar__brand { padding-right: 40px; }
+    .nav-toggle {
+      position: fixed;
+      top: 14px;
+      left: 208px;
+      z-index: 50;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .nav-toggle:hover { background: var(--accent-dim); color: var(--text); }
+    .nav-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .nav-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      background: rgba(20, 24, 40, 0.35);
+    }
+    .nav-backdrop[hidden] { display: none; }
+    @media (min-width: 801px) {
+      html.nav-collapsed .sidebar { display: none; }
+      html.nav-collapsed .nav-toggle { left: 12px; }
+    }
+    @media print {
+      .nav-toggle, .nav-backdrop { display: none; }
+    }
+
+    @media (max-width: 800px) {
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 40;
+        transform: translateX(-100%);
+        visibility: hidden;
+        transition: transform 0.2s ease, visibility 0.2s;
+        box-shadow: 4px 0 16px rgba(20, 24, 40, 0.12);
+      }
+      html.nav-open .sidebar { transform: none; visibility: visible; }
+      html:not(.nav-open) .nav-toggle { left: 12px; }
+      .main { padding: 60px 20px 80px; }
+    }
+  </style>
+
+  <script>
+    // Restore the folded sidebar before the first paint, so the page does not flash open.
+    try { if (localStorage.getItem("docs-nav-collapsed") === "1") document.documentElement.classList.add("nav-collapsed"); } catch (e) {}
+  </script>
+</head>
+<body>
+<button class="nav-toggle" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Hide navigation" title="Hide navigation">«</button>
+<div class="nav-backdrop" hidden></div>
+<div class="layout">
+
+  <!-- ══════════════ Sidebar ══════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__brand">
+      <div class="brand-label">Theory Notes</div>
+      <h2>RC Beam Design</h2>
+    </div>
+    <nav>
+      <a href="../../"><span style="font-size:14px">←</span> All modules</a>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Getting Started</summary>
+        <a href="#overview"><span style="font-size:14px">◈</span> Overview</a>
+        <a href="#assumptions"><span style="font-size:14px">◇</span> Design assumptions</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Flexure</summary>
+        <a href="#stress-block"><span style="font-size:14px">▭</span> Stress block</a>
+        <a href="#singly"><span style="font-size:14px">▤</span> Singly reinforced</a>
+        <a href="#doubly"><span style="font-size:14px">▥</span> Doubly reinforced</a>
+        <a href="#tension-control"><span style="font-size:14px">φ</span> Tension control</a>
+        <a href="#min-steel"><span style="font-size:14px">⊥</span> Minimum steel</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Shear</summary>
+        <a href="#vc"><span style="font-size:14px">V</span> Concrete V<sub>c</sub></a>
+        <a href="#vs"><span style="font-size:14px">⫴</span> Stirrups V<sub>s</sub></a>
+        <a href="#stirrup-requirement"><span style="font-size:14px">?</span> Stirrup requirement</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Section</summary>
+        <a href="#bar-layout"><span style="font-size:14px">⋯</span> Bar layout</a>
+        <a href="#section-properties"><span style="font-size:14px">▦</span> Analysis properties</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Checks</summary>
+        <a href="#verification"><span style="font-size:14px">✔</span> Verification</a>
+        <a href="#limitations"><span style="font-size:14px">⚠</span> Limitations</a>
+        <a href="#review"><span style="font-size:14px">✎</span> Points for review</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Reference</summary>
+        <a href="#references"><span style="font-size:14px">☷</span> References</a>
+        <a href="#summary"><span style="font-size:14px">☰</span> Summary</a>
+      </details>
+    </nav>
+  </aside>
+
+  <!-- ══════════════ Main ══════════════ -->
+  <main class="main">
+
+    <div class="page-header">
+      <div class="import-tag">
+        <span class="label">Status</span>
+        <code>@theerapat-s28/ts-structural-eng-tools/rc</code>
+      </div>
+      <h1>RC Beam Design — Theory Notes</h1>
+      <p>The ACI 318-19 basis of the <code>rc</code> module: the flexural strength of rectangular sections by the equivalent rectangular stress block, the one-way shear strength and stirrup requirement, the bar layout, and the section properties used for analysis, with worked examples.</p>
+    </div>
+
+    <div class="notice-banner" role="note">
+      <span>⚠️</span>
+      <span><strong>A calculation aid, not a substitute for engineering judgement.</strong> Results must be checked and accepted by the qualified engineer responsible for the design. <a href="../../about/#limitations">Scope, assumptions and limitations →</a></span>
+    </div>
+
+    <!-- ══════════════ Overview ══════════════ -->
+    <div class="section" id="overview">
+      <div class="section__title">Overview</div>
+      <p>
+        The <code>rc</code> module checks a rectangular reinforced-concrete beam section: its design moment strength
+        φM<sub>n</sub>, its design shear strength φV<sub>c</sub> + φV<sub>s</sub>, whether it needs stirrups, how its bars fit
+        into layers, and the stiffness to give it in a frame analysis. All formulas are the SI forms of ACI 318-19.
+        Units are N and mm inside each calculation; moments are returned in kN·m and forces in kN.
+      </p>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>Every number on this page comes from running the shown inputs through the library, and each worked example was checked by hand. The formulas are read from <code>src/rc/</code> and the constants from <code>src/core/constants/rc.constant.ts</code>.</span>
+      </div>
+
+      <div class="sub-label">Basis</div>
+      <table class="summary-table">
+        <thead><tr><th>Quantity</th><th>Basis</th><th>Code or adaptation</th></tr></thead>
+        <tbody>
+          <tr><td>Flexural strength M<sub>n</sub></td><td>Strain compatibility with the equivalent rectangular stress block</td><td>ACI 318-19, 22.2</td></tr>
+          <tr><td>β<sub>1</sub></td><td>Table 22.2.2.4.3</td><td>ACI 318-19</td></tr>
+          <tr><td>φ for flexure</td><td>0.90, tension-controlled sections only</td><td>ACI 318-19, Table 21.2.2</td></tr>
+          <tr><td>Minimum flexural steel</td><td>A<sub>s,min</sub></td><td>ACI 318-19, 9.6.1.2</td></tr>
+          <tr><td>Concrete shear strength V<sub>c</sub></td><td>0.17λ√f′<sub>c</sub> b<sub>w</sub> d</td><td>ACI 318-19, Table 22.5.5.1, expression (a)</td></tr>
+          <tr><td>Stirrup shear strength V<sub>s</sub></td><td>A<sub>v</sub> f<sub>yt</sub> d / s, capped at 0.66√f′<sub>c</sub> b<sub>w</sub> d</td><td>ACI 318-19, 22.5 and 22.5.1.2</td></tr>
+          <tr><td>φ for shear</td><td>0.75</td><td>ACI 318-19, 21.2.1</td></tr>
+          <tr><td>Stirrup requirement, A<sub>v,min</sub>, spacing</td><td>9.6.3.1, 9.6.3.3, 9.7.6.2.2</td><td>ACI 318-19</td></tr>
+          <tr><td>Bar spacing</td><td>25.2.1, 25.2.2; cover from Table 20.6.1.3.1</td><td>ACI 318-19</td></tr>
+          <tr><td>E<sub>c</sub>, stiffness modifiers</td><td>4700√f′<sub>c</sub>; Table 6.6.3.1.1(a)</td><td>ACI 318-19, 19.2.2.1 and 6.6.3.1.1</td></tr>
+          <tr><td>Torsion constant J, unit weight</td><td>Saint-Venant J of a solid rectangle; 24 kN/m³</td><td>Mechanics; common practice (not ACI)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════ Assumptions ══════════════ -->
+    <div class="section" id="assumptions">
+      <div class="section__title">Design assumptions</div>
+      <p>The flexural strength follows the design assumptions of ACI 318-19, 22.2:</p>
+      <ul>
+        <li><strong>Plane sections.</strong> Strain varies linearly with depth (22.2.1.2).</li>
+        <li><strong>Concrete crushing strain</strong> ε<sub>cu</sub> = 0.003 at the extreme compression fibre (22.2.2.1; <code>CONCRETE_ULTIMATE_STRAIN</code>).</li>
+        <li><strong>No tensile strength</strong> of concrete in flexure (22.2.2.2).</li>
+        <li><strong>Equivalent rectangular stress block</strong> of 0.85f′<sub>c</sub> over a depth a = β<sub>1</sub>c (22.2.2.4).</li>
+        <li><strong>Elastic–perfectly plastic steel</strong>: f<sub>s</sub> = E<sub>s</sub>ε<sub>s</sub> up to f<sub>y</sub>, then f<sub>y</sub> (20.2.2.1, 20.2.2.2).</li>
+      </ul>
+      <p>Depths d and d′ are measured from the extreme compression fibre (the top face of the concrete for a sagging moment). d′ may be negative, which places compression steel above that face; strengthening uses this for a top plate.</p>
+    </div>
+
+    <!-- ══════════════ Stress block ══════════════ -->
+    <div class="section" id="stress-block">
+      <div class="section__title">Stress block factor β<sub>1</sub> <code style="font-size:13px">general.ts</code></div>
+      <div class="eq">
+        β<sub>1</sub> = 0.85 for f′<sub>c</sub> ≤ 28 MPa,&nbsp;&nbsp;
+        β<sub>1</sub> = 0.85 − 0.05 (f′<sub>c</sub> − 28)/7 ≥ 0.65 for f′<sub>c</sub> &gt; 28 MPa
+        <span class="note">ACI 318-19 Table 22.2.2.4.3</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Singly ══════════════ -->
+    <div class="section" id="singly">
+      <div class="section__title">Singly reinforced section <code style="font-size:13px">rc-beam-design.ts</code></div>
+      <p>With the tension steel assumed to yield, horizontal equilibrium C = T gives the depth of the stress block:</p>
+      <div class="eq">
+        0.85 f′<sub>c</sub> b a = A<sub>s</sub> f<sub>y</sub>&nbsp;&nbsp;⇒&nbsp;&nbsp;
+        a = <span class="frac"><span>A<sub>s</sub> f<sub>y</sub></span><span>0.85 f′<sub>c</sub> b</span></span>,&nbsp;&nbsp;
+        c = a / β<sub>1</sub>
+      </div>
+      <p>The strain in the tension steel follows from the linear strain profile, and the assumption is checked (<a href="#tension-control">below</a>):</p>
+      <div class="eq">
+        ε<sub>t</sub> = ε<sub>cu</sub> <span class="frac"><span>d − c</span><span>c</span></span>
+      </div>
+      <p>Taking moments about the centroid of the stress block:</p>
+      <div class="eq">
+        M<sub>n</sub> = A<sub>s</sub> f<sub>y</sub> ( d − a/2 ),&nbsp;&nbsp; φM<sub>n</sub> = 0.9 M<sub>n</sub>
+      </div>
+
+      <div class="sub-label">Worked example</div>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript</div>
+        <pre><span class="b">const</span> r = <span class="u">rectBeamMomentCapacity</span>({
+  <span class="k">Es</span>: <span class="n">200000</span>, <span class="c">// MPa</span>
+  <span class="k">fy</span>: <span class="n">400</span>,    <span class="c">// MPa</span>
+  <span class="k">fc_</span>: <span class="n">28</span>,    <span class="c">// MPa</span>
+  <span class="k">b</span>: <span class="n">300</span>,     <span class="c">// mm</span>
+  <span class="k">h</span>: <span class="n">500</span>,     <span class="c">// mm</span>
+  <span class="k">d</span>: <span class="n">440</span>,     <span class="c">// mm</span>
+  <span class="k">As</span>: <span class="n">1520</span>,   <span class="c">// mm²</span>
+});
+<span class="c">// r.phiMn = 217.47 kN·m</span>
+<span class="c">// r.calculationDetails = { c: 100.18, a: 85.15, beta1: 0.85, d: 440, As: 1520, ro: 0.011515 }</span></pre>
+      </div>
+      <p>By hand: a = 1520 × 400 / (0.85 × 28 × 300) = 85.15 mm, c = 85.15 / 0.85 = 100.18 mm, ε<sub>t</sub> = 0.003 × (440 − 100.18)/100.18 = 0.0102 ≥ 0.002 + 0.003, so the section is tension-controlled. M<sub>n</sub> = 1520 × 400 × (440 − 42.57) = 241.6 kN·m and φM<sub>n</sub> = 217.47 kN·m.</p>
+    </div>
+
+    <!-- ══════════════ Doubly ══════════════ -->
+    <div class="section" id="doubly">
+      <div class="section__title">Doubly reinforced section</div>
+      <p>The compression steel A′<sub>s</sub> at depth d′ has the strain ε′<sub>s</sub> = ε<sub>cu</sub>(c − d′)/c, positive in compression. The engine first assumes it stays elastic, with the tension steel yielding:</p>
+      <div class="eq">
+        0.85 f′<sub>c</sub> b β<sub>1</sub> c + A′<sub>s</sub> E<sub>s</sub> ε<sub>cu</sub> <span class="frac"><span>c − d′</span><span>c</span></span> = A<sub>s</sub> f<sub>y</sub>
+      </div>
+      <p>Multiplying by c gives a quadratic in c:</p>
+      <div class="eq">
+        (0.85 f′<sub>c</sub> b β<sub>1</sub>) c² + (ε<sub>cu</sub> A′<sub>s</sub> E<sub>s</sub> − A<sub>s</sub> f<sub>y</sub>) c − ε<sub>cu</sub> A′<sub>s</sub> E<sub>s</sub> d′ = 0
+      </div>
+      <p>
+        The positive root for which |E<sub>s</sub>ε′<sub>s</sub>| ≤ f<sub>y</sub> is taken. (With d′ &lt; 0 both roots can be
+        positive, so the root is chosen by the elastic condition rather than by size.) If no root keeps the compression
+        steel elastic, it has yielded, and equilibrium is solved again with f′<sub>s</sub> = ±f<sub>y</sub>:
+      </p>
+      <div class="eq">
+        c = <span class="frac"><span>(A<sub>s</sub> ∓ A′<sub>s</sub>) f<sub>y</sub></span><span>0.85 f′<sub>c</sub> b β<sub>1</sub></span></span><span class="note">upper sign: yields in compression; lower sign: yields in tension (steel below the neutral axis)</span>
+      </div>
+      <p>The nominal strength, taking moments about the tension steel:</p>
+      <div class="eq">
+        M<sub>n</sub> = 0.85 f′<sub>c</sub> b a ( d − a/2 ) + A′<sub>s</sub> f′<sub>s</sub> ( d − d′ ),&nbsp;&nbsp; a = β<sub>1</sub>c
+      </div>
+      <ul>
+        <li><strong>Compression steel below the neutral axis</strong> (d′ &gt; c) is in tension, so f′<sub>s</sub> &lt; 0 and it reduces M<sub>n</sub>. This is a valid section, so the engine returns the result with a warning citing <strong>ACI318-19, 22.2.1.2</strong> rather than throwing.</li>
+        <li><strong>c ≤ 0</strong> means the compression steel alone outweighs the tension steel: no equilibrium exists with the tension steel yielding, and <code>RCDesignError</code> 102 is thrown.</li>
+      </ul>
+
+      <div class="sub-label">Worked example</div>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript</div>
+        <pre><span class="b">const</span> r = <span class="u">rectBeamMomentCapacity</span>({
+  <span class="k">Es</span>: <span class="n">200000</span>, <span class="k">fy</span>: <span class="n">400</span>, <span class="k">fc_</span>: <span class="n">28</span>, <span class="c">// MPa</span>
+  <span class="k">b</span>: <span class="n">300</span>, <span class="k">h</span>: <span class="n">500</span>, <span class="k">d</span>: <span class="n">440</span>, <span class="k">d_</span>: <span class="n">60</span>,  <span class="c">// mm</span>
+  <span class="k">As</span>: <span class="n">2280</span>, <span class="k">As_</span>: <span class="n">628</span>,              <span class="c">// mm²</span>
+});
+<span class="c">// r.phiMn = 317.94 kN·m</span>
+<span class="c">// c: 119.39, a: 101.48, fs_: 298.46 (MPa, elastic), ro: 0.017273, ro_: 0.004758</span></pre>
+      </div>
+      <p>By hand: f′<sub>s</sub> = 200000 × 0.003 × (119.39 − 60)/119.39 = 298.46 MPa &lt; 400 MPa, so the compression steel is elastic. M<sub>n</sub> = 0.85 × 28 × 300 × 101.48 × (440 − 50.74) + 628 × 298.46 × (440 − 60) = 282.0 + 71.2 = 353.3 kN·m, and φM<sub>n</sub> = 317.94 kN·m.</p>
+    </div>
+
+    <!-- ══════════════ Tension control ══════════════ -->
+    <div class="section" id="tension-control">
+      <div class="section__title">Tension control and φ</div>
+      <p>ACI 318-19 Table 21.2.2 classifies a section by the net tensile strain ε<sub>t</sub> in the extreme tension steel. With ε<sub>ty</sub> = f<sub>y</sub>/E<sub>s</sub>:</p>
+      <div class="eq">
+        ε<sub>t</sub> ≥ ε<sub>ty</sub> + 0.003&nbsp;&nbsp;⇒&nbsp;&nbsp; tension-controlled, φ = 0.90
+      </div>
+      <p>
+        The engine computes φM<sub>n</sub> only for tension-controlled sections. A section below that limit is in the
+        transition or compression-controlled zone, where both the assumption that the tension steel yields and
+        φ = 0.90 fail, so <code>rectBeamMomentCapacity</code> throws <code>RCDesignError</code> 102 instead of returning a value.
+        The tension-control limit is stricter than the beam limit ε<sub>t</sub> ≥ 0.004 of 9.3.3.1, so a returned result
+        satisfies both.
+      </p>
+      <div class="alert alert--error">
+        <span>⚠️</span>
+        <span>Throws <strong>RCDesignError 102</strong> when ε<sub>t</sub> &lt; ε<sub>ty</sub> + 0.003. Increase the depth or the concrete strength, or add compression steel; do not reduce A<sub>s</sub> just to pass the check without checking strength.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Min steel ══════════════ -->
+    <div class="section" id="min-steel">
+      <div class="section__title">Minimum flexural reinforcement</div>
+      <div class="eq">
+        A<sub>s,min</sub> = max( <span class="frac"><span>0.25√f′<sub>c</sub></span><span>f<sub>y</sub></span></span> b d,&nbsp; <span class="frac"><span>1.4</span><span>f<sub>y</sub></span></span> b d )<span class="note">ACI 318-19, 9.6.1.2</span>
+      </div>
+      <div class="alert alert--warn">
+        <span>⚠️</span>
+        <span>Pushes a warning when A<sub>s</sub> &lt; A<sub>s,min</sub> — <strong>ACI318-19, 9.6.1.2</strong>. A second warning is pushed when f<sub>y</sub> &gt; 550 MPa (see the <a href="#review">points for review</a> on its citation).</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Vc ══════════════ -->
+    <div class="section" id="vc">
+      <div class="section__title">Concrete shear strength V<sub>c</sub></div>
+      <div class="eq">
+        V<sub>c</sub> = 0.17 λ √f′<sub>c</sub> b<sub>w</sub> d,&nbsp;&nbsp; √f′<sub>c</sub> ≤ 8.3 MPa,&nbsp;&nbsp; φ = 0.75
+        <span class="note">ACI 318-19 Table 22.5.5.1(a), 22.5.3.1, 21.2.1</span>
+      </div>
+      <p>λ is the lightweight-concrete factor (1.0 by default). When √f′<sub>c</sub> exceeds 8.3 MPa it is capped, and a warning cites <strong>ACI318-19, 22.5.3.1</strong>: the cap may be lifted only when minimum shear reinforcement is provided.</p>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript</div>
+        <pre><span class="u">concreteShearCapacity</span>({ <span class="k">fc_</span>: <span class="n">28</span>, <span class="k">bw</span>: <span class="n">300</span>, <span class="k">d</span>: <span class="n">440</span> }); <span class="c">// MPa, mm, mm</span>
+<span class="c">// { phiVc: 89.06, calculationDetails: { Vc: 118.74, lambda: 1 }, unit: "kN" }</span></pre>
+      </div>
+      <p>By hand: V<sub>c</sub> = 0.17 × 1.0 × √28 × 300 × 440 = 118.74 kN, φV<sub>c</sub> = 0.75 × 118.74 = 89.06 kN.</p>
+    </div>
+
+    <!-- ══════════════ Vs ══════════════ -->
+    <div class="section" id="vs">
+      <div class="section__title">Stirrup shear strength V<sub>s</sub></div>
+      <p>For vertical stirrups of area A<sub>v</sub> (all legs) at spacing s:</p>
+      <div class="eq">
+        V<sub>s</sub> = <span class="frac"><span>A<sub>v</sub> f<sub>yt</sub> d</span><span>s</span></span>,&nbsp;&nbsp;
+        V<sub>s</sub> ≤ 0.66 √f′<sub>c</sub> b<sub>w</sub> d
+        <span class="note">ACI 318-19, 22.5.1.2 (the cap that prevents web crushing)</span>
+      </div>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript</div>
+        <pre><span class="u">stirrupShearCapacity</span>({ <span class="k">fc_</span>: <span class="n">28</span>, <span class="k">bw</span>: <span class="n">300</span>, <span class="k">d</span>: <span class="n">440</span>, <span class="k">Av</span>: <span class="n">157</span>, <span class="k">fyt</span>: <span class="n">400</span>, <span class="k">s</span>: <span class="n">150</span> });
+<span class="c">// { phiVs: 138.16, calculationDetails: { Vs: 184.21, maxVs: 461 }, unit: "kN" }</span></pre>
+      </div>
+      <p>By hand: V<sub>s</sub> = 157 × 400 × 440 / 150 = 184.21 kN ≤ 0.66 × √28 × 300 × 440 = 461.0 kN; φV<sub>s</sub> = 138.16 kN.</p>
+      <div class="alert alert--error">
+        <span>⚠️</span>
+        <span>Throws <strong>RCDesignError 105</strong> when V<sub>s</sub> exceeds 0.66√f′<sub>c</sub> b<sub>w</sub> d: the section is too small for shear, and more stirrups cannot fix it.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Stirrup requirement ══════════════ -->
+    <div class="section" id="stirrup-requirement">
+      <div class="section__title">Stirrup requirement</div>
+      <p><code>checkStirrupRequirement</code> classifies a section under a factored shear V<sub>u</sub>:</p>
+      <table class="summary-table">
+        <thead><tr><th>Demand</th><th>Required A<sub>v</sub>/s</th><th>Maximum spacing</th></tr></thead>
+        <tbody>
+          <tr><td>V<sub>u</sub> ≤ 0.5φV<sub>c</sub></td><td>None (<code>required: false</code>)</td><td>—</td></tr>
+          <tr><td>0.5φV<sub>c</sub> &lt; V<sub>u</sub> ≤ φV<sub>c</sub></td><td>(A<sub>v</sub>/s)<sub>min</sub> (<code>minimumOnly: true</code>)</td><td>min(d/2, 600 mm)</td></tr>
+          <tr><td>V<sub>u</sub> &gt; φV<sub>c</sub></td><td>max((A<sub>v</sub>/s)<sub>min</sub>, V<sub>s,req</sub> / (f<sub>yt</sub> d))</td><td>min(d/2, 600) if V<sub>s,req</sub> ≤ 0.33√f′<sub>c</sub> b<sub>w</sub> d, else min(d/4, 300)</td></tr>
+        </tbody>
+      </table>
+      <div class="eq">
+        (A<sub>v</sub>/s)<sub>min</sub> = max( 0.062√f′<sub>c</sub> b<sub>w</sub>/f<sub>yt</sub>,&nbsp; 0.35 b<sub>w</sub>/f<sub>yt</sub> ),&nbsp;&nbsp;
+        V<sub>s,req</sub> = V<sub>u</sub>/φ − V<sub>c</sub>
+        <span class="note">ACI 318-19, 9.6.3.3; 9.6.3.1; 9.7.6.2.2</span>
+      </div>
+      <p>When A<sub>v</sub> and s are given, they are checked against the required ratio and the maximum spacing.</p>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript</div>
+        <pre><span class="u">checkStirrupRequirement</span>({ <span class="k">fc_</span>: <span class="n">28</span>, <span class="k">bw</span>: <span class="n">300</span>, <span class="k">d</span>: <span class="n">440</span>, <span class="k">Vu</span>: <span class="n">200</span>, <span class="k">fyt</span>: <span class="n">400</span>, <span class="k">Av</span>: <span class="n">157</span>, <span class="k">s</span>: <span class="n">200</span> });
+<span class="c">// required: true, minimumOnly: false</span>
+<span class="c">// calculationDetails: { phiVc: 89.06, halfPhiVc: 44.53, requiredAvOverS: 0.8405, maxSpacing: 220 }</span>
+<span class="c">// warnings: [{ reference: "ACI318-19, 9.6.3.1", message: "Provided Av/s (0.785 mm2/mm) &lt; required Av/s (0.8405 mm2/mm)." }]</span></pre>
+      </div>
+      <p>By hand: V<sub>s,req</sub> = 200/0.75 − 118.74 = 147.93 kN, so A<sub>v</sub>/s = 147 926 / (400 × 440) = 0.8405 mm²/mm, above the minimum of 0.2625. V<sub>s,req</sub> is below 0.33√28 × 300 × 440 = 230.5 kN, so s<sub>max</sub> = min(220, 600) = 220 mm. The provided 157/200 = 0.785 mm²/mm is short, hence the warning.</p>
+      <div class="alert alert--warn">
+        <span>⚠️</span>
+        <span>Pushes a warning when the provided A<sub>v</sub>/s is below the requirement — <strong>ACI318-19, 9.6.3.1</strong> — and when s exceeds the maximum spacing — <strong>ACI318-19, 9.7.6.2.2</strong>.</span>
+      </div>
+      <div class="alert alert--error">
+        <span>⚠️</span>
+        <span>Throws <strong>RCDesignError 105</strong> when V<sub>s,req</sub> exceeds 0.66√f′<sub>c</sub> b<sub>w</sub> d.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Bar layout ══════════════ -->
+    <div class="section" id="bar-layout">
+      <div class="section__title">Bar layout <code style="font-size:13px">rc-bar-layout.ts</code></div>
+      <p><code>rectBeamBarLayout</code> fits a group of equal bars of diameter d<sub>b</sub> into layers and returns the effective depths. The clear spacing within a layer and the pitch between layers are</p>
+      <div class="eq">
+        s<sub>clear</sub> = max( 25 mm, d<sub>b</sub>, 4/3 · d<sub>agg</sub> ),&nbsp;&nbsp; layer pitch = d<sub>b</sub> + 25 mm
+        <span class="note">ACI 318-19, 25.2.1 and 25.2.2</span>
+      </div>
+      <div class="eq">
+        n<sub>layer</sub> = ⌊ ( b − 2(c<sub>c</sub> + d<sub>s</sub>) + s<sub>clear</sub> ) / ( d<sub>b</sub> + s<sub>clear</sub> ) ⌋
+        <span class="note">c<sub>c</sub>: clear cover to the stirrup, d<sub>s</sub>: stirrup diameter</span>
+      </div>
+      <ul>
+        <li>The number of layers is ⌈n / n<sub>layer</sub>⌉, and the bars are shared as evenly as possible between the layers, the extra bars going to the layers nearest the face.</li>
+        <li>The first layer's centre is at c<sub>c</sub> + d<sub>s</sub> + d<sub>b</sub>/2 from the face; d = h − (centroid of the bottom group) and d′ = centroid of the top group.</li>
+        <li>Defaults: cover 40 mm (Table 20.6.1.3.1, cast-in-place beams not exposed to weather or in contact with ground), stirrup 10 mm, aggregate 20 mm.</li>
+        <li>A section that cannot hold one bar throws <code>RCDesignError</code> 103; top and bottom layers that overlap throw 104.</li>
+      </ul>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript</div>
+        <pre><span class="u">rectBeamBarLayout</span>({ <span class="k">b</span>: <span class="n">300</span>, <span class="k">h</span>: <span class="n">500</span>, <span class="c">// mm</span>
+  <span class="k">bottomBars</span>: { <span class="k">count</span>: <span class="n">5</span>, <span class="k">diameter</span>: <span class="n">20</span> }, <span class="k">topBars</span>: { <span class="k">count</span>: <span class="n">2</span>, <span class="k">diameter</span>: <span class="n">16</span> } });
+<span class="c">// d: 422, d_: 58, bottom: { numberOfLayers: 2, barsPerLayer: [3, 2], As: 1570.8 }, top: { numberOfLayers: 1, ... }</span></pre>
+      </div>
+      <p>By hand: s<sub>clear</sub> = max(25, 20, 26.7) = 26.7 mm, n<sub>layer</sub> = ⌊(200 + 26.7)/46.7⌋ = 4, so 5 bars need 2 layers, shared [3, 2]. The layers sit at 60 and 105 mm from the bottom face, the centroid at (3 × 60 + 2 × 105)/5 = 78 mm, so d = 422 mm.</p>
+    </div>
+
+    <!-- ══════════════ Section properties ══════════════ -->
+    <div class="section" id="section-properties">
+      <div class="section__title">Section properties for analysis <code style="font-size:13px">rc-section-properties.ts</code></div>
+      <p><code>rectBeamToSectionProperties</code> gives a frame member the stiffness of a rectangular RC section. Local 2 runs along the depth h and local 3 along the width b:</p>
+      <div class="eq">
+        E = 4700√f′<sub>c</sub>,&nbsp; G = E / (2(1 + ν)),&nbsp; A = b h,&nbsp;
+        I<sub>33</sub> = m · b h³/12,&nbsp; I<sub>22</sub> = m · h b³/12
+      </div>
+      <div class="eq">
+        J = a t³ [ 1/3 − 0.21 (t/a) (1 − t⁴/(12a⁴)) ]<span class="note">a = longer side, t = shorter side; Saint-Venant torsion of a solid rectangle</span>
+      </div>
+      <p>
+        m is the cracked-section modifier of ACI 318-19 Table 6.6.3.1.1(a): 0.35 for beams (default), 0.70 for columns,
+        1.0 for gross properties (which adds a warning citing <strong>ACI318-19, 6.6.3.1.1</strong>). It applies to the bending
+        inertias only; A and J are gross, and ν = 0.2. The unit weight for self-weight is 24 kN/m³ by default, a common
+        design value and not an ACI one.
+      </p>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript</div>
+        <pre><span class="u">rectBeamToSectionProperties</span>({ <span class="k">fc_</span>: <span class="n">28</span>, <span class="k">b</span>: <span class="n">300</span>, <span class="k">h</span>: <span class="n">500</span> });
+<span class="c">// E: 24870.06 MPa, G: 10362.53 MPa, A: 150000 mm², I33: 1.09375e9 mm⁴, I22: 3.9375e8 mm⁴,</span>
+<span class="c">// J: 2.81737e9 mm⁴, unitWeight: 24 kN/m³</span></pre>
+      </div>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>ACI 318-19 E<sub>c</sub> = 4700√f′<sub>c</sub> applies to normalweight concrete (19.2.2.1(b)). For lightweight concrete or a measured modulus, build <code>SectionProperties</code> directly.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Verification ══════════════ -->
+    <div class="section" id="verification">
+      <div class="section__title">Verification</div>
+      <table class="summary-table">
+        <thead><tr><th>Check</th><th>Reference</th><th>Test file</th></tr></thead>
+        <tbody>
+          <tr><td>φM<sub>n</sub> of singly and doubly reinforced sections; doubly ≥ singly</td><td>Hand calculation by the formulas above</td><td><code>tests/rc/rc-beam-design.test.ts</code></td></tr>
+          <tr><td>Compression steel below the neutral axis, yielded compression steel</td><td>Strain compatibility by hand</td><td><code>tests/rc/rc-beam-design.test.ts</code></td></tr>
+          <tr><td>A<sub>s,min</sub> and f<sub>y</sub> warnings</td><td>ACI 318-19, 9.6.1.2</td><td><code>tests/rc/rc-beam-design.test.ts</code></td></tr>
+          <tr><td>φV<sub>c</sub>, λ, √f′<sub>c</sub> cap; φV<sub>s</sub> and its cap</td><td>Hand calculation; ACI 318-19 22.5</td><td><code>tests/rc/rc-beam-shear-design.test.ts</code></td></tr>
+          <tr><td>Stirrup requirement in each of the three zones, spacing and A<sub>v</sub>/s warnings</td><td>ACI 318-19 9.6.3, 9.7.6.2.2</td><td><code>tests/rc/rc-beam-shear-design.test.ts</code></td></tr>
+          <tr><td>Bar layout with defaults, overrides and both errors</td><td>Hand layout</td><td><code>tests/rc/rc-bar-layout.test.ts</code></td></tr>
+          <tr><td>Section properties, modifiers, torsion constant (square: J ≈ 0.1406a⁴)</td><td>Closed form</td><td><code>tests/rc/rc-section-properties.test.ts</code></td></tr>
+          <tr><td>β<sub>1</sub>, E<sub>c</sub>, psi → MPa</td><td>ACI 318-19 tables</td><td><code>tests/rc/general.test.ts</code></td></tr>
+        </tbody>
+      </table>
+      <p>Comparison with published textbook design examples belongs in the planned verification report; see <a href="../../about/#verification">Verification status</a>.</p>
+    </div>
+
+    <!-- ══════════════ Limitations ══════════════ -->
+    <div class="section" id="limitations">
+      <div class="section__title">Limitations</div>
+      <ul>
+        <li><strong>Rectangular sections only.</strong> No T- or L-beams, so the flange of a beam cast with a slab is ignored (conservative for sagging strength, but a narrow web can fail the tension-control check that the flanged section would pass).</li>
+        <li><strong>Tension-controlled flexure only</strong>, with φ = 0.90. No transition-zone φ, no axial load, no columns.</li>
+        <li><strong>One layer centroid.</strong> The tension steel is lumped at its centroid d. The strain is not checked at each layer, so the extreme layer is slightly more strained than ε<sub>t</sub> at d.</li>
+        <li><strong>Vertical stirrups only</strong>; no inclined stirrups or bent-up bars, no torsion reinforcement, no shear friction.</li>
+        <li><strong>Section checks only.</strong> No deflection (9.5, 24.2), crack control (24.3), development length and splices (25.4, 25.5), bar cut-off, or seismic detailing (Chapter 18).</li>
+        <li><strong>SI only</strong>: the coefficients are the SI forms of the ACI expressions. <code>psiToMpa</code> converts strengths but there is no US-customary path.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ Review ══════════════ -->
+    <div class="section" id="review">
+      <div class="section__title">Points for review</div>
+      <ul>
+        <li><strong>Choice of the V<sub>c</sub> expression.</strong> ACI 318-19 Table 22.5.5.1 allows expression (a), 0.17λ√f′<sub>c</sub> b<sub>w</sub> d, only when A<sub>v</sub> ≥ A<sub>v,min</sub>. For a member with less than the minimum shear reinforcement it requires expression (c), 0.66 λ<sub>s</sub> λ ρ<sub>w</sub><sup>1/3</sup> √f′<sub>c</sub> b<sub>w</sub> d, which has the size-effect factor λ<sub>s</sub> and can be markedly lower for deep, lightly reinforced members. The engine always uses (a). This matters for the classification V<sub>u</sub> ≤ 0.5φV<sub>c</sub> (no stirrups needed) and for members without stirrups.</li>
+        <li><strong>Displaced concrete.</strong> The compression steel force is A′<sub>s</sub> f′<sub>s</sub>, without deducting the concrete it displaces (A′<sub>s</sub> · 0.85f′<sub>c</sub>). This is a common simplification and slightly overestimates C.</li>
+        <li><strong>Clause citations to confirm.</strong> The f<sub>y</sub> &gt; 550 MPa warning cites 9.6.1.2, but the limit on f<sub>y</sub> is set by 20.2.2.4 (Table 20.2.2.4(a)). The V<sub>s</sub> formula is cited in the code as 22.5.10.5.3, which appears to be the ACI 318-14 number; ACI 318-19 places it in 22.5.8.5.3. Both should be checked against the code text and corrected.</li>
+        <li><strong>Rounded intermediates.</strong> <code>checkStirrupRequirement</code> uses V<sub>c</sub> and φV<sub>c</sub> as rounded to 0.01 kN by <code>concreteShearCapacity</code>. The effect is below 0.01 kN, but it departs from the rule that intermediate values stay unrounded.</li>
+        <li><strong>Unit string.</strong> <code>rectBeamMomentCapacity</code> returns <code>unit: "kN-m"</code>, while other functions use <code>"kN·m"</code>. Front ends that compare unit strings should allow for both.</li>
+        <li><strong>Bar sharing between layers.</strong> The layout shares bars evenly between layers ([3, 2] for 5 bars that fit 4 to a layer) instead of filling the first layer (4, 1). This gives a smaller d than the fullest packing, which is conservative.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ References ══════════════ -->
+    <div class="section" id="references">
+      <div class="section__title">References</div>
+      <ol>
+        <li>ACI Committee 318 (2019). <em>Building Code Requirements for Structural Concrete (ACI 318-19) and Commentary (ACI 318R-19)</em>. American Concrete Institute. (SI units edition: ACI 318M-19.)</li>
+        <li>Whitney, C. S. (1937). Design of reinforced concrete members under flexure or combined flexure and direct compression. <em>ACI Journal Proceedings</em>, 33, 483–498. (The equivalent rectangular stress block.)</li>
+        <li>Wight, J. K. (2016). <em>Reinforced Concrete: Mechanics and Design</em>, 7th ed. Pearson. (Strain compatibility, doubly reinforced sections, shear design.)</li>
+        <li>Young, W. C. &amp; Budynas, R. G. (2002). <em>Roark's Formulas for Stress and Strain</em>, 7th ed. McGraw-Hill. Table 10.1. (Torsion constant of a solid rectangle.)</li>
+      </ol>
+    </div>
+
+    <!-- ══════════════ Summary ══════════════ -->
+    <div class="section" id="summary">
+      <div class="section__title">Summary</div>
+      <table class="summary-table">
+        <thead><tr><th>Function</th><th>Formula</th><th>Clause</th></tr></thead>
+        <tbody>
+          <tr><td class="path-cell">rectBeamMomentCapacity</td><td>φM<sub>n</sub> = 0.9[0.85f′<sub>c</sub> b a (d − a/2) + A′<sub>s</sub> f′<sub>s</sub>(d − d′)]</td><td>22.2, Table 21.2.2, 9.6.1.2</td></tr>
+          <tr><td class="path-cell">concreteShearCapacity</td><td>φV<sub>c</sub> = 0.75 · 0.17λ√f′<sub>c</sub> b<sub>w</sub> d</td><td>Table 22.5.5.1(a), 22.5.3.1</td></tr>
+          <tr><td class="path-cell">stirrupShearCapacity</td><td>φV<sub>s</sub> = 0.75 · A<sub>v</sub> f<sub>yt</sub> d / s ≤ 0.75 · 0.66√f′<sub>c</sub> b<sub>w</sub> d</td><td>22.5, 22.5.1.2</td></tr>
+          <tr><td class="path-cell">checkStirrupRequirement</td><td>Zones at 0.5φV<sub>c</sub> and φV<sub>c</sub>; A<sub>v,min</sub>; s<sub>max</sub></td><td>9.6.3.1, 9.6.3.3, 9.7.6.2.2</td></tr>
+          <tr><td class="path-cell">rectBeamBarLayout</td><td>Bars per layer from s<sub>clear</sub>; d, d′ from layer centroids</td><td>25.2.1, 25.2.2, Table 20.6.1.3.1</td></tr>
+          <tr><td class="path-cell">rectBeamToSectionProperties</td><td>E, G, A, mI, J</td><td>19.2.2.1, Table 6.6.3.1.1(a)</td></tr>
+          <tr><td class="path-cell">concreteBeta</td><td>β<sub>1</sub></td><td>Table 22.2.2.4.3</td></tr>
+        </tbody>
+      </table>
+      <p>See the <a href="../#overview" style="color:var(--accent)">RC Beam Design reference</a> for parameters, return shapes, warnings and errors.</p>
+    </div>
+
+  </main>
+</div>
+<script>
+  // Sidebar: fold it away on wide screens (remembered), open it as a drawer on phones,
+  // and remember which nav groups are folded on this page. Works without storage too.
+  (function () {
+    var root = document.documentElement;
+    var button = document.querySelector(".nav-toggle");
+    var sidebar = document.getElementById("sidebar");
+    var backdrop = document.querySelector(".nav-backdrop");
+    if (!button || !sidebar || !backdrop) return;
+    var phone = window.matchMedia("(max-width: 800px)");
+    var read = function (key) { try { return localStorage.getItem(key); } catch (e) { return null; } };
+    var write = function (key, value) { try { localStorage.setItem(key, value); } catch (e) {} };
+
+    var isOpen = function () {
+      return phone.matches ? root.classList.contains("nav-open") : !root.classList.contains("nav-collapsed");
+    };
+    var sync = function () {
+      var open = isOpen();
+      var label = open ? "Hide navigation" : "Show navigation";
+      button.setAttribute("aria-expanded", String(open));
+      button.setAttribute("aria-label", label);
+      button.title = label;
+      button.textContent = open ? "«" : "☰";
+      backdrop.hidden = !(phone.matches && open);
+    };
+    var closeDrawer = function () { root.classList.remove("nav-open"); sync(); };
+
+    button.addEventListener("click", function () {
+      if (phone.matches) root.classList.toggle("nav-open");
+      else write("docs-nav-collapsed", root.classList.toggle("nav-collapsed") ? "1" : "0");
+      sync();
+    });
+    backdrop.addEventListener("click", closeDrawer);
+    sidebar.addEventListener("click", function (event) {
+      if (phone.matches && event.target.closest && event.target.closest("a")) closeDrawer();
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && root.classList.contains("nav-open")) { closeDrawer(); button.focus(); }
+    });
+    if (phone.addEventListener) phone.addEventListener("change", closeDrawer);
+    else if (phone.addListener) phone.addListener(closeDrawer);
+
+    // Folded nav groups, per page, by their label.
+    var key = "docs-nav-folded:" + location.pathname;
+    var folded = [];
+    try { folded = JSON.parse(read(key) || "[]"); } catch (e) { folded = []; }
+    var groups = Array.prototype.slice.call(sidebar.querySelectorAll("details.nav-group"));
+    var labelOf = function (group) { return group.querySelector("summary").textContent.trim(); };
+    groups.forEach(function (group) {
+      if (folded.indexOf(labelOf(group)) >= 0) group.open = false;
+      group.addEventListener("toggle", function () {
+        write(key, JSON.stringify(groups.filter(function (g) { return !g.open; }).map(labelOf)));
+      });
+    });
+
+    sync();
+  })();
+</script>
+</body>
+</html>

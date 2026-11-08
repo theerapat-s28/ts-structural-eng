@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Frame Element — Theory Notes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #f0f2f6;
+      --border: #e2e5ec;
+      --accent: #3b63d8;
+      --accent-dim: rgba(59, 99, 216, 0.08);
+      --green: #1f9d63;
+      --green-dim: rgba(31, 157, 99, 0.10);
+      --red: #d9463c;
+      --red-dim: rgba(217, 70, 60, 0.08);
+      --yellow: #b97d0a;
+      --yellow-dim: rgba(230, 160, 30, 0.12);
+      --purple: #8a4fd0;
+      --purple-dim: rgba(138, 79, 208, 0.10);
+      --text: #1f2430;
+      --text-muted: #5c6474;
+      --text-dim: #8a90a0;
+      --code-bg: #f8f9fb;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ─────────────────────────────────────── */
+    .sidebar {
+      width: 252px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px 40px;
+    }
+    .sidebar__brand { padding: 0 10px 18px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .brand-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .sidebar__brand h2 { font-size: 13.5px; font-weight: 600; }
+    .nav-section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      padding: 0 10px;
+      margin-bottom: 6px;
+    }
+    /* Foldable nav groups: <details class="nav-group" open><summary class="nav-section-label"> */
+    .nav-group + .nav-group,
+    nav > a + .nav-group { margin-top: 8px; }
+    summary.nav-section-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      list-style: none;
+      border-radius: 5px;
+      user-select: none;
+    }
+    summary.nav-section-label::-webkit-details-marker { display: none; }
+    summary.nav-section-label::after {
+      content: "▾";
+      font-size: 11px;
+      letter-spacing: 0;
+      transition: transform 0.15s;
+    }
+    .nav-group:not([open]) > summary.nav-section-label::after { transform: rotate(-90deg); }
+    summary.nav-section-label:hover { color: var(--text-muted); }
+    summary.nav-section-label:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      margin-bottom: 2px;
+    }
+    nav a:hover { background: var(--accent-dim); color: var(--text); }
+
+    /* ── Kind badges ─────────────────────────────────── */
+    .mbadge, .kind {
+      font-family: var(--mono);
+      font-weight: 700;
+      border-radius: 5px;
+      flex-shrink: 0;
+    }
+    .mbadge { font-size: 9.5px; padding: 2px 6px; min-width: 34px; text-align: center; }
+    .kind { font-size: 11.5px; padding: 3px 9px; }
+    .m-fn { color: var(--green); background: var(--green-dim); }
+    .m-type { color: var(--accent); background: var(--accent-dim); }
+    .m-const { color: var(--yellow); background: var(--yellow-dim); }
+    .m-error { color: var(--red); background: var(--red-dim); }
+
+    /* ── Scope badges ────────────────────────────────── */
+    .scope-badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .s-public { color: var(--accent); background: var(--accent-dim); }
+    .s-internal { color: var(--purple); background: var(--purple-dim); }
+
+    .std-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+      color: var(--yellow);
+      background: var(--yellow-dim);
+    }
+
+    /* ── Main ────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 40px 48px 120px;
+      min-width: 0;
+    }
+
+    .page-header { margin-bottom: 36px; }
+    .import-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .import-tag .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+    }
+    .import-tag code { background: none; padding: 0; font-size: 12.5px; }
+    .page-header h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+    .page-header p { color: var(--text-muted); max-width: 640px; }
+
+    .section { margin-bottom: 44px; scroll-margin-top: 24px; }
+    .section__title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section p { color: var(--text-muted); margin-bottom: 12px; }
+
+    /* ── Export cards ────────────────────────────────── */
+    .export-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 20px;
+      overflow: hidden;
+      scroll-margin-top: 24px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .export-card__header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .ex-sig { font-family: var(--mono); font-size: 13.5px; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+    .export-card__body { padding: 18px 20px 20px; }
+    .ex-desc { color: var(--text-muted); margin-bottom: 16px; }
+    .sub-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin: 18px 0 8px;
+    }
+    .sub-label:first-of-type { margin-top: 0; }
+
+    /* ── Code blocks ─────────────────────────────────── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .code-block__label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .code-block pre {
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .k { color: #0e7490; }
+    .s { color: #2f7d32; }
+    .n { color: var(--yellow); }
+    .b { color: var(--purple); }
+    .nl { color: var(--text-dim); }
+    .c { color: var(--text-dim); font-style: italic; }
+    .u { color: var(--accent); }
+
+    /* ── Inline code ─────────────────────────────────── */
+    code {
+      font-family: var(--mono);
+      font-size: 0.86em;
+      background: var(--surface-2);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+    pre code { background: none; padding: 0; color: inherit; }
+
+    /* ── Tables ──────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 13.5px; }
+    th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      font-weight: 600;
+      padding: 8px 12px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      color: var(--text-muted);
+    }
+    tr:last-child td { border-bottom: none; }
+    .param-table, .summary-table {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: block;
+      overflow-x: auto;
+    }
+    .param-table td:first-child {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .param-table td:nth-child(2) { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+    .req { color: var(--red); font-size: 12px; font-weight: 500; }
+    .opt { color: var(--text-dim); font-size: 12px; }
+    .summary-table .path-cell { font-family: var(--mono); font-size: 12.5px; color: var(--text); white-space: nowrap; }
+
+    /* ── Alerts ──────────────────────────────────────── */
+    .alert {
+      display: flex;
+      gap: 10px;
+      padding: 11px 14px;
+      border-radius: var(--radius);
+      font-size: 13.5px;
+      margin-bottom: 10px;
+      border: 1px solid;
+      color: var(--text-muted);
+    }
+    .alert strong { color: var(--text); }
+    .alert--error { background: var(--red-dim); border-color: rgba(217, 70, 60, 0.25); }
+    .alert--warn { background: var(--yellow-dim); border-color: rgba(185, 125, 10, 0.25); }
+    .alert--info { background: var(--accent-dim); border-color: rgba(59, 99, 216, 0.25); }
+
+    /* ── Flow steps ──────────────────────────────────── */
+    .flow-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 12px; }
+    .flow-step {
+      display: flex;
+      gap: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .step-num {
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-body { color: var(--text-muted); font-size: 13.5px; }
+    .step-body strong { color: var(--text); }
+
+    /* ── Model grid ──────────────────────────────────── */
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .model-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .model-card__title { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    .model-card__desc { font-size: 12.5px; color: var(--text-muted); }
+    /* ── Theory notes: lists, equations, matrices, figures ── */
+    .section ul, .section ol { color: var(--text-muted); margin: 0 0 12px 22px; }
+    .section li { margin-bottom: 6px; }
+    .section li strong, .section p strong { color: var(--text); }
+
+    .eq {
+      font-family: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', 'Times New Roman', serif;
+      font-size: 16.5px;
+      line-height: 2.1;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      margin-bottom: 12px;
+      overflow-x: auto;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .eq + .eq { margin-top: -4px; }
+    .eq .note { font-family: 'Inter', sans-serif; font-size: 12.5px; color: var(--text-dim); margin-left: 14px; }
+    .mat {
+      display: inline-grid;
+      vertical-align: middle;
+      column-gap: 14px;
+      padding: 2px 10px;
+      margin: 0 3px;
+      position: relative;
+      text-align: center;
+      line-height: 1.55;
+    }
+    .mat::before, .mat::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+      border: 1.4px solid var(--text);
+    }
+    .mat::before { left: 0; border-right: none; }
+    .mat::after { right: 0; border-left: none; }
+    .mat.c1 { grid-template-columns: auto; }
+    .mat.c2 { grid-template-columns: repeat(2, auto); }
+    .mat.c3 { grid-template-columns: repeat(3, auto); }
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      vertical-align: middle;
+      text-align: center;
+      line-height: 1.3;
+      margin: 0 3px;
+    }
+    .frac > span + span { border-top: 1px solid var(--text); }
+
+    .figure {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 16px 12px;
+      margin-bottom: 12px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .figure svg { max-width: 100%; height: auto; }
+    .figure figcaption { font-size: 12.5px; color: var(--text-muted); margin-top: 6px; }
+    .dg-edge { fill: var(--accent-dim); stroke: var(--text); stroke-width: 1.5; }
+    .dg-dash { fill: none; stroke: var(--text-dim); stroke-width: 1; stroke-dasharray: 4 3; }
+    .dg-arrow { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+    .dg-arrowhead { fill: var(--accent); }
+    .dg-node { fill: var(--accent); }
+    .dg-mid { fill: var(--surface); stroke: var(--yellow); stroke-width: 1.8; }
+    .dg-gauss { fill: var(--green); }
+    .dg-text { font-family: 'Inter', sans-serif; font-size: 12px; fill: var(--text-muted); }
+    .dg-label { font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; fill: var(--text); }
+    .dg-math { font-family: 'STIX Two Math', 'Cambria Math', 'Times New Roman', serif; font-size: 14px; font-style: italic; fill: var(--text); }
+
+
+    /* ── Notice banner: scope and responsibility, on every page ── */
+    .notice-banner {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 14px;
+      margin: -12px 0 28px;
+      border-radius: var(--radius);
+      background: var(--yellow-dim);
+      border: 1px solid rgba(185, 125, 10, 0.25);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .notice-banner strong { color: var(--text); }
+    .notice-banner a { color: var(--accent); font-weight: 500; text-decoration: none; }
+    .notice-banner a:hover { text-decoration: underline; }
+
+    /* ── Collapsible sidebar: toggle button, folded state, phone drawer ── */
+    .sidebar__brand { padding-right: 40px; }
+    .nav-toggle {
+      position: fixed;
+      top: 14px;
+      left: 208px;
+      z-index: 50;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .nav-toggle:hover { background: var(--accent-dim); color: var(--text); }
+    .nav-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .nav-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      background: rgba(20, 24, 40, 0.35);
+    }
+    .nav-backdrop[hidden] { display: none; }
+    @media (min-width: 801px) {
+      html.nav-collapsed .sidebar { display: none; }
+      html.nav-collapsed .nav-toggle { left: 12px; }
+    }
+    @media print {
+      .nav-toggle, .nav-backdrop { display: none; }
+    }
+
+    @media (max-width: 800px) {
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 40;
+        transform: translateX(-100%);
+        visibility: hidden;
+        transition: transform 0.2s ease, visibility 0.2s;
+        box-shadow: 4px 0 16px rgba(20, 24, 40, 0.12);
+      }
+      html.nav-open .sidebar { transform: none; visibility: visible; }
+      html:not(.nav-open) .nav-toggle { left: 12px; }
+      .main { padding: 60px 20px 80px; }
+    }
+  </style>
+
+  <script>
+    // Restore the folded sidebar before the first paint, so the page does not flash open.
+    try { if (localStorage.getItem("docs-nav-collapsed") === "1") document.documentElement.classList.add("nav-collapsed"); } catch (e) {}
+  </script>
+</head>
+<body>
+<button class="nav-toggle" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Hide navigation" title="Hide navigation">«</button>
+<div class="nav-backdrop" hidden></div>
+<div class="layout">
+
+  <!-- ══════════════ Sidebar ══════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__brand">
+      <div class="brand-label">Theory Notes</div>
+      <h2>Frame Element</h2>
+    </div>
+    <nav>
+      <a href="../../"><span style="font-size:14px">←</span> All modules</a>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Getting Started</summary>
+        <a href="#overview"><span style="font-size:14px">◈</span> Overview</a>
+        <a href="#assumptions"><span style="font-size:14px">◇</span> Assumptions</a>
+        <a href="#axes"><span style="font-size:14px">⟂</span> Local axes</a>
+        <a href="#dofs"><span style="font-size:14px">↻</span> DOFs &amp; signs</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Stiffness</summary>
+        <a href="#shape-functions"><span style="font-size:14px">∿</span> Shape functions</a>
+        <a href="#stiffness"><span style="font-size:14px">▦</span> Local stiffness</a>
+        <a href="#reference-convention"><span style="font-size:14px">⇄</span> Reference convention</a>
+        <a href="#transformation"><span style="font-size:14px">⟲</span> Transformation</a>
+        <a href="#releases"><span style="font-size:14px">⊘</span> Releases &amp; springs</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Loads &amp; Results</summary>
+        <a href="#member-loads"><span style="font-size:14px">↓</span> Member loads</a>
+        <a href="#fixed-end"><span style="font-size:14px">⊓</span> Fixed-end forces</a>
+        <a href="#pieces"><span style="font-size:14px">⋯</span> Nodes along a member</a>
+        <a href="#end-forces"><span style="font-size:14px">⇆</span> End forces</a>
+        <a href="#diagrams"><span style="font-size:14px">∫</span> Force diagrams</a>
+        <a href="#deflections"><span style="font-size:14px">⌒</span> Deflections</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Checks</summary>
+        <a href="#verification"><span style="font-size:14px">✔</span> Verification</a>
+        <a href="#limitations"><span style="font-size:14px">⚠</span> Limitations</a>
+        <a href="#review"><span style="font-size:14px">✎</span> Points for review</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Reference</summary>
+        <a href="#references"><span style="font-size:14px">☷</span> References</a>
+        <a href="#summary"><span style="font-size:14px">☰</span> Summary</a>
+      </details>
+    </nav>
+  </aside>
+
+  <!-- ══════════════ Main ══════════════ -->
+  <main class="main">
+
+    <div class="page-header">
+      <div class="import-tag">
+        <span class="label">Status</span>
+        <code>@theerapat-s28/ts-structural-eng-tools/fea — model.members</code>
+      </div>
+      <h1>Frame Element — Theory Notes</h1>
+      <p>How the engine forms the stiffness of a 3D frame member, handles end releases and partial-fixity springs, turns member loads into nodal loads, and recovers the force and deflection diagrams along the member.</p>
+    </div>
+
+    <div class="notice-banner" role="note">
+      <span>⚠️</span>
+      <span><strong>A calculation aid, not a substitute for engineering judgement.</strong> Results must be checked and accepted by the qualified engineer responsible for the design. <a href="../../about/#limitations">Scope, assumptions and limitations →</a></span>
+    </div>
+
+    <!-- ══════════════ Overview ══════════════ -->
+    <div class="section" id="overview">
+      <div class="section__title">Overview</div>
+      <p>
+        Every beam, column and brace in a model is a two-node, twelve-degree-of-freedom prismatic element. This page
+        follows one member from its geometry to its results: its local axes, its local stiffness matrix, the
+        transformation to global axes, the condensation of end releases, the fixed-end forces of its loads, and the
+        internal forces and deflections at any point along it. The way the members are assembled with the rest of
+        the model and solved is on the <a href="analysis-method.html">Analysis method</a> page.
+      </p>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>The basis is matrix structural analysis, not a code provision <span class="std-badge" title="Basis: matrix structural analysis of Euler–Bernoulli beams — not an ACI 318-19 provision">Matrix analysis</span>. Formulas on this page are read from the source files named in each section; the checks quoted are those in the library's tests under <code>tests/fea/frame/</code>.</span>
+      </div>
+
+      <div class="sub-label">Basis</div>
+      <table class="summary-table">
+        <thead><tr><th>Quantity</th><th>Basis</th><th>Code or adaptation</th></tr></thead>
+        <tbody>
+          <tr><td>Member stiffness</td><td>Exact stiffness of a prismatic Euler–Bernoulli beam with uniform (Saint-Venant) torsion</td><td>Matrix structural analysis</td></tr>
+          <tr><td>End releases and springs</td><td>A spring in series between the member end and its node, condensed out of the element</td><td>Matrix structural analysis (static condensation)</td></tr>
+          <tr><td>Member loads</td><td>Consistent nodal loads from the beam's own shape functions, which equal the exact fixed-end forces of a prismatic member</td><td>Matrix structural analysis</td></tr>
+          <tr><td>Internal forces</td><td>Free-body equilibrium of the segment [0, x]</td><td>Statics</td></tr>
+          <tr><td>Deflections</td><td>Integration of the curvature M/EI and the axial strain N/EA along the member</td><td>Beam theory</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════ Assumptions ══════════════ -->
+    <div class="section" id="assumptions">
+      <div class="section__title">Assumptions</div>
+      <ul>
+        <li><strong>Straight and prismatic.</strong> E, G, A, I<sub>22</sub>, I<sub>33</sub> and J are constant along the member. A tapered member must be modelled as several members.</li>
+        <li><strong>Euler–Bernoulli bending.</strong> Plane sections stay plane and normal to the deformed axis, so shear deformation is ignored. The error grows as the member gets deeper relative to its span.</li>
+        <li><strong>Uniform torsion.</strong> The torsional stiffness is GJ/L. Warping torsion is not included.</li>
+        <li><strong>Centroid, shear centre and node coincide.</strong> The member axis joins the two node points and passes through the centroid and the shear centre, so axial force, bending and torsion are uncoupled. There are no rigid end zones yet.</li>
+        <li><strong>Principal axes.</strong> Local 2 and 3 are taken as the principal axes of the section, so there is no product of inertia I<sub>23</sub>.</li>
+        <li><strong>Linear and small.</strong> Linear elastic material, small displacements, equilibrium on the undeformed shape (no P-Δ or P-δ).</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ Local axes ══════════════ -->
+    <div class="section" id="axes">
+      <div class="section__title">Local axes <code style="font-size:13px">transformation/coordinate-transform.ts</code></div>
+      <p>Global axes X, Y, Z are right-handed with Z up. A member from node i to node j has length L and local axes 1, 2, 3, built as follows (<code>memberAxes</code>):</p>
+      <div class="eq">
+        e<sub>1</sub> = (x<sub>j</sub> − x<sub>i</sub>) / L<span class="note">local 1 runs from the start node to the end node</span>
+      </div>
+      <p><strong>Member not vertical</strong> (the horizontal part of e<sub>1</sub> is at least <code>VERTICAL_MEMBER_TOLERANCE</code> = 10⁻⁶): local 3 is horizontal and local 2 lies in the vertical plane through the member, pointing up.</p>
+      <div class="eq">
+        e<sub>3</sub> = <span class="frac"><span>e<sub>1</sub> × Z</span><span>|e<sub>1</sub> × Z|</span></span>,&nbsp;&nbsp; e<sub>2</sub> = e<sub>3</sub> × e<sub>1</sub>
+      </div>
+      <p><strong>Member vertical</strong>: local 2 is global +X and local 3 completes the triad.</p>
+      <div class="eq">
+        e<sub>2</sub> = X,&nbsp;&nbsp; e<sub>3</sub> = e<sub>1</sub> × e<sub>2</sub>
+      </div>
+      <p>A member angle β (<code>member.angle</code>, rad) then turns local 2 and 3 about local 1 by the right-hand rule:</p>
+      <div class="eq">
+        e′<sub>2</sub> = cos β · e<sub>2</sub> + sin β · e<sub>3</sub>,&nbsp;&nbsp; e′<sub>3</sub> = −sin β · e<sub>2</sub> + cos β · e<sub>3</sub>
+      </div>
+      <p>The three unit vectors are the rows of the direction-cosine matrix λ, so a vector v in global components has local components λ·v.</p>
+      <table class="summary-table">
+        <thead><tr><th>Member</th><th>Local 1</th><th>Local 2</th><th>Local 3</th></tr></thead>
+        <tbody>
+          <tr><td>Beam along +X</td><td>+X</td><td>+Z</td><td>−Y</td></tr>
+          <tr><td>Beam along +Y</td><td>+Y</td><td>+Z</td><td>+X</td></tr>
+          <tr><td>Column along +Z</td><td>+Z</td><td>+X</td><td>+Y</td></tr>
+          <tr><td>Beam along +X, β = 90°</td><td>+X</td><td>−Y</td><td>−Z</td></tr>
+        </tbody>
+      </table>
+      <p>These are the cases checked in <code>tests/fea/frame/coordinate-transform.test.ts</code>, together with orthonormality on an inclined member. A zero-length member throws <code>FeaError</code> 301.</p>
+    </div>
+
+    <!-- ══════════════ DOFs ══════════════ -->
+    <div class="section" id="dofs">
+      <div class="section__title">Degrees of freedom and signs</div>
+      <p>Each end has three translations and three rotations in local axes. The element vector is ordered start node first:</p>
+      <div class="eq">
+        u = [ U<sub>1i</sub>, U<sub>2i</sub>, U<sub>3i</sub>, R<sub>1i</sub>, R<sub>2i</sub>, R<sub>3i</sub>, U<sub>1j</sub>, U<sub>2j</sub>, U<sub>3j</sub>, R<sub>1j</sub>, R<sub>2j</sub>, R<sub>3j</sub> ]<sup>T</sup>
+      </div>
+      <p>Rotations follow the right-hand rule about the local axes. With u<sub>2</sub>(x) and u<sub>3</sub>(x) the transverse displacements along the member, this gives the kinematic relations used throughout the page:</p>
+      <div class="eq">
+        R<sub>3</sub> = + du<sub>2</sub>/dx,&nbsp;&nbsp;&nbsp; R<sub>2</sub> = − du<sub>3</sub>/dx<span class="note">x measured along local 1 from the start node</span>
+      </div>
+      <p>The sign of R<sub>2</sub> is the usual source of errors in 3D frame programs: a positive rotation about local 2 lifts the far end <em>down</em> along local 3. The two bending planes therefore have the same matrix with opposite signs on their coupling terms.</p>
+      <p>End forces use the same order and signs: they are the forces and moments that the nodes exert on the member, in local axes. Internal forces in the <a href="#diagrams">diagrams</a> use a different, section-based convention: N is positive in tension, and M<sub>3</sub> is positive for sagging when local 2 points up.</p>
+    </div>
+
+    <!-- ══════════════ Shape functions ══════════════ -->
+    <div class="section" id="shape-functions">
+      <div class="section__title">Shape functions</div>
+      <p>With ξ = x / L, the axial displacement and the twist are linear, and each transverse displacement is the cubic Hermite interpolation of the end translations and slopes:</p>
+      <div class="eq">
+        u<sub>1</sub>(x) = (1 − ξ) U<sub>1i</sub> + ξ U<sub>1j</sub>,&nbsp;&nbsp; θ<sub>1</sub>(x) = (1 − ξ) R<sub>1i</sub> + ξ R<sub>1j</sub>
+      </div>
+      <div class="eq">
+        N<sub>1</sub> = 1 − 3ξ² + 2ξ³,&nbsp; N<sub>2</sub> = L(ξ − 2ξ² + ξ³),&nbsp; N<sub>3</sub> = 3ξ² − 2ξ³,&nbsp; N<sub>4</sub> = L(−ξ² + ξ³)
+      </div>
+      <div class="eq">
+        u<sub>2</sub>(x) = N<sub>1</sub> U<sub>2i</sub> + N<sub>2</sub> R<sub>3i</sub> + N<sub>3</sub> U<sub>2j</sub> + N<sub>4</sub> R<sub>3j</sub>
+      </div>
+      <div class="eq">
+        u<sub>3</sub>(x) = N<sub>1</sub> U<sub>3i</sub> − N<sub>2</sub> R<sub>2i</sub> + N<sub>3</sub> U<sub>3j</sub> − N<sub>4</sub> R<sub>2j</sub><span class="note">the minus signs come from R<sub>2</sub> = −du<sub>3</sub>/dx</span>
+      </div>
+      <p>For a prismatic member without load between its ends, these functions are the exact solution of the beam equations (EA u<sub>1</sub>″ = 0, GJ θ<sub>1</sub>″ = 0, EI u″″ = 0), so the stiffness below is exact rather than an approximation that improves with subdivision.</p>
+    </div>
+
+    <!-- ══════════════ Stiffness ══════════════ -->
+    <div class="section" id="stiffness">
+      <div class="section__title">Local stiffness <code style="font-size:13px">elements/beam-3d-stiffness.ts</code></div>
+      <p>The strain energy of the member is</p>
+      <div class="eq">
+        U = ½ ∫<sub>0</sub><sup>L</sup> [ EA (u<sub>1</sub>′)² + GJ (θ<sub>1</sub>′)² + EI<sub>33</sub> (u<sub>2</sub>″)² + EI<sub>22</sub> (u<sub>3</sub>″)² ] dx
+      </div>
+      <p>and substituting the shape functions gives U = ½ u<sup>T</sup> k u. The four actions are uncoupled, so k is made of four small blocks.</p>
+
+      <div class="sub-label">Axial and torsion</div>
+      <div class="eq">
+        k<sub>axial</sub> = <span class="frac"><span>EA</span><span>L</span></span>
+        <span class="mat c2"><span>1</span><span>−1</span><span>−1</span><span>1</span></span> on (U<sub>1i</sub>, U<sub>1j</sub>),&nbsp;&nbsp;
+        k<sub>torsion</sub> = <span class="frac"><span>GJ</span><span>L</span></span>
+        <span class="mat c2"><span>1</span><span>−1</span><span>−1</span><span>1</span></span> on (R<sub>1i</sub>, R<sub>1j</sub>)
+      </div>
+
+      <div class="sub-label">Bending in the 1–2 plane (about local 3, uses I<sub>33</sub>)</div>
+      <div class="eq">
+        k<sub>12</sub> = <span class="frac"><span>EI<sub>33</sub></span><span>L³</span></span>
+        <span class="mat" style="grid-template-columns: repeat(4, auto)">
+          <span>12</span><span>6L</span><span>−12</span><span>6L</span>
+          <span>6L</span><span>4L²</span><span>−6L</span><span>2L²</span>
+          <span>−12</span><span>−6L</span><span>12</span><span>−6L</span>
+          <span>6L</span><span>2L²</span><span>−6L</span><span>4L²</span>
+        </span>
+        on (U<sub>2i</sub>, R<sub>3i</sub>, U<sub>2j</sub>, R<sub>3j</sub>)
+      </div>
+
+      <div class="sub-label">Bending in the 1–3 plane (about local 2, uses I<sub>22</sub>)</div>
+      <div class="eq">
+        k<sub>13</sub> = <span class="frac"><span>EI<sub>22</sub></span><span>L³</span></span>
+        <span class="mat" style="grid-template-columns: repeat(4, auto)">
+          <span>12</span><span>−6L</span><span>−12</span><span>−6L</span>
+          <span>−6L</span><span>4L²</span><span>6L</span><span>2L²</span>
+          <span>−12</span><span>6L</span><span>12</span><span>6L</span>
+          <span>−6L</span><span>2L²</span><span>6L</span><span>4L²</span>
+        </span>
+        on (U<sub>3i</sub>, R<sub>2i</sub>, U<sub>3j</sub>, R<sub>2j</sub>)
+      </div>
+
+      <div class="sub-label">The full 12 × 12 matrix</div>
+      <p>
+        Placing the blocks in DOF order gives the matrix below (empty cells are zero; the matrix is symmetric).
+        With a = 12EI/L³, b = 6EI/L², c = 4EI/L, d = 2EI/L, the subscript names the inertia used:
+        I<sub>33</sub> for bending in the 1–2 plane, I<sub>22</sub> for the 1–3 plane.
+        k<sub>a</sub> = EA/L and k<sub>t</sub> = GJ/L.
+      </p>
+      <table class="summary-table" style="font-family: var(--mono); font-size: 12px; text-align: center;">
+        <thead>
+          <tr><th></th><th>U1i</th><th>U2i</th><th>U3i</th><th>R1i</th><th>R2i</th><th>R3i</th><th>U1j</th><th>U2j</th><th>U3j</th><th>R1j</th><th>R2j</th><th>R3j</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>U1i</th><td>kₐ</td><td></td><td></td><td></td><td></td><td></td><td>−kₐ</td><td></td><td></td><td></td><td></td><td></td></tr>
+          <tr><th>U2i</th><td></td><td>a₃₃</td><td></td><td></td><td></td><td>b₃₃</td><td></td><td>−a₃₃</td><td></td><td></td><td></td><td>b₃₃</td></tr>
+          <tr><th>U3i</th><td></td><td></td><td>a₂₂</td><td></td><td>−b₂₂</td><td></td><td></td><td></td><td>−a₂₂</td><td></td><td>−b₂₂</td><td></td></tr>
+          <tr><th>R1i</th><td></td><td></td><td></td><td>kₜ</td><td></td><td></td><td></td><td></td><td></td><td>−kₜ</td><td></td><td></td></tr>
+          <tr><th>R2i</th><td></td><td></td><td>−b₂₂</td><td></td><td>c₂₂</td><td></td><td></td><td></td><td>b₂₂</td><td></td><td>d₂₂</td><td></td></tr>
+          <tr><th>R3i</th><td></td><td>b₃₃</td><td></td><td></td><td></td><td>c₃₃</td><td></td><td>−b₃₃</td><td></td><td></td><td></td><td>d₃₃</td></tr>
+          <tr><th>U1j</th><td>−kₐ</td><td></td><td></td><td></td><td></td><td></td><td>kₐ</td><td></td><td></td><td></td><td></td><td></td></tr>
+          <tr><th>U2j</th><td></td><td>−a₃₃</td><td></td><td></td><td></td><td>−b₃₃</td><td></td><td>a₃₃</td><td></td><td></td><td></td><td>−b₃₃</td></tr>
+          <tr><th>U3j</th><td></td><td></td><td>−a₂₂</td><td></td><td>b₂₂</td><td></td><td></td><td></td><td>a₂₂</td><td></td><td>b₂₂</td><td></td></tr>
+          <tr><th>R1j</th><td></td><td></td><td></td><td>−kₜ</td><td></td><td></td><td></td><td></td><td></td><td>kₜ</td><td></td><td></td></tr>
+          <tr><th>R2j</th><td></td><td></td><td>−b₂₂</td><td></td><td>d₂₂</td><td></td><td></td><td></td><td>b₂₂</td><td></td><td>c₂₂</td><td></td></tr>
+          <tr><th>R3j</th><td></td><td>b₃₃</td><td></td><td></td><td></td><td>d₃₃</td><td></td><td>−b₃₃</td><td></td><td></td><td></td><td>c₃₃</td></tr>
+        </tbody>
+      </table>
+      <p>
+        This is the matrix the solver uses (<code>beam3dLocalStiffnessRightHanded</code>). The tests check it cell by
+        cell against the standard right-hand-rule beam matrix, check its symmetry, and check that all six rigid-body
+        motions (three translations and three small rotations) produce no force.
+      </p>
+    </div>
+
+    <!-- ══════════════ Reference convention ══════════════ -->
+    <div class="section" id="reference-convention">
+      <div class="section__title">The reference sign convention <code style="font-size:13px">beam3dLocalStiffness</code></div>
+      <p>
+        The exported <code>beam3dLocalStiffness</code> returns the same element in the layout of the
+        reference "Complete Beam Stiffness Matrix", which measures the bending rotations R<sub>2</sub> and
+        R<sub>3</sub> opposite to the right-hand rule. The two forms are related by a sign flip D, equal to −1 on
+        R<sub>2i</sub>, R<sub>3i</sub>, R<sub>2j</sub>, R<sub>3j</sub> and +1 elsewhere:
+      </p>
+      <div class="eq">
+        k<sub>right-hand</sub> = D · k<sub>reference</sub> · D,&nbsp;&nbsp; D = diag(1, 1, 1, 1, −1, −1, 1, 1, 1, 1, −1, −1)
+      </div>
+      <p>
+        D is its own inverse, so the conversion works both ways (<code>flipBendingRotationSigns</code>). The reference
+        matrix is free of force under rigid-body motion only when its own rotation sign is used, which the tests
+        record. Use the right-handed form whenever the matrix is combined with right-handed rotations;
+        <code>analyze</code> does this internally. The reference uses one EI for both planes. Here the U<sub>2</sub>–R<sub>3</sub>
+        terms use EI<sub>33</sub> and the U<sub>3</sub>–R<sub>2</sub> terms EI<sub>22</sub>, which reduces to the reference
+        when I<sub>22</sub> = I<sub>33</sub>.
+      </p>
+    </div>
+
+    <!-- ══════════════ Transformation ══════════════ -->
+    <div class="section" id="transformation">
+      <div class="section__title">Transformation to global axes <code style="font-size:13px">solver/member-assembly.ts</code></div>
+      <p>The same 3 × 3 rotation λ applies to each of the four vectors in u (translations and rotations at each end), so the 12 × 12 transformation is block-diagonal:</p>
+      <div class="eq">
+        T = diag(λ, λ, λ, λ),&nbsp;&nbsp; u<sub>local</sub> = T · u<sub>global</sub>,&nbsp;&nbsp; f<sub>global</sub> = T<sup>T</sup> · f<sub>local</sub>
+      </div>
+      <div class="eq">
+        K<sub>e</sub> = T<sup>T</sup> · k · T<span class="note">the member's stiffness in global axes, assembled into the structure</span>
+      </div>
+      <p>T is orthogonal (T<sup>T</sup>T = I), which the tests check, so K<sub>e</sub> stays symmetric and positive semi-definite.</p>
+    </div>
+
+    <!-- ══════════════ Releases ══════════════ -->
+    <div class="section" id="releases">
+      <div class="section__title">End releases and partial fixity <code style="font-size:13px">elements/static-condensation.ts</code></div>
+      <p>
+        Any local DOF at either end can be released (<code>releases.start</code>, <code>releases.end</code>). A value of
+        <code>true</code> or <code>0</code> is a full release; a positive number is a spring (kN/mm for a translation,
+        kN·m/rad for a rotation) that ties the member end to its node. The model is the same in both cases: each
+        released DOF r is split into a member-side value u<sub>m</sub> and a node-side value u<sub>n</sub>, joined by a
+        spring s (s = 0 for a full release). With c the connected DOFs, the element with its springs reads
+      </p>
+      <div class="eq">
+        <span class="mat" style="grid-template-columns: repeat(3, auto)">
+          <span>k<sub>cc</sub></span><span>k<sub>cr</sub></span><span>0</span>
+          <span>k<sub>rc</sub></span><span>A</span><span>−S</span>
+          <span>0</span><span>−S</span><span>S</span>
+        </span>
+        <span class="mat c1"><span>u<sub>c</sub></span><span>u<sub>m</sub></span><span>u<sub>n</sub></span></span>
+        =
+        <span class="mat c1"><span>f<sub>c</sub></span><span>f<sub>r</sub></span><span>0</span></span>
+        + nodal forces,&nbsp;&nbsp; A = k<sub>rr</sub> + S,&nbsp; S = diag(s)
+      </div>
+      <p>The member-side DOFs carry no external load, so they are eliminated (static condensation). The result is a 12 × 12 matrix in the node DOFs:</p>
+      <div class="eq">
+        k*<sub>cc</sub> = k<sub>cc</sub> − k<sub>cr</sub> A⁻¹ k<sub>rc</sub>,&nbsp;&nbsp;
+        k*<sub>cn</sub> = k<sub>cr</sub> A⁻¹ S,&nbsp;&nbsp;
+        k*<sub>nn</sub> = S A⁻¹ k<sub>rr</sub>
+      </div>
+      <p>
+        The last form equals S − S A⁻¹ S but does not lose accuracy by subtraction when the spring is stiff. The
+        fixed-end forces of the member's loads (<a href="#fixed-end">below</a>) are condensed the same way:
+      </p>
+      <div class="eq">
+        f*<sub>c</sub> = f<sub>c</sub> − k<sub>cr</sub> A⁻¹ f<sub>r</sub>,&nbsp;&nbsp; f*<sub>n</sub> = S A⁻¹ f<sub>r</sub>
+      </div>
+      <p>After the solve, the member's own end displacements at the released DOFs are recovered from</p>
+      <div class="eq">
+        u<sub>m</sub> = A⁻¹ ( S u<sub>n</sub> − k<sub>rc</sub> u<sub>c</sub> − f<sub>r</sub> )
+      </div>
+      <p>and the difference u<sub>n</sub> − u<sub>m</sub> is reported as the release deformation (for example the hinge rotation). With every s = 0 the formulas reduce to the classical condensation, with zero rows and columns at the released DOFs.</p>
+      <ul>
+        <li><strong>Scaling.</strong> A is scaled to a unit diagonal before it is solved, so the singularity test does not depend on mixing N/mm and N·mm/rad.</li>
+        <li><strong>Mechanisms.</strong> If the full releases leave the member free to move as a rigid body (for example torsion released at both ends), A is singular and the engine throws <code>FeaError</code> 307. Springs never cause this.</li>
+        <li><strong>Joint rotations.</strong> A joint where every member releases the same rotation (a pin-jointed truss) has a rotation that nothing resists. The solver detects it and holds it; see <a href="analysis-method.html#auto-restraint">Analysis method</a>.</li>
+      </ul>
+      <p>Take a member whose far end is tied to a fixed node by a rotational spring s, with k = EI/L. A rotation θ at the near end needs the moment M<sub>a</sub> = 4k(s + 3k)/(s + 4k)·θ there, and carries 2k·s/(s + 4k)·θ over to the far node. The tests check this, the limits s → 0 (pin) and s → ∞ (rigid), and a fixed–semi-rigid beam under a uniform load against the slope-deflection result M<sub>A</sub> = wL²/12·(6k + s)/(4k + s).</p>
+    </div>
+
+    <!-- ══════════════ Member loads ══════════════ -->
+    <div class="section" id="member-loads">
+      <div class="section__title">Member loads in local axes <code style="font-size:13px">solver/member-loads.ts</code></div>
+      <p>Every member load is first resolved into loads along the local axes, in N and mm (kN/m = N/mm, kN = 10³ N, kN·m/m = 10³ N·mm/mm).</p>
+      <ul>
+        <li><strong>Local direction</strong> ("1", "2", "3"): taken as given.</li>
+        <li><strong>Global direction</strong> ("X", "Y", "Z"): split into components λ<sub>a</sub>·d along each local axis a, where d is the unit global direction. Components below 10⁻¹² are dropped.</li>
+        <li><strong>Projected loads</strong> (<code>projected: true</code>, global direction only): the intensity is given per unit length projected on the plane normal to d, so it is scaled by L<sub>proj</sub>/L = √(1 − (e<sub>1</sub>·d)²). A vertical column gets nothing from a projected Z load.</li>
+        <li><strong>Self-weight</strong>: a uniform load w = −m · γ · A along global Z, with m the load case's <code>selfWeight</code> multiplier and γ the section's <code>unitWeight</code> (kN/m³ · m² = kN/m). A member without <code>unitWeight</code> throws <code>FeaError</code> 313 when self-weight is requested.</li>
+        <li><strong>Torque</strong>: a uniform distributed torque t about local 1 over [start, end].</li>
+      </ul>
+      <p>A distributed load varies linearly from w<sub>1</sub> at <code>start</code> to w<sub>2</sub> at <code>end</code> (a uniform load is w<sub>1</sub> = w<sub>2</sub>). A point load P acts at distance a from the start. A load outside the member throws <code>FeaError</code> 308.</p>
+    </div>
+
+    <!-- ══════════════ Fixed-end forces ══════════════ -->
+    <div class="section" id="fixed-end">
+      <div class="section__title">Fixed-end forces <code style="font-size:13px">elements/fixed-end-forces.ts</code></div>
+      <p>
+        The equivalent nodal load of a member load is the work-equivalent (consistent) vector, formed with the
+        same shape functions as the stiffness. For a transverse load q(x) along local 2:
+      </p>
+      <div class="eq">
+        p = ∫<sub>0</sub><sup>L</sup> q(x) · [ N<sub>1</sub>, N<sub>2</sub>, N<sub>3</sub>, N<sub>4</sub> ]<sup>T</sup> dx on (U<sub>2i</sub>, R<sub>3i</sub>, U<sub>2j</sub>, R<sub>3j</sub>)
+      </div>
+      <p>
+        Along local 3 the rotation terms change sign (−N<sub>2</sub> on R<sub>2i</sub>, −N<sub>4</sub> on R<sub>2j</sub>);
+        along local 1 the weights are 1 − ξ and ξ, and the same linear weights apply to a torque. The fixed-end
+        forces are the negative, f<sub>fixed</sub> = −p: the end forces that hold both ends fully fixed against the load.
+        Because the Hermite functions are the exact homogeneous solutions of the prismatic beam, this vector equals
+        the exact fixed-end solution, not an approximation.
+      </p>
+      <ul>
+        <li><strong>Point load</strong> P at a: p = P · N(a).</li>
+        <li><strong>Linear distributed load</strong> over [start, end]: the integral is evaluated by a 4-point Gauss–Legendre rule over the loaded length. The integrand (cubic shape function times a linear load) has degree 4 and the rule is exact to degree 7, so the result is exact.</li>
+        <li><strong>Torque</strong> t over [start, end]: the resultant t·(end − start) is shared between the ends in the ratio 1 − x̄/L and x̄/L, with x̄ the centre of the loaded length.</li>
+      </ul>
+      <p>The tests check these against closed-form solutions:</p>
+      <table class="summary-table">
+        <thead><tr><th>Case</th><th>End shears</th><th>End moments</th></tr></thead>
+        <tbody>
+          <tr><td>Fixed–fixed, uniform w</td><td>wL/2, wL/2</td><td>wL²/12, wL²/12</td></tr>
+          <tr><td>Fixed–fixed, triangular 0 → w</td><td>3wL/20, 7wL/20</td><td>wL²/30, wL²/20</td></tr>
+          <tr><td>Fixed–fixed, full-length torque t</td><td colspan="2">tL/2 at each end</td></tr>
+        </tbody>
+      </table>
+      <p>With end releases, f<sub>fixed</sub> is condensed to f*<sub>fixed</sub> as shown <a href="#releases">above</a> before it enters the load vector, as −T<sup>T</sup> f*<sub>fixed</sub>.</p>
+    </div>
+
+    <!-- ══════════════ Pieces ══════════════ -->
+    <div class="section" id="pieces">
+      <div class="section__title">Nodes along a member <code style="font-size:13px">solver/system-member.ts</code></div>
+      <p>
+        A member is connected to every model node that lies on it between its ends (within
+        <code>AREA_GEOMETRY_TOLERANCE</code> × its length), and to the generated shell-mesh nodes along it, unless it sets
+        <code>connectIntermediateNodes: false</code>. It is then analysed as a chain of pieces between those nodes, while
+        its results are still reported as one member:
+      </p>
+      <ul>
+        <li>Each piece gets its own length, and local axes from its own end nodes. For nodes on the member's axis these are the axes of the whole member.</li>
+        <li>End releases apply only at the member's own two ends, never at the interior nodes.</li>
+        <li>Member loads are resolved in the whole member's axes and cut at the piece ends. A point load exactly at an interior node goes to the piece that starts there.</li>
+        <li>The diagram is evaluated piece by piece and stitched along the full length. Where a framing member, a support or a shell delivers a force at an interior node, both sides of the jump are reported.</li>
+      </ul>
+      <p>A node close to a member but not on it (within 1 % of the length, at most 100 mm) is not connected. It is listed in <code>calculationDetails.nearMissNodes</code> with a warning, because it is probably a modelling error.</p>
+    </div>
+
+    <!-- ══════════════ End forces ══════════════ -->
+    <div class="section" id="end-forces">
+      <div class="section__title">Member end forces</div>
+      <p>Once the global displacements U are known, each member's end forces in local axes are the elastic forces of its condensed stiffness plus its condensed fixed-end forces:</p>
+      <div class="eq">
+        f = k* · T · U<sub>e</sub> + f*<sub>fixed</sub><span class="note">U<sub>e</sub>: the 12 global displacements of the member's two nodes</span>
+      </div>
+      <p>f is the set of forces the two nodes exert on the member (right-hand local axes, N and N·mm). It is reported in kN and kN·m, with every member's end forces in <code>memberEndForces</code>, and is the starting point of the diagrams.</p>
+    </div>
+
+    <!-- ══════════════ Diagrams ══════════════ -->
+    <div class="section" id="diagrams">
+      <div class="section__title">Force diagrams <code style="font-size:13px">post/member-diagram.ts</code></div>
+      <p>
+        The internal forces at distance x come from the equilibrium of the free body [0, x]. With the start-end force
+        [F<sub>1</sub>, F<sub>2</sub>, F<sub>3</sub>, M<sub>1</sub>, M<sub>2</sub>, M<sub>3</sub>], the load resultant
+        Q<sub>a</sub>(x) = ∫<sub>0</sub><sup>x</sup> q<sub>a</sub> ds, its moment
+        I<sub>a</sub>(x) = ∫<sub>0</sub><sup>x</sup> (s − x) q<sub>a</sub> ds (point loads included as concentrated terms) and
+        the torque resultant Q<sub>t</sub>(x):
+      </p>
+      <div class="eq">
+        N = −F<sub>1</sub> − Q<sub>1</sub>,&nbsp;&nbsp; V<sub>2</sub> = −F<sub>2</sub> − Q<sub>2</sub>,&nbsp;&nbsp; V<sub>3</sub> = −F<sub>3</sub> − Q<sub>3</sub>,&nbsp;&nbsp; T = −M<sub>1</sub> − Q<sub>t</sub>
+      </div>
+      <div class="eq">
+        M<sub>2</sub> = −M<sub>2</sub>(0) − x F<sub>3</sub> + I<sub>3</sub>,&nbsp;&nbsp; M<sub>3</sub> = −M<sub>3</sub>(0) + x F<sub>2</sub> − I<sub>2</sub>
+      </div>
+      <p>
+        These act on the +1 face of the segment: N is positive in tension and, for a beam with local 2 up, M<sub>3</sub>
+        is positive in sagging. The integrals of linear loads are evaluated in closed form, so the diagrams are exact
+        for any combination of uniform, trapezoidal, point and torque loads.
+      </p>
+      <div class="sub-label">Stations and exact extremes</div>
+      <ul>
+        <li><strong>Stations.</strong> The diagram is reported at evenly spaced stations (21 by default, <code>options.stations</code>), plus every load breakpoint and every zero-shear point. At a point load both sides of the jump are reported.</li>
+        <li><strong>Extremes are exact, not sampled.</strong> Between breakpoints N and V are at most quadratic, T is linear and M at most cubic, so the extremes lie at a breakpoint (either side), at a zero-load point (vertex of N or V) or at a zero-shear point (extreme of M). The quadratic through the two ends and the midpoint of each interval is exact, so its roots and vertex are found in closed form and added to the grid.</li>
+        <li><strong>Combinations.</strong> The diagram of a combination is rebuilt from the combined end forces and the factored member loads, so its extremes are exact too, rather than the sum of the extremes of its load cases (which would be wrong when they occur at different points).</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ Deflections ══════════════ -->
+    <div class="section" id="deflections">
+      <div class="section__title">Deflections along the member</div>
+      <p>The local displacements follow from the beam kinematics, with κ the curvatures:</p>
+      <div class="eq">
+        u<sub>1</sub>′ = N / EA,&nbsp;&nbsp; u<sub>2</sub>″ = κ<sub>3</sub> = M<sub>3</sub> / EI<sub>33</sub>,&nbsp;&nbsp; u<sub>3</sub>″ = κ<sub>2</sub> = −M<sub>2</sub> / EI<sub>22</sub>
+      </div>
+      <p>Integrating twice from the start of the member:</p>
+      <div class="eq">
+        u<sub>1</sub>(x) = u<sub>1</sub>(0) + ∫<sub>0</sub><sup>x</sup> N/EA ds,&nbsp;&nbsp;
+        u<sub>2</sub>(x) = a + b·x + x ∫<sub>0</sub><sup>x</sup> κ<sub>3</sub> ds − ∫<sub>0</sub><sup>x</sup> s κ<sub>3</sub> ds
+      </div>
+      <p>
+        and the same for u<sub>3</sub> with κ<sub>2</sub>. The constants a and b come from the member's <em>own</em> end
+        translations at x = 0 and x = L. These differ from the node displacements across a released or spring DOF,
+        so the curve is correct at hinged and semi-rigid ends, where the member's rotation differs from the node's.
+      </p>
+      <ul>
+        <li><strong>Exact integration.</strong> The integration grid contains every load breakpoint, so each interval is smooth, with N at most quadratic and M at most cubic. One 3-point Gauss panel per interval integrates the (at most quartic) integrands exactly.</li>
+        <li><strong>Extremes.</strong> Deflections are evaluated on a grid of 40 equal intervals plus the stations and breakpoints. Each extreme is then refined by 30 golden-section steps between its neighbouring grid points.</li>
+        <li><strong>Global components.</strong> u<sub>x</sub>, u<sub>y</sub>, u<sub>z</sub> at each station are λ<sup>T</sup>·(u<sub>1</sub>, u<sub>2</sub>, u<sub>3</sub>), so the end stations equal the node displacements in global axes.</li>
+      </ul>
+      <p>Only translations are reported along the member. The deflection is the beam's own elastic curve; it ignores shear deformation, like the stiffness.</p>
+    </div>
+
+    <!-- ══════════════ Verification ══════════════ -->
+    <div class="section" id="verification">
+      <div class="section__title">Verification</div>
+      <p>The checks below are in the test suite. Each compares the engine with a closed-form solution, with an independent model or with an identity the element must satisfy.</p>
+      <table class="summary-table">
+        <thead><tr><th>Check</th><th>Reference</th><th>Test file</th></tr></thead>
+        <tbody>
+          <tr><td>Local stiffness cell by cell, symmetry, rigid-body modes</td><td>Standard right-hand beam matrix; zero force under rigid motion</td><td><code>beam-3d-stiffness.test.ts</code></td></tr>
+          <tr><td>Local axes of beams, columns, inclined members, member angle</td><td>Construction rules above; orthonormal right-handed triad</td><td><code>coordinate-transform.test.ts</code></td></tr>
+          <tr><td>Simply supported beam, uniform load: midspan deflection</td><td>5wL⁴/384EI from a single member</td><td><code>member-deflection.test.ts</code></td></tr>
+          <tr><td>Cantilever, tip load: deflection at every station</td><td>P x²(3L − x)/6EI</td><td><code>member-deflection.test.ts</code></td></tr>
+          <tr><td>Axial load along a member</td><td>u<sub>1</sub> = q(Lx − x²/2)/EA</td><td><code>member-deflection.test.ts</code></td></tr>
+          <tr><td>Triangular load, fixed–fixed and simply supported</td><td>wL²/30, wL²/20; M<sub>max</sub> = wL²/(9√3) at L/√3</td><td><code>trapezoidal-load.test.ts</code></td></tr>
+          <tr><td>Trapezoidal load and deflections inside members</td><td>Same structure modelled with subdivided members</td><td><code>trapezoidal-load.test.ts</code>, <code>member-deflection.test.ts</code></td></tr>
+          <tr><td>Distributed torque, full and partial</td><td>tL/2 at each end; linear T through zero</td><td><code>torque-load.test.ts</code></td></tr>
+          <tr><td>Rotational spring at a member end</td><td>M = 4k(s + 3k)/(s + 4k)·θ, carry-over 2k·s/(s + 4k)</td><td><code>end-releases.test.ts</code></td></tr>
+          <tr><td>Fixed–semi-rigid beam, uniform load</td><td>Slope-deflection: M<sub>A</sub> = wL²/12·(6k + s)/(4k + s)</td><td><code>end-releases.test.ts</code></td></tr>
+          <tr><td>Axial and torsion springs in series</td><td>δ = P(L/EA + 1/s), φ = T(L/GJ + 1/s)</td><td><code>end-releases.test.ts</code></td></tr>
+          <tr><td>Propped cantilever with a hinge: release rotation</td><td>wL³/48EI past the fixed node</td><td><code>end-releases.test.ts</code></td></tr>
+          <tr><td>Projected loads on rafters and skewed members</td><td>w · plan length; L<sub>proj</sub>/L = √(1 − c²)</td><td><code>projected-loads.test.ts</code></td></tr>
+          <tr><td>Self-weight on an inclined cantilever</td><td>Tip deflection wL⁴/8EI</td><td><code>tests/fea/analysis/load-combinations.test.ts</code></td></tr>
+        </tbody>
+      </table>
+      <p>A consolidated verification report against published benchmark problems is planned; see <a href="../../about/#verification">Verification status</a>.</p>
+    </div>
+
+    <!-- ══════════════ Limitations ══════════════ -->
+    <div class="section" id="limitations">
+      <div class="section__title">Limitations</div>
+      <ul>
+        <li><strong>No shear deformation.</strong> Deep beams, transfer girders, short coupling beams and squat walls modelled as members are too stiff. A Timoshenko option is planned.</li>
+        <li><strong>No rigid end zones.</strong> The member runs node to node, so its clear span and its stiffness at a deep joint are not represented. End offsets are planned.</li>
+        <li><strong>No warping torsion.</strong> Open thin-walled sections in torsion (channels, I-sections) are more flexible than GJ/L suggests when warping is free, and stiffer when it is restrained.</li>
+        <li><strong>No geometric stiffness.</strong> Axial force does not change the bending stiffness: there is no P-δ amplification and no buckling check.</li>
+        <li><strong>Principal axes only.</strong> A section whose principal axes are not local 2 and 3 must be turned with the member angle; I<sub>23</sub> is not an input.</li>
+        <li><strong>Tapered members</strong> must be divided into prismatic members.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ Review ══════════════ -->
+    <div class="section" id="review">
+      <div class="section__title">Points for review</div>
+      <ul>
+        <li><strong>Source of the reference matrix.</strong> The source of the "Complete Beam Stiffness Matrix" that <code>beam3dLocalStiffness</code> follows is not named in the code or the docs. It should be cited in full.</li>
+        <li><strong>Near-vertical members.</strong> The axes switch from the "local 3 horizontal" rule to "local 2 = +X" when the horizontal part of e<sub>1</sub> falls below 10⁻⁶. A member just on either side of that limit gets very different local axes, so results in local axes (M<sub>2</sub>, M<sub>3</sub>) of almost-vertical members should be read with care.</li>
+        <li><strong>Deflection extremes</strong> are refined numerically (golden-section search). The force extremes are exact; the deflection extremes are accurate to the search tolerance.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ References ══════════════ -->
+    <div class="section" id="references">
+      <div class="section__title">References</div>
+      <ol>
+        <li>McGuire, W., Gallagher, R. H. &amp; Ziemian, R. D. (2000). <em>Matrix Structural Analysis</em>, 2nd ed. Wiley. (The 3D frame element, transformation, releases and condensation.)</li>
+        <li>Przemieniecki, J. S. (1968). <em>Theory of Matrix Structural Analysis</em>. McGraw-Hill. (The beam stiffness matrix and consistent loads.)</li>
+        <li>Kassimali, A. (2012). <em>Matrix Analysis of Structures</em>, 2nd ed. Cengage. (Fixed-end forces, member releases, space frames.)</li>
+        <li>Weaver, W. &amp; Gere, J. M. (1990). <em>Matrix Analysis of Framed Structures</em>, 3rd ed. Van Nostrand Reinhold. (Member axes of space frames.)</li>
+        <li>Cook, R. D., Malkus, D. S., Plesha, M. E. &amp; Witt, R. J. (2002). <em>Concepts and Applications of Finite Element Analysis</em>, 4th ed. Wiley. (Shape functions, Gauss–Legendre integration.)</li>
+      </ol>
+    </div>
+
+    <!-- ══════════════ Summary ══════════════ -->
+    <div class="section" id="summary">
+      <div class="section__title">Summary</div>
+      <table class="summary-table">
+        <thead><tr><th>Step</th><th>Formula</th><th>Source file</th></tr></thead>
+        <tbody>
+          <tr><td>Local axes</td><td>e<sub>1</sub> = Δx/L, e<sub>3</sub> ∥ e<sub>1</sub> × Z, e<sub>2</sub> = e<sub>3</sub> × e<sub>1</sub>; turned by β</td><td class="path-cell">transformation/coordinate-transform.ts</td></tr>
+          <tr><td>Local stiffness</td><td>EA/L, GJ/L, 12EI/L³, 6EI/L², 4EI/L, 2EI/L</td><td class="path-cell">elements/beam-3d-stiffness.ts</td></tr>
+          <tr><td>Global stiffness</td><td>K<sub>e</sub> = T<sup>T</sup> k T</td><td class="path-cell">solver/member-assembly.ts</td></tr>
+          <tr><td>Releases and springs</td><td>k* = condensed stiffness, f* = condensed fixed-end forces</td><td class="path-cell">elements/static-condensation.ts</td></tr>
+          <tr><td>Fixed-end forces</td><td>f<sub>fixed</sub> = −∫ N<sup>T</sup> q dx</td><td class="path-cell">elements/fixed-end-forces.ts</td></tr>
+          <tr><td>End forces</td><td>f = k* T U<sub>e</sub> + f*<sub>fixed</sub></td><td class="path-cell">analysis/solver/load-case-solver.ts</td></tr>
+          <tr><td>Diagrams and deflections</td><td>Free-body equilibrium; double integration of M/EI</td><td class="path-cell">post/member-diagram.ts</td></tr>
+        </tbody>
+      </table>
+      <p>Paths are under <code>src/fea/frame/</code> unless they start with <code>analysis/</code> (<code>src/fea/analysis/</code>). See the <a href="../#member" style="color:var(--accent)">FEA reference</a> for the member input and result types.</p>
+    </div>
+
+  </main>
+</div>
+<script>
+  // Sidebar: fold it away on wide screens (remembered), open it as a drawer on phones,
+  // and remember which nav groups are folded on this page. Works without storage too.
+  (function () {
+    var root = document.documentElement;
+    var button = document.querySelector(".nav-toggle");
+    var sidebar = document.getElementById("sidebar");
+    var backdrop = document.querySelector(".nav-backdrop");
+    if (!button || !sidebar || !backdrop) return;
+    var phone = window.matchMedia("(max-width: 800px)");
+    var read = function (key) { try { return localStorage.getItem(key); } catch (e) { return null; } };
+    var write = function (key, value) { try { localStorage.setItem(key, value); } catch (e) {} };
+
+    var isOpen = function () {
+      return phone.matches ? root.classList.contains("nav-open") : !root.classList.contains("nav-collapsed");
+    };
+    var sync = function () {
+      var open = isOpen();
+      var label = open ? "Hide navigation" : "Show navigation";
+      button.setAttribute("aria-expanded", String(open));
+      button.setAttribute("aria-label", label);
+      button.title = label;
+      button.textContent = open ? "«" : "☰";
+      backdrop.hidden = !(phone.matches && open);
+    };
+    var closeDrawer = function () { root.classList.remove("nav-open"); sync(); };
+
+    button.addEventListener("click", function () {
+      if (phone.matches) root.classList.toggle("nav-open");
+      else write("docs-nav-collapsed", root.classList.toggle("nav-collapsed") ? "1" : "0");
+      sync();
+    });
+    backdrop.addEventListener("click", closeDrawer);
+    sidebar.addEventListener("click", function (event) {
+      if (phone.matches && event.target.closest && event.target.closest("a")) closeDrawer();
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && root.classList.contains("nav-open")) { closeDrawer(); button.focus(); }
+    });
+    if (phone.addEventListener) phone.addEventListener("change", closeDrawer);
+    else if (phone.addListener) phone.addListener(closeDrawer);
+
+    // Folded nav groups, per page, by their label.
+    var key = "docs-nav-folded:" + location.pathname;
+    var folded = [];
+    try { folded = JSON.parse(read(key) || "[]"); } catch (e) { folded = []; }
+    var groups = Array.prototype.slice.call(sidebar.querySelectorAll("details.nav-group"));
+    var labelOf = function (group) { return group.querySelector("summary").textContent.trim(); };
+    groups.forEach(function (group) {
+      if (folded.indexOf(labelOf(group)) >= 0) group.open = false;
+      group.addEventListener("toggle", function () {
+        write(key, JSON.stringify(groups.filter(function (g) { return !g.open; }).map(labelOf)));
+      });
+    });
+
+    sync();
+  })();
+</script>
+</body>
+</html>

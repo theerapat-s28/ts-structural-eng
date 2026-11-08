@@ -75,8 +75,28 @@
       padding: 0 10px;
       margin-bottom: 6px;
     }
-    .nav-section-label + .nav-section-label,
-    nav a + .nav-section-label { margin-top: 8px; }
+    /* Foldable nav groups: <details class="nav-group" open><summary class="nav-section-label"> */
+    .nav-group + .nav-group,
+    nav > a + .nav-group { margin-top: 8px; }
+    summary.nav-section-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      list-style: none;
+      border-radius: 5px;
+      user-select: none;
+    }
+    summary.nav-section-label::-webkit-details-marker { display: none; }
+    summary.nav-section-label::after {
+      content: "▾";
+      font-size: 11px;
+      letter-spacing: 0;
+      transition: transform 0.15s;
+    }
+    .nav-group:not([open]) > summary.nav-section-label::after { transform: rotate(-90deg); }
+    summary.nav-section-label:hover { color: var(--text-muted); }
+    summary.nav-section-label:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     nav a {
       display: flex;
       align-items: center;
@@ -342,17 +362,89 @@
     .model-card__title { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
     .model-card__desc { font-size: 12.5px; color: var(--text-muted); }
 
+    /* ── Notice banner: scope and responsibility, on every page ── */
+    .notice-banner {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 14px;
+      margin: -12px 0 28px;
+      border-radius: var(--radius);
+      background: var(--yellow-dim);
+      border: 1px solid rgba(185, 125, 10, 0.25);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .notice-banner strong { color: var(--text); }
+    .notice-banner a { color: var(--accent); font-weight: 500; text-decoration: none; }
+    .notice-banner a:hover { text-decoration: underline; }
+
+    /* ── Collapsible sidebar: toggle button, folded state, phone drawer ── */
+    .sidebar__brand { padding-right: 40px; }
+    .nav-toggle {
+      position: fixed;
+      top: 14px;
+      left: 208px;
+      z-index: 50;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .nav-toggle:hover { background: var(--accent-dim); color: var(--text); }
+    .nav-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .nav-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      background: rgba(20, 24, 40, 0.35);
+    }
+    .nav-backdrop[hidden] { display: none; }
+    @media (min-width: 801px) {
+      html.nav-collapsed .sidebar { display: none; }
+      html.nav-collapsed .nav-toggle { left: 12px; }
+    }
+    @media print {
+      .nav-toggle, .nav-backdrop { display: none; }
+    }
+
     @media (max-width: 800px) {
-      .sidebar { display: none; }
-      .main { padding: 24px 20px 80px; }
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 40;
+        transform: translateX(-100%);
+        visibility: hidden;
+        transition: transform 0.2s ease, visibility 0.2s;
+        box-shadow: 4px 0 16px rgba(20, 24, 40, 0.12);
+      }
+      html.nav-open .sidebar { transform: none; visibility: visible; }
+      html:not(.nav-open) .nav-toggle { left: 12px; }
+      .main { padding: 60px 20px 80px; }
     }
   </style>
+  <script>
+    // Restore the folded sidebar before the first paint, so the page does not flash open.
+    try { if (localStorage.getItem("docs-nav-collapsed") === "1") document.documentElement.classList.add("nav-collapsed"); } catch (e) {}
+  </script>
 </head>
 <body>
+<button class="nav-toggle" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Hide navigation" title="Hide navigation">«</button>
+<div class="nav-backdrop" hidden></div>
 <div class="layout">
 
   <!-- ══════════════ Sidebar ══════════════ -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="sidebar__brand">
       <div class="brand-label">API Reference</div>
       <h2>Frame and Shell Analysis</h2>
@@ -360,120 +452,145 @@
     <nav>
       <a href="../"><span style="font-size:14px">←</span> All modules</a>
 
-      <div class="nav-section-label">Getting Started</div>
-      <a href="#overview"><span style="font-size:14px">◈</span> Overview</a>
-      <a href="#conventions"><span style="font-size:14px">◇</span> Axes &amp; conventions</a>
-      <a href="#load-cases"><span style="font-size:14px">▤</span> Load cases &amp; combinations</a>
-      <a href="#loads"><span style="font-size:14px">↓</span> Loads</a>
-      <a href="#null-areas"><span style="font-size:14px">▱</span> Null areas</a>
-      <a href="#shell-areas"><span style="font-size:14px">◫</span> Shell areas</a>
-      <a href="#strips"><span style="font-size:14px">≡</span> Strip forces</a>
-      <a href="#piers"><span style="font-size:14px">▥</span> Piers &amp; spandrels</a>
-      <a href="#end-releases"><span style="font-size:14px">⊸</span> End releases &amp; springs</a>
-      <a href="#intermediate-nodes"><span style="font-size:14px">⋯</span> Nodes on members</a>
-      <a href="#member-diagrams"><span style="font-size:14px">∿</span> Member diagrams</a>
-      <a href="#frontend"><span style="font-size:14px">▣</span> Using in a frontend</a>
-      <a href="#analysis-flow"><span style="font-size:14px">◆</span> Analysis flow</a>
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Getting Started</summary>
+        <a href="#overview"><span style="font-size:14px">◈</span> Overview</a>
+        <a href="#conventions"><span style="font-size:14px">◇</span> Axes &amp; conventions</a>
+        <a href="#load-cases"><span style="font-size:14px">▤</span> Load cases &amp; combinations</a>
+        <a href="#loads"><span style="font-size:14px">↓</span> Loads</a>
+        <a href="#null-areas"><span style="font-size:14px">▱</span> Null areas</a>
+        <a href="#shell-areas"><span style="font-size:14px">◫</span> Shell areas</a>
+        <a href="#strips"><span style="font-size:14px">≡</span> Strip forces</a>
+        <a href="#piers"><span style="font-size:14px">▥</span> Piers &amp; spandrels</a>
+        <a href="#end-releases"><span style="font-size:14px">⊸</span> End releases &amp; springs</a>
+        <a href="#intermediate-nodes"><span style="font-size:14px">⋯</span> Nodes on members</a>
+        <a href="#member-diagrams"><span style="font-size:14px">∿</span> Member diagrams</a>
+        <a href="#frontend"><span style="font-size:14px">▣</span> Using in a frontend</a>
+        <a href="#analysis-flow"><span style="font-size:14px">◆</span> Analysis flow</a>
+      </details>
 
-      <div class="nav-section-label">Analysis</div>
-      <a href="#analyze"><span class="mbadge m-fn">FN</span> analyze</a>
-      <a href="#create-analysis"><span class="mbadge m-fn">FN</span> createAnalysis</a>
-      <a href="#validate-model"><span class="mbadge m-fn">FN</span> validateModel</a>
-      <a href="#distribute-area-loads"><span class="mbadge m-fn">FN</span> distributeAreaLoads</a>
-      <a href="#member-demand-envelope"><span class="mbadge m-fn">FN</span> memberDemandEnvelope</a>
-      <a href="#member-connectivity"><span class="mbadge m-fn">FN</span> memberConnectivity</a>
-      <a href="#mesh-connectivity"><span class="mbadge m-fn">FN</span> meshConnectivity</a>
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Analysis</summary>
+        <a href="#analyze"><span class="mbadge m-fn">FN</span> analyze</a>
+        <a href="#create-analysis"><span class="mbadge m-fn">FN</span> createAnalysis</a>
+        <a href="#validate-model"><span class="mbadge m-fn">FN</span> validateModel</a>
+        <a href="#distribute-area-loads"><span class="mbadge m-fn">FN</span> distributeAreaLoads</a>
+        <a href="#member-demand-envelope"><span class="mbadge m-fn">FN</span> memberDemandEnvelope</a>
+        <a href="#member-connectivity"><span class="mbadge m-fn">FN</span> memberConnectivity</a>
+        <a href="#mesh-connectivity"><span class="mbadge m-fn">FN</span> meshConnectivity</a>
+      </details>
 
-      <div class="nav-section-label">Element</div>
-      <a href="#beam-3d-local-stiffness"><span class="mbadge m-fn">FN</span> beam3dLocalStiffness</a>
-      <a href="#beam-3d-local-stiffness-right-handed"><span class="mbadge m-fn">FN</span> beam3dLocalStiffnessRightHanded</a>
-      <a href="#member-axes"><span class="mbadge m-fn">FN</span> memberAxes</a>
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Element</summary>
+        <a href="#beam-3d-local-stiffness"><span class="mbadge m-fn">FN</span> beam3dLocalStiffness</a>
+        <a href="#beam-3d-local-stiffness-right-handed"><span class="mbadge m-fn">FN</span> beam3dLocalStiffnessRightHanded</a>
+        <a href="#member-axes"><span class="mbadge m-fn">FN</span> memberAxes</a>
+      </details>
 
-      <div class="nav-section-label">Types — Model</div>
-      <a href="#fea-model"><span class="mbadge m-type">TYPE</span> FeaModel</a>
-      <a href="#fea-id"><span class="mbadge m-type">TYPE</span> FeaId</a>
-      <a href="#fea-node"><span class="mbadge m-type">TYPE</span> FeaNode</a>
-      <a href="#member"><span class="mbadge m-type">TYPE</span> Member</a>
-      <a href="#member-end-release"><span class="mbadge m-type">TYPE</span> MemberEndRelease</a>
-      <a href="#dof-release"><span class="mbadge m-type">TYPE</span> DofRelease</a>
-      <a href="#section-properties"><span class="mbadge m-type">TYPE</span> SectionProperties</a>
-      <a href="#restraint"><span class="mbadge m-type">TYPE</span> Restraint</a>
-      <a href="#dof-restraint"><span class="mbadge m-type">TYPE</span> DofRestraint</a>
-      <a href="#shell-area"><span class="mbadge m-type">TYPE</span> ShellArea</a>
-      <a href="#shell-section"><span class="mbadge m-type">TYPE</span> ShellSection</a>
-      <a href="#shell-modifiers"><span class="mbadge m-type">TYPE</span> ShellModifiers</a>
-      <a href="#shell-type"><span class="mbadge m-type">TYPE</span> ShellType</a>
-      <a href="#shell-mesh"><span class="mbadge m-type">TYPE</span> ShellMesh</a>
-      <a href="#line-restraint"><span class="mbadge m-type">TYPE</span> LineRestraint</a>
-      <a href="#shell-strip"><span class="mbadge m-type">TYPE</span> ShellStrip</a>
-      <a href="#strip-point"><span class="mbadge m-type">TYPE</span> StripPoint</a>
-      <a href="#wall-pier"><span class="mbadge m-type">TYPE</span> WallPier</a>
-      <a href="#wall-spandrel"><span class="mbadge m-type">TYPE</span> WallSpandrel</a>
-      <div class="nav-section-label">Types — Loads</div>
-      <a href="#load-case"><span class="mbadge m-type">TYPE</span> LoadCase</a>
-      <a href="#load-case-type"><span class="mbadge m-type">TYPE</span> LoadCaseType</a>
-      <a href="#load-combination"><span class="mbadge m-type">TYPE</span> LoadCombination</a>
-      <a href="#combination-term"><span class="mbadge m-type">TYPE</span> CombinationTerm</a>
-      <a href="#nodal-load"><span class="mbadge m-type">TYPE</span> NodalLoad</a>
-      <a href="#member-load"><span class="mbadge m-type">TYPE</span> MemberLoad</a>
-      <a href="#uniform-member-load"><span class="mbadge m-type">TYPE</span> UniformMemberLoad</a>
-      <a href="#trapezoidal-member-load"><span class="mbadge m-type">TYPE</span> TrapezoidalMemberLoad</a>
-      <a href="#point-member-load"><span class="mbadge m-type">TYPE</span> PointMemberLoad</a>
-      <a href="#torque-member-load"><span class="mbadge m-type">TYPE</span> TorqueMemberLoad</a>
-      <a href="#load-direction"><span class="mbadge m-type">TYPE</span> LoadDirection</a>
-      <a href="#null-area"><span class="mbadge m-type">TYPE</span> NullArea</a>
-      <a href="#area-distribution"><span class="mbadge m-type">TYPE</span> AreaDistribution</a>
-      <a href="#area-load"><span class="mbadge m-type">TYPE</span> AreaLoad</a>
-      <a href="#area-load-direction"><span class="mbadge m-type">TYPE</span> AreaLoadDirection</a>
-      <div class="nav-section-label">Types — Options</div>
-      <a href="#analyze-options"><span class="mbadge m-type">TYPE</span> AnalyzeOptions</a>
-      <a href="#demand-envelope-options"><span class="mbadge m-type">TYPE</span> DemandEnvelopeOptions</a>
-      <div class="nav-section-label">Types — Results</div>
-      <a href="#fea-result"><span class="mbadge m-type">TYPE</span> FeaResult</a>
-      <a href="#auto-restrained-dof"><span class="mbadge m-type">TYPE</span> AutoRestrainedDof</a>
-      <a href="#member-intermediate-node"><span class="mbadge m-type">TYPE</span> MemberIntermediateNode</a>
-      <a href="#member-near-miss-node"><span class="mbadge m-type">TYPE</span> MemberNearMissNode</a>
-      <a href="#fea-case-result"><span class="mbadge m-type">TYPE</span> FeaCaseResult</a>
-      <a href="#nodal-displacement"><span class="mbadge m-type">TYPE</span> NodalDisplacement</a>
-      <a href="#nodal-reaction"><span class="mbadge m-type">TYPE</span> NodalReaction</a>
-      <a href="#member-end-forces"><span class="mbadge m-type">TYPE</span> MemberEndForces</a>
-      <a href="#member-end-force"><span class="mbadge m-type">TYPE</span> MemberEndForce</a>
-      <a href="#member-release-deformations"><span class="mbadge m-type">TYPE</span> MemberReleaseDeformations</a>
-      <a href="#release-deformation"><span class="mbadge m-type">TYPE</span> ReleaseDeformation</a>
-      <a href="#member-diagram"><span class="mbadge m-type">TYPE</span> MemberDiagram</a>
-      <a href="#shell-element-forces"><span class="mbadge m-type">TYPE</span> ShellElementForces</a>
-      <a href="#shell-corner-forces"><span class="mbadge m-type">TYPE</span> ShellCornerForces</a>
-      <a href="#fea-mesh"><span class="mbadge m-type">TYPE</span> FeaMesh</a>
-      <a href="#strip-forces"><span class="mbadge m-type">TYPE</span> StripForces</a>
-      <a href="#strip-station"><span class="mbadge m-type">TYPE</span> StripStation</a>
-      <a href="#strip-resultants"><span class="mbadge m-type">TYPE</span> StripResultants</a>
-      <a href="#strip-extreme-value"><span class="mbadge m-type">TYPE</span> StripExtremeValue</a>
-      <a href="#pier-forces"><span class="mbadge m-type">TYPE</span> PierForces</a>
-      <a href="#pier-cut"><span class="mbadge m-type">TYPE</span> PierCut</a>
-      <a href="#spandrel-forces"><span class="mbadge m-type">TYPE</span> SpandrelForces</a>
-      <a href="#spandrel-cut"><span class="mbadge m-type">TYPE</span> SpandrelCut</a>
-      <a href="#wall-resultants"><span class="mbadge m-type">TYPE</span> WallResultants</a>
-      <a href="#wall-cut-section"><span class="mbadge m-type">TYPE</span> WallCutSection</a>
-      <a href="#member-station"><span class="mbadge m-type">TYPE</span> MemberStation</a>
-      <a href="#station-component"><span class="mbadge m-type">TYPE</span> StationComponent</a>
-      <a href="#extreme-value"><span class="mbadge m-type">TYPE</span> ExtremeValue</a>
-      <a href="#fea-envelope"><span class="mbadge m-type">TYPE</span> FeaEnvelope</a>
-      <a href="#governing-value"><span class="mbadge m-type">TYPE</span> GoverningValue</a>
-      <a href="#governing-extreme-value"><span class="mbadge m-type">TYPE</span> GoverningExtremeValue</a>
-      <a href="#bound"><span class="mbadge m-type">TYPE</span> Bound</a>
-      <a href="#analysis-type"><span class="mbadge m-type">TYPE</span> Analysis</a>
-      <a href="#member-demand-envelope-type"><span class="mbadge m-type">TYPE</span> MemberDemandEnvelope</a>
-      <a href="#member-connectivity-type"><span class="mbadge m-type">TYPE</span> MemberConnectivity</a>
-      <a href="#mesh-connectivity-type"><span class="mbadge m-type">TYPE</span> MeshConnectivity</a>
-      <a href="#generated-mesh-node"><span class="mbadge m-type">TYPE</span> GeneratedMeshNode</a>
-      <a href="#node-off-mesh"><span class="mbadge m-type">TYPE</span> NodeOffMesh</a>
-      <div class="nav-section-label">Types — Validation</div>
-      <a href="#fea-model-issue"><span class="mbadge m-type">TYPE</span> FeaModelIssue</a>
-      <a href="#fea-error-details"><span class="mbadge m-type">TYPE</span> FeaErrorDetails</a>
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Types — Model</summary>
+        <a href="#fea-model"><span class="mbadge m-type">TYPE</span> FeaModel</a>
+        <a href="#fea-id"><span class="mbadge m-type">TYPE</span> FeaId</a>
+        <a href="#fea-node"><span class="mbadge m-type">TYPE</span> FeaNode</a>
+        <a href="#member"><span class="mbadge m-type">TYPE</span> Member</a>
+        <a href="#member-end-release"><span class="mbadge m-type">TYPE</span> MemberEndRelease</a>
+        <a href="#dof-release"><span class="mbadge m-type">TYPE</span> DofRelease</a>
+        <a href="#section-properties"><span class="mbadge m-type">TYPE</span> SectionProperties</a>
+        <a href="#restraint"><span class="mbadge m-type">TYPE</span> Restraint</a>
+        <a href="#dof-restraint"><span class="mbadge m-type">TYPE</span> DofRestraint</a>
+        <a href="#shell-area"><span class="mbadge m-type">TYPE</span> ShellArea</a>
+        <a href="#shell-section"><span class="mbadge m-type">TYPE</span> ShellSection</a>
+        <a href="#shell-modifiers"><span class="mbadge m-type">TYPE</span> ShellModifiers</a>
+        <a href="#shell-type"><span class="mbadge m-type">TYPE</span> ShellType</a>
+        <a href="#shell-mesh"><span class="mbadge m-type">TYPE</span> ShellMesh</a>
+        <a href="#line-restraint"><span class="mbadge m-type">TYPE</span> LineRestraint</a>
+        <a href="#shell-strip"><span class="mbadge m-type">TYPE</span> ShellStrip</a>
+        <a href="#strip-point"><span class="mbadge m-type">TYPE</span> StripPoint</a>
+        <a href="#wall-pier"><span class="mbadge m-type">TYPE</span> WallPier</a>
+        <a href="#wall-spandrel"><span class="mbadge m-type">TYPE</span> WallSpandrel</a>
+      </details>
 
-      <div class="nav-section-label">Reference</div>
-      <a href="#errors"><span class="mbadge m-error">ERR</span> FeaError codes</a>
-      <a href="#summary"><span style="font-size:14px">☰</span> Export summary</a>
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Types — Loads</summary>
+        <a href="#load-case"><span class="mbadge m-type">TYPE</span> LoadCase</a>
+        <a href="#load-case-type"><span class="mbadge m-type">TYPE</span> LoadCaseType</a>
+        <a href="#load-combination"><span class="mbadge m-type">TYPE</span> LoadCombination</a>
+        <a href="#combination-term"><span class="mbadge m-type">TYPE</span> CombinationTerm</a>
+        <a href="#nodal-load"><span class="mbadge m-type">TYPE</span> NodalLoad</a>
+        <a href="#member-load"><span class="mbadge m-type">TYPE</span> MemberLoad</a>
+        <a href="#uniform-member-load"><span class="mbadge m-type">TYPE</span> UniformMemberLoad</a>
+        <a href="#trapezoidal-member-load"><span class="mbadge m-type">TYPE</span> TrapezoidalMemberLoad</a>
+        <a href="#point-member-load"><span class="mbadge m-type">TYPE</span> PointMemberLoad</a>
+        <a href="#torque-member-load"><span class="mbadge m-type">TYPE</span> TorqueMemberLoad</a>
+        <a href="#load-direction"><span class="mbadge m-type">TYPE</span> LoadDirection</a>
+        <a href="#null-area"><span class="mbadge m-type">TYPE</span> NullArea</a>
+        <a href="#area-distribution"><span class="mbadge m-type">TYPE</span> AreaDistribution</a>
+        <a href="#area-load"><span class="mbadge m-type">TYPE</span> AreaLoad</a>
+        <a href="#area-load-direction"><span class="mbadge m-type">TYPE</span> AreaLoadDirection</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Types — Options</summary>
+        <a href="#analyze-options"><span class="mbadge m-type">TYPE</span> AnalyzeOptions</a>
+        <a href="#demand-envelope-options"><span class="mbadge m-type">TYPE</span> DemandEnvelopeOptions</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Types — Results</summary>
+        <a href="#fea-result"><span class="mbadge m-type">TYPE</span> FeaResult</a>
+        <a href="#auto-restrained-dof"><span class="mbadge m-type">TYPE</span> AutoRestrainedDof</a>
+        <a href="#member-intermediate-node"><span class="mbadge m-type">TYPE</span> MemberIntermediateNode</a>
+        <a href="#member-near-miss-node"><span class="mbadge m-type">TYPE</span> MemberNearMissNode</a>
+        <a href="#fea-case-result"><span class="mbadge m-type">TYPE</span> FeaCaseResult</a>
+        <a href="#nodal-displacement"><span class="mbadge m-type">TYPE</span> NodalDisplacement</a>
+        <a href="#nodal-reaction"><span class="mbadge m-type">TYPE</span> NodalReaction</a>
+        <a href="#member-end-forces"><span class="mbadge m-type">TYPE</span> MemberEndForces</a>
+        <a href="#member-end-force"><span class="mbadge m-type">TYPE</span> MemberEndForce</a>
+        <a href="#member-release-deformations"><span class="mbadge m-type">TYPE</span> MemberReleaseDeformations</a>
+        <a href="#release-deformation"><span class="mbadge m-type">TYPE</span> ReleaseDeformation</a>
+        <a href="#member-diagram"><span class="mbadge m-type">TYPE</span> MemberDiagram</a>
+        <a href="#shell-element-forces"><span class="mbadge m-type">TYPE</span> ShellElementForces</a>
+        <a href="#shell-corner-forces"><span class="mbadge m-type">TYPE</span> ShellCornerForces</a>
+        <a href="#fea-mesh"><span class="mbadge m-type">TYPE</span> FeaMesh</a>
+        <a href="#strip-forces"><span class="mbadge m-type">TYPE</span> StripForces</a>
+        <a href="#strip-station"><span class="mbadge m-type">TYPE</span> StripStation</a>
+        <a href="#strip-resultants"><span class="mbadge m-type">TYPE</span> StripResultants</a>
+        <a href="#strip-extreme-value"><span class="mbadge m-type">TYPE</span> StripExtremeValue</a>
+        <a href="#pier-forces"><span class="mbadge m-type">TYPE</span> PierForces</a>
+        <a href="#pier-cut"><span class="mbadge m-type">TYPE</span> PierCut</a>
+        <a href="#spandrel-forces"><span class="mbadge m-type">TYPE</span> SpandrelForces</a>
+        <a href="#spandrel-cut"><span class="mbadge m-type">TYPE</span> SpandrelCut</a>
+        <a href="#wall-resultants"><span class="mbadge m-type">TYPE</span> WallResultants</a>
+        <a href="#wall-cut-section"><span class="mbadge m-type">TYPE</span> WallCutSection</a>
+        <a href="#member-station"><span class="mbadge m-type">TYPE</span> MemberStation</a>
+        <a href="#station-component"><span class="mbadge m-type">TYPE</span> StationComponent</a>
+        <a href="#extreme-value"><span class="mbadge m-type">TYPE</span> ExtremeValue</a>
+        <a href="#fea-envelope"><span class="mbadge m-type">TYPE</span> FeaEnvelope</a>
+        <a href="#governing-value"><span class="mbadge m-type">TYPE</span> GoverningValue</a>
+        <a href="#governing-extreme-value"><span class="mbadge m-type">TYPE</span> GoverningExtremeValue</a>
+        <a href="#bound"><span class="mbadge m-type">TYPE</span> Bound</a>
+        <a href="#analysis-type"><span class="mbadge m-type">TYPE</span> Analysis</a>
+        <a href="#member-demand-envelope-type"><span class="mbadge m-type">TYPE</span> MemberDemandEnvelope</a>
+        <a href="#member-connectivity-type"><span class="mbadge m-type">TYPE</span> MemberConnectivity</a>
+        <a href="#mesh-connectivity-type"><span class="mbadge m-type">TYPE</span> MeshConnectivity</a>
+        <a href="#generated-mesh-node"><span class="mbadge m-type">TYPE</span> GeneratedMeshNode</a>
+        <a href="#node-off-mesh"><span class="mbadge m-type">TYPE</span> NodeOffMesh</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Types — Validation</summary>
+        <a href="#fea-model-issue"><span class="mbadge m-type">TYPE</span> FeaModelIssue</a>
+        <a href="#fea-error-details"><span class="mbadge m-type">TYPE</span> FeaErrorDetails</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Reference</summary>
+        <a href="theory/frame-element.html"><span style="font-size:14px">∫</span> Theory: frame element</a>
+        <a href="theory/analysis-method.html"><span style="font-size:14px">∫</span> Theory: analysis method</a>
+        <a href="theory/shell-element.html"><span style="font-size:14px">∫</span> Theory: shell element</a>
+        <a href="#errors"><span class="mbadge m-error">ERR</span> FeaError codes</a>
+        <a href="#summary"><span style="font-size:14px">☰</span> Export summary</a>
+      </details>
     </nav>
   </aside>
 
@@ -487,6 +604,11 @@
       </div>
       <h1>Frame and Shell Analysis</h1>
       <p>Linear-elastic 3D analysis of frames, shells or both by the direct stiffness method, run for user-defined load cases and factored load combinations, with member loads, area loads on null areas, shell areas (walls and slabs with their own stiffness), self-weight, end releases and partial-fixity springs, spring supports, force diagrams, envelopes and design demands that feed the RC capacity functions.</p>
+    </div>
+
+    <div class="notice-banner" role="note">
+      <span>⚠️</span>
+      <span><strong>A calculation aid, not a substitute for engineering judgement.</strong> Results must be checked and accepted by the qualified engineer responsible for the design. <a href="../about/#limitations">Scope, assumptions and limitations →</a></span>
     </div>
 
     <!-- ══════════════ Overview ══════════════ -->
@@ -529,6 +651,10 @@
           <tr><td>Concrete unit weight (24 kN/m³ default)</td><td>Common design practice</td><td>Not a code value; override with <code>unitWeight</code></td></tr>
         </tbody>
       </table>
+      <div class="alert alert--info">
+        <span>ℹ️</span>
+        <span>Theory notes derive each part in full: the <a href="theory/frame-element.html">frame element</a> (stiffness, releases, fixed-end forces, diagrams), the <a href="theory/analysis-method.html">analysis method</a> (assembly, supports, solver, stability, combinations), the <a href="theory/shell-element.html">shell element</a>, <a href="theory/strip-forces.html">strip forces</a> and <a href="theory/pier-spandrel.html">piers and spandrels</a>.</span>
+      </div>
 
       <div class="sub-label" style="margin-top:20px">Model</div>
       <div class="model-grid">
@@ -3902,5 +4028,63 @@ memberLoads.<span class="u">filter</span>((l) =&gt; l.<span class="k">loadCase</
 
   </main>
 </div>
+<script>
+  // Sidebar: fold it away on wide screens (remembered), open it as a drawer on phones,
+  // and remember which nav groups are folded on this page. Works without storage too.
+  (function () {
+    var root = document.documentElement;
+    var button = document.querySelector(".nav-toggle");
+    var sidebar = document.getElementById("sidebar");
+    var backdrop = document.querySelector(".nav-backdrop");
+    if (!button || !sidebar || !backdrop) return;
+    var phone = window.matchMedia("(max-width: 800px)");
+    var read = function (key) { try { return localStorage.getItem(key); } catch (e) { return null; } };
+    var write = function (key, value) { try { localStorage.setItem(key, value); } catch (e) {} };
+
+    var isOpen = function () {
+      return phone.matches ? root.classList.contains("nav-open") : !root.classList.contains("nav-collapsed");
+    };
+    var sync = function () {
+      var open = isOpen();
+      var label = open ? "Hide navigation" : "Show navigation";
+      button.setAttribute("aria-expanded", String(open));
+      button.setAttribute("aria-label", label);
+      button.title = label;
+      button.textContent = open ? "«" : "☰";
+      backdrop.hidden = !(phone.matches && open);
+    };
+    var closeDrawer = function () { root.classList.remove("nav-open"); sync(); };
+
+    button.addEventListener("click", function () {
+      if (phone.matches) root.classList.toggle("nav-open");
+      else write("docs-nav-collapsed", root.classList.toggle("nav-collapsed") ? "1" : "0");
+      sync();
+    });
+    backdrop.addEventListener("click", closeDrawer);
+    sidebar.addEventListener("click", function (event) {
+      if (phone.matches && event.target.closest && event.target.closest("a")) closeDrawer();
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && root.classList.contains("nav-open")) { closeDrawer(); button.focus(); }
+    });
+    if (phone.addEventListener) phone.addEventListener("change", closeDrawer);
+    else if (phone.addListener) phone.addListener(closeDrawer);
+
+    // Folded nav groups, per page, by their label.
+    var key = "docs-nav-folded:" + location.pathname;
+    var folded = [];
+    try { folded = JSON.parse(read(key) || "[]"); } catch (e) { folded = []; }
+    var groups = Array.prototype.slice.call(sidebar.querySelectorAll("details.nav-group"));
+    var labelOf = function (group) { return group.querySelector("summary").textContent.trim(); };
+    groups.forEach(function (group) {
+      if (folded.indexOf(labelOf(group)) >= 0) group.open = false;
+      group.addEventListener("toggle", function () {
+        write(key, JSON.stringify(groups.filter(function (g) { return !g.open; }).map(labelOf)));
+      });
+    });
+
+    sync();
+  })();
+</script>
 </body>
 </html>

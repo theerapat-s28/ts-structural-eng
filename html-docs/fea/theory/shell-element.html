@@ -75,8 +75,28 @@
       padding: 0 10px;
       margin-bottom: 6px;
     }
-    .nav-section-label + .nav-section-label,
-    nav a + .nav-section-label { margin-top: 8px; }
+    /* Foldable nav groups: <details class="nav-group" open><summary class="nav-section-label"> */
+    .nav-group + .nav-group,
+    nav > a + .nav-group { margin-top: 8px; }
+    summary.nav-section-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      list-style: none;
+      border-radius: 5px;
+      user-select: none;
+    }
+    summary.nav-section-label::-webkit-details-marker { display: none; }
+    summary.nav-section-label::after {
+      content: "▾";
+      font-size: 11px;
+      letter-spacing: 0;
+      transition: transform 0.15s;
+    }
+    .nav-group:not([open]) > summary.nav-section-label::after { transform: rotate(-90deg); }
+    summary.nav-section-label:hover { color: var(--text-muted); }
+    summary.nav-section-label:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     nav a {
       display: flex;
       align-items: center;
@@ -417,17 +437,89 @@
     .dg-math { font-family: 'STIX Two Math', 'Cambria Math', 'Times New Roman', serif; font-size: 14px; font-style: italic; fill: var(--text); }
 
 
+    /* ── Notice banner: scope and responsibility, on every page ── */
+    .notice-banner {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 14px;
+      margin: -12px 0 28px;
+      border-radius: var(--radius);
+      background: var(--yellow-dim);
+      border: 1px solid rgba(185, 125, 10, 0.25);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .notice-banner strong { color: var(--text); }
+    .notice-banner a { color: var(--accent); font-weight: 500; text-decoration: none; }
+    .notice-banner a:hover { text-decoration: underline; }
+
+    /* ── Collapsible sidebar: toggle button, folded state, phone drawer ── */
+    .sidebar__brand { padding-right: 40px; }
+    .nav-toggle {
+      position: fixed;
+      top: 14px;
+      left: 208px;
+      z-index: 50;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .nav-toggle:hover { background: var(--accent-dim); color: var(--text); }
+    .nav-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .nav-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      background: rgba(20, 24, 40, 0.35);
+    }
+    .nav-backdrop[hidden] { display: none; }
+    @media (min-width: 801px) {
+      html.nav-collapsed .sidebar { display: none; }
+      html.nav-collapsed .nav-toggle { left: 12px; }
+    }
+    @media print {
+      .nav-toggle, .nav-backdrop { display: none; }
+    }
+
     @media (max-width: 800px) {
-      .sidebar { display: none; }
-      .main { padding: 24px 20px 80px; }
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 40;
+        transform: translateX(-100%);
+        visibility: hidden;
+        transition: transform 0.2s ease, visibility 0.2s;
+        box-shadow: 4px 0 16px rgba(20, 24, 40, 0.12);
+      }
+      html.nav-open .sidebar { transform: none; visibility: visible; }
+      html:not(.nav-open) .nav-toggle { left: 12px; }
+      .main { padding: 60px 20px 80px; }
     }
   </style>
+  <script>
+    // Restore the folded sidebar before the first paint, so the page does not flash open.
+    try { if (localStorage.getItem("docs-nav-collapsed") === "1") document.documentElement.classList.add("nav-collapsed"); } catch (e) {}
+  </script>
 </head>
 <body>
+<button class="nav-toggle" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Hide navigation" title="Hide navigation">«</button>
+<div class="nav-backdrop" hidden></div>
 <div class="layout">
 
   <!-- ══════════════ Sidebar ══════════════ -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="sidebar__brand">
       <div class="brand-label">Theory Notes</div>
       <h2>Shell Element</h2>
@@ -435,33 +527,43 @@
     <nav>
       <a href="../../"><span style="font-size:14px">←</span> All modules</a>
 
-      <div class="nav-section-label">Getting Started</div>
-      <a href="#overview"><span style="font-size:14px">◈</span> Overview</a>
-      <a href="#decisions"><span style="font-size:14px">✓</span> Decisions</a>
-      <a href="#beam-to-shell"><span style="font-size:14px">⇄</span> From beam to shell</a>
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Getting Started</summary>
+        <a href="#overview"><span style="font-size:14px">◈</span> Overview</a>
+        <a href="#decisions"><span style="font-size:14px">✓</span> Decisions</a>
+        <a href="#beam-to-shell"><span style="font-size:14px">⇄</span> From beam to shell</a>
+      </details>
 
-      <div class="nav-section-label">Element Theory</div>
-      <a href="#isoparametric"><span style="font-size:14px">◇</span> Isoparametric quad</a>
-      <a href="#membrane"><span style="font-size:14px">▭</span> Membrane</a>
-      <a href="#drilling"><span style="font-size:14px">↻</span> Drilling rotation</a>
-      <a href="#plate-theory"><span style="font-size:14px">▱</span> Plate theory</a>
-      <a href="#dkq"><span style="font-size:14px">▦</span> DKQ plate</a>
-      <a href="#thick-plates"><span style="font-size:14px">▤</span> Thick plates</a>
-      <a href="#flat-shell"><span style="font-size:14px">◫</span> Flat shell</a>
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Element Theory</summary>
+        <a href="#isoparametric"><span style="font-size:14px">◇</span> Isoparametric quad</a>
+        <a href="#membrane"><span style="font-size:14px">▭</span> Membrane</a>
+        <a href="#drilling"><span style="font-size:14px">↻</span> Drilling rotation</a>
+        <a href="#plate-theory"><span style="font-size:14px">▱</span> Plate theory</a>
+        <a href="#dkq"><span style="font-size:14px">▦</span> DKQ plate</a>
+        <a href="#thick-plates"><span style="font-size:14px">▤</span> Thick plates</a>
+        <a href="#flat-shell"><span style="font-size:14px">◫</span> Flat shell</a>
+      </details>
 
-      <div class="nav-section-label">In the Engine</div>
-      <a href="#loads"><span style="font-size:14px">↓</span> Loads</a>
-      <a href="#results"><span style="font-size:14px">∿</span> Results</a>
-      <a href="#meshing"><span style="font-size:14px">⊞</span> Meshing</a>
-      <a href="#engine-integration"><span style="font-size:14px">⚙</span> Engine integration</a>
+      <details class="nav-group" open>
+        <summary class="nav-section-label">In the Engine</summary>
+        <a href="#loads"><span style="font-size:14px">↓</span> Loads</a>
+        <a href="#results"><span style="font-size:14px">∿</span> Results</a>
+        <a href="#meshing"><span style="font-size:14px">⊞</span> Meshing</a>
+        <a href="#engine-integration"><span style="font-size:14px">⚙</span> Engine integration</a>
+      </details>
 
-      <div class="nav-section-label">Plan</div>
-      <a href="#verification"><span style="font-size:14px">✔</span> Verification</a>
-      <a href="#implementation-order"><span style="font-size:14px">▶</span> Implementation order</a>
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Plan</summary>
+        <a href="#verification"><span style="font-size:14px">✔</span> Verification</a>
+        <a href="#implementation-order"><span style="font-size:14px">▶</span> Implementation order</a>
+      </details>
 
-      <div class="nav-section-label">Reference</div>
-      <a href="#references"><span style="font-size:14px">☷</span> References</a>
-      <a href="#summary"><span style="font-size:14px">☰</span> Summary</a>
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Reference</summary>
+        <a href="#references"><span style="font-size:14px">☷</span> References</a>
+        <a href="#summary"><span style="font-size:14px">☰</span> Summary</a>
+      </details>
     </nav>
   </aside>
 
@@ -475,6 +577,11 @@
       </div>
       <h1>Shell Element — Theory Notes</h1>
       <p>How a flat four-node shell element (membrane, plate bending and drilling rotation) gets its stiffness matrix, which formulations this library will use, and how the element fits into the existing frame solver.</p>
+    </div>
+
+    <div class="notice-banner" role="note">
+      <span>⚠️</span>
+      <span><strong>A calculation aid, not a substitute for engineering judgement.</strong> Results must be checked and accepted by the qualified engineer responsible for the design. <a href="../../about/#limitations">Scope, assumptions and limitations →</a></span>
     </div>
 
     <!-- ══════════════ Overview ══════════════ -->
@@ -1207,5 +1314,63 @@
 
   </main>
 </div>
+<script>
+  // Sidebar: fold it away on wide screens (remembered), open it as a drawer on phones,
+  // and remember which nav groups are folded on this page. Works without storage too.
+  (function () {
+    var root = document.documentElement;
+    var button = document.querySelector(".nav-toggle");
+    var sidebar = document.getElementById("sidebar");
+    var backdrop = document.querySelector(".nav-backdrop");
+    if (!button || !sidebar || !backdrop) return;
+    var phone = window.matchMedia("(max-width: 800px)");
+    var read = function (key) { try { return localStorage.getItem(key); } catch (e) { return null; } };
+    var write = function (key, value) { try { localStorage.setItem(key, value); } catch (e) {} };
+
+    var isOpen = function () {
+      return phone.matches ? root.classList.contains("nav-open") : !root.classList.contains("nav-collapsed");
+    };
+    var sync = function () {
+      var open = isOpen();
+      var label = open ? "Hide navigation" : "Show navigation";
+      button.setAttribute("aria-expanded", String(open));
+      button.setAttribute("aria-label", label);
+      button.title = label;
+      button.textContent = open ? "«" : "☰";
+      backdrop.hidden = !(phone.matches && open);
+    };
+    var closeDrawer = function () { root.classList.remove("nav-open"); sync(); };
+
+    button.addEventListener("click", function () {
+      if (phone.matches) root.classList.toggle("nav-open");
+      else write("docs-nav-collapsed", root.classList.toggle("nav-collapsed") ? "1" : "0");
+      sync();
+    });
+    backdrop.addEventListener("click", closeDrawer);
+    sidebar.addEventListener("click", function (event) {
+      if (phone.matches && event.target.closest && event.target.closest("a")) closeDrawer();
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && root.classList.contains("nav-open")) { closeDrawer(); button.focus(); }
+    });
+    if (phone.addEventListener) phone.addEventListener("change", closeDrawer);
+    else if (phone.addListener) phone.addListener(closeDrawer);
+
+    // Folded nav groups, per page, by their label.
+    var key = "docs-nav-folded:" + location.pathname;
+    var folded = [];
+    try { folded = JSON.parse(read(key) || "[]"); } catch (e) { folded = []; }
+    var groups = Array.prototype.slice.call(sidebar.querySelectorAll("details.nav-group"));
+    var labelOf = function (group) { return group.querySelector("summary").textContent.trim(); };
+    groups.forEach(function (group) {
+      if (folded.indexOf(labelOf(group)) >= 0) group.open = false;
+      group.addEventListener("toggle", function () {
+        write(key, JSON.stringify(groups.filter(function (g) { return !g.open; }).map(labelOf)));
+      });
+    });
+
+    sync();
+  })();
+</script>
 </body>
 </html>

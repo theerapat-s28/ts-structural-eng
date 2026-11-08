@@ -75,6 +75,32 @@ Every feature added must conform to the following core principles:
 
 ---
 
+## Verification Report (all modules)
+
+A published report that shows, problem by problem, how the engine compares with published references. It is what the docs' [Verification status](html-docs/about/index.html#verification) promises and what every theory page's *Verification* section will point to. It covers `fea`, `rc` and `strengthening`, and extends 1.8 below to the whole package.
+
+> **Examples and sources are supplied by the maintainer.** Do not pick benchmark problems or quote reference values without them: each problem enters the suite only with its source in hand, and every engine value in the report comes from running the suite.
+
+### Infrastructure
+- [ ] `tests/verification/` with one subfolder per module (`fea/`, `rc/`, `strengthening/`) and one file per published problem. Each file states the source (author, title, edition, problem or example number, page), the quantities checked, the reference values exactly as published, and the pass tolerance.
+- [ ] Pass criteria per problem: exact closed-form or code-formula results ≤ 0.1 % difference; mesh-dependent shell results within a tolerance stated with the mesh used (typically 2–5 %). A failing problem fails `pnpm run test` and so CI.
+- [ ] A `pnpm run verify` script that runs the suite and writes the results table (problem, source, quantity, unit, reference, engine, % difference, tolerance, pass) into the report page, stamped with the package version and date. The page stays a plain static file with no build step.
+
+### Report page
+- [ ] `html-docs/verification/index.html` following [html-docs/DESIGN.md](html-docs/DESIGN.md): the notice banner, one section per module, the generated tables, and a sources list.
+- [ ] Link it from the landing page, [html-docs/about/index.html](html-docs/about/index.html) (`#verification`), the README *Verification status* paragraph, and each theory page's *Verification* section.
+- [ ] Replace the "in preparation" notes in the about page, the README and the theory pages once the first module's problems are in.
+
+### Problems (sources to be supplied)
+- [ ] **FEA, frame**: 2D and 3D frames, trusses, end releases and partial fixity, spring supports, member loads (uniform, trapezoidal, point, torque), self-weight, intermediate nodes.
+- [ ] **FEA, analysis**: load combinations and envelopes, null-area load distribution against statics, unresisted rotations at truss joints.
+- [ ] **FEA, shells**: move the existing shell benchmarks (patch tests, MacNeal–Harder cantilevers and twisted beam, Timoshenko plates, Scordelis–Lo roof, pinched cylinder) into the suite with their published sources and the meshes used; strip forces and pier/spandrel forces against statics.
+- [ ] **RC**: published design examples for singly and doubly reinforced flexure, tension-control limits, concrete and stirrup shear strength, stirrup requirement and spacing, bar layout.
+- [ ] **Strengthening**: published examples or test results for plate-jacketed flexure, interface shear flow and bolting, and side-plate shear. Test data, not only formula checks, is needed to support the engineering models.
+- [ ] **Later phases**: add problems as features land (end offsets, P-Δ, diaphragms, modal, buckling, response spectrum, thick plates), as listed in 1.8.
+
+---
+
 ## Delivered Features
 
 - [x] **Varying Member Loads (`TrapezoidalMemberLoad`)**
@@ -201,6 +227,8 @@ Replaces the earlier "envelope sets" item: an envelope combination does that job
 - [ ] Tests: just-inside vs just-outside tolerance cases; equilibrium conservation; crossing-beam warning.
 
 ### 1.8 Verification Suite
+
+The FEA part of the [Verification Report](#verification-report-all-modules), which sets out the infrastructure and the report page for all modules.
 - [ ] `tests/fea/verification/` with one file per published problem, each citing its source.
 - [ ] Sources: CSI SAP2000 / ETABS verification manuals (frame problems), McGuire–Gallagher–Ziemian *Matrix Structural Analysis*, Kassimali *Matrix Analysis of Structures*.
 - [ ] Coverage grows with each phase: 2D/3D frames, trusses, releases, springs, end offsets, diaphragms, P-Δ (AISC 360 Appendix benchmark frames), modal (periods of cantilever and shear-building benchmarks).
@@ -472,6 +500,13 @@ API decisions:
 - [ ] **Documentation layout fixes**:
   - Fix horizontal scroll on tables with long descriptions in [html-docs/fea/index.html](html-docs/fea/index.html).
   - Document the null-area pre-processing step in [`src/fea/frame/area/`](src/fea/frame/area/) in [AGENTS.md](AGENTS.md).
+- [ ] **Review points from the theory notes** (each listed under *Points for review* on its page):
+  - RC: `concreteShearCapacity` always uses ACI 318-19 Table 22.5.5.1 expression (a); members with A<sub>v</sub> &lt; A<sub>v,min</sub> need expression (c) with the size-effect factor λ<sub>s</sub> ([rc/theory/beam-design.html](html-docs/rc/theory/beam-design.html#review)).
+  - RC: confirm and correct the clause citations of the f<sub>y</sub> &gt; 550 MPa warning (cites 9.6.1.2; the limit is in 20.2.2.4) and of the V<sub>s</sub> formula (22.5.10.5.3 looks like the ACI 318-14 number; 318-19 has 22.5.8.5.3).
+  - RC: `checkStirrupRequirement` uses the rounded V<sub>c</sub> and φV<sub>c</sub>; `rectBeamMomentCapacity` returns `unit: "kN-m"` while other functions use `"kN·m"`.
+  - RC: the compression steel force does not deduct the displaced concrete.
+  - Strengthening: confirm the ACI 440.2R-17 subsections for the 0.004 strain cap and ψ<sub>f</sub> = 0.85, and whether they carry over to steel plates ([strengthening/theory/steel-plates.html](html-docs/strengthening/theory/steel-plates.html#review)).
+  - FEA: name the source of the "Complete Beam Stiffness Matrix" behind `beam3dLocalStiffness`; review the abrupt switch of local axes for near-vertical members; scale the equilibrium tolerance for moment-only load cases ([fea/theory/frame-element.html](html-docs/fea/theory/frame-element.html#review), [fea/theory/analysis-method.html](html-docs/fea/theory/analysis-method.html#review)).
 - [ ] **Performance baseline**: benchmark a 20-storey, ~5 000-node building model (assembly, factorisation, solve per case, result size) before Phase 3, to decide whether skyline storage stays adequate once diaphragms and modal analysis are in.
 
 ---

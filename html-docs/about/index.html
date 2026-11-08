@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About — Scope, Assumptions &amp; Limitations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #f0f2f6;
+      --border: #e2e5ec;
+      --accent: #3b63d8;
+      --accent-dim: rgba(59, 99, 216, 0.08);
+      --green: #1f9d63;
+      --green-dim: rgba(31, 157, 99, 0.10);
+      --red: #d9463c;
+      --red-dim: rgba(217, 70, 60, 0.08);
+      --yellow: #b97d0a;
+      --yellow-dim: rgba(230, 160, 30, 0.12);
+      --purple: #8a4fd0;
+      --purple-dim: rgba(138, 79, 208, 0.10);
+      --text: #1f2430;
+      --text-muted: #5c6474;
+      --text-dim: #8a90a0;
+      --code-bg: #f8f9fb;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ─────────────────────────────────────── */
+    .sidebar {
+      width: 252px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px 40px;
+    }
+    .sidebar__brand { padding: 0 10px 18px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .brand-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .sidebar__brand h2 { font-size: 13.5px; font-weight: 600; }
+    .nav-section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      padding: 0 10px;
+      margin-bottom: 6px;
+    }
+    /* Foldable nav groups: <details class="nav-group" open><summary class="nav-section-label"> */
+    .nav-group + .nav-group,
+    nav > a + .nav-group { margin-top: 8px; }
+    summary.nav-section-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      list-style: none;
+      border-radius: 5px;
+      user-select: none;
+    }
+    summary.nav-section-label::-webkit-details-marker { display: none; }
+    summary.nav-section-label::after {
+      content: "▾";
+      font-size: 11px;
+      letter-spacing: 0;
+      transition: transform 0.15s;
+    }
+    .nav-group:not([open]) > summary.nav-section-label::after { transform: rotate(-90deg); }
+    summary.nav-section-label:hover { color: var(--text-muted); }
+    summary.nav-section-label:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      margin-bottom: 2px;
+    }
+    nav a:hover { background: var(--accent-dim); color: var(--text); }
+
+    /* ── Kind badges ─────────────────────────────────── */
+    .mbadge, .kind {
+      font-family: var(--mono);
+      font-weight: 700;
+      border-radius: 5px;
+      flex-shrink: 0;
+    }
+    .mbadge { font-size: 9.5px; padding: 2px 6px; min-width: 34px; text-align: center; }
+    .kind { font-size: 11.5px; padding: 3px 9px; }
+    .m-fn { color: var(--green); background: var(--green-dim); }
+    .m-type { color: var(--accent); background: var(--accent-dim); }
+    .m-const { color: var(--yellow); background: var(--yellow-dim); }
+    .m-error { color: var(--red); background: var(--red-dim); }
+
+    /* ── Scope badges ────────────────────────────────── */
+    .scope-badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .s-public { color: var(--accent); background: var(--accent-dim); }
+    .s-internal { color: var(--purple); background: var(--purple-dim); }
+
+    .std-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+      color: var(--yellow);
+      background: var(--yellow-dim);
+    }
+
+    /* ── Main ────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 40px 48px 120px;
+      min-width: 0;
+    }
+
+    .page-header { margin-bottom: 36px; }
+    .import-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .import-tag .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+    }
+    .import-tag code { background: none; padding: 0; font-size: 12.5px; }
+    .page-header h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+    .page-header p { color: var(--text-muted); max-width: 640px; }
+
+    .section { margin-bottom: 44px; scroll-margin-top: 24px; }
+    .section__title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section p { color: var(--text-muted); margin-bottom: 12px; }
+
+    /* ── Export cards ────────────────────────────────── */
+    .export-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 20px;
+      overflow: hidden;
+      scroll-margin-top: 24px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .export-card__header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .ex-sig { font-family: var(--mono); font-size: 13.5px; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+    .export-card__body { padding: 18px 20px 20px; }
+    .ex-desc { color: var(--text-muted); margin-bottom: 16px; }
+    .sub-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin: 18px 0 8px;
+    }
+    .sub-label:first-of-type { margin-top: 0; }
+
+    /* ── Code blocks ─────────────────────────────────── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .code-block__label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .code-block pre {
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .k { color: #0e7490; }
+    .s { color: #2f7d32; }
+    .n { color: var(--yellow); }
+    .b { color: var(--purple); }
+    .nl { color: var(--text-dim); }
+    .c { color: var(--text-dim); font-style: italic; }
+    .u { color: var(--accent); }
+
+    /* ── Inline code ─────────────────────────────────── */
+    code {
+      font-family: var(--mono);
+      font-size: 0.86em;
+      background: var(--surface-2);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+    pre code { background: none; padding: 0; color: inherit; }
+
+    /* ── Tables ──────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 13.5px; }
+    th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      font-weight: 600;
+      padding: 8px 12px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      color: var(--text-muted);
+    }
+    tr:last-child td { border-bottom: none; }
+    .param-table, .summary-table {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: block;
+      overflow-x: auto;
+    }
+    .param-table td:first-child {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .param-table td:nth-child(2) { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+    .req { color: var(--red); font-size: 12px; font-weight: 500; }
+    .opt { color: var(--text-dim); font-size: 12px; }
+    .summary-table .path-cell { font-family: var(--mono); font-size: 12.5px; color: var(--text); white-space: nowrap; }
+
+    /* ── Alerts ──────────────────────────────────────── */
+    .alert {
+      display: flex;
+      gap: 10px;
+      padding: 11px 14px;
+      border-radius: var(--radius);
+      font-size: 13.5px;
+      margin-bottom: 10px;
+      border: 1px solid;
+      color: var(--text-muted);
+    }
+    .alert strong { color: var(--text); }
+    .alert--error { background: var(--red-dim); border-color: rgba(217, 70, 60, 0.25); }
+    .alert--warn { background: var(--yellow-dim); border-color: rgba(185, 125, 10, 0.25); }
+    .alert--info { background: var(--accent-dim); border-color: rgba(59, 99, 216, 0.25); }
+
+    /* ── Flow steps ──────────────────────────────────── */
+    .flow-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 12px; }
+    .flow-step {
+      display: flex;
+      gap: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .step-num {
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-body { color: var(--text-muted); font-size: 13.5px; }
+    .step-body strong { color: var(--text); }
+
+    /* ── Model grid ──────────────────────────────────── */
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .model-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .model-card__title { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    .model-card__desc { font-size: 12.5px; color: var(--text-muted); }
+    /* ── Theory notes: lists, equations, matrices, figures ── */
+    .section ul, .section ol { color: var(--text-muted); margin: 0 0 12px 22px; }
+    .section li { margin-bottom: 6px; }
+    .section li strong, .section p strong { color: var(--text); }
+
+    .eq {
+      font-family: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', 'Times New Roman', serif;
+      font-size: 16.5px;
+      line-height: 2.1;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      margin-bottom: 12px;
+      overflow-x: auto;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .eq + .eq { margin-top: -4px; }
+    .eq .note { font-family: 'Inter', sans-serif; font-size: 12.5px; color: var(--text-dim); margin-left: 14px; }
+    .mat {
+      display: inline-grid;
+      vertical-align: middle;
+      column-gap: 14px;
+      padding: 2px 10px;
+      margin: 0 3px;
+      position: relative;
+      text-align: center;
+      line-height: 1.55;
+    }
+    .mat::before, .mat::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+      border: 1.4px solid var(--text);
+    }
+    .mat::before { left: 0; border-right: none; }
+    .mat::after { right: 0; border-left: none; }
+    .mat.c1 { grid-template-columns: auto; }
+    .mat.c2 { grid-template-columns: repeat(2, auto); }
+    .mat.c3 { grid-template-columns: repeat(3, auto); }
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      vertical-align: middle;
+      text-align: center;
+      line-height: 1.3;
+      margin: 0 3px;
+    }
+    .frac > span + span { border-top: 1px solid var(--text); }
+
+    .figure {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 16px 12px;
+      margin-bottom: 12px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .figure svg { max-width: 100%; height: auto; }
+    .figure figcaption { font-size: 12.5px; color: var(--text-muted); margin-top: 6px; }
+    .dg-edge { fill: var(--accent-dim); stroke: var(--text); stroke-width: 1.5; }
+    .dg-dash { fill: none; stroke: var(--text-dim); stroke-width: 1; stroke-dasharray: 4 3; }
+    .dg-arrow { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+    .dg-arrowhead { fill: var(--accent); }
+    .dg-node { fill: var(--accent); }
+    .dg-mid { fill: var(--surface); stroke: var(--yellow); stroke-width: 1.8; }
+    .dg-gauss { fill: var(--green); }
+    .dg-text { font-family: 'Inter', sans-serif; font-size: 12px; fill: var(--text-muted); }
+    .dg-label { font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; fill: var(--text); }
+    .dg-math { font-family: 'STIX Two Math', 'Cambria Math', 'Times New Roman', serif; font-size: 14px; font-style: italic; fill: var(--text); }
+
+
+    /* ── Notice banner: scope and responsibility, on every page ── */
+    .notice-banner {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 14px;
+      margin: -12px 0 28px;
+      border-radius: var(--radius);
+      background: var(--yellow-dim);
+      border: 1px solid rgba(185, 125, 10, 0.25);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .notice-banner strong { color: var(--text); }
+    .notice-banner a { color: var(--accent); font-weight: 500; text-decoration: none; }
+    .notice-banner a:hover { text-decoration: underline; }
+
+    /* ── Collapsible sidebar: toggle button, folded state, phone drawer ── */
+    .sidebar__brand { padding-right: 40px; }
+    .nav-toggle {
+      position: fixed;
+      top: 14px;
+      left: 208px;
+      z-index: 50;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .nav-toggle:hover { background: var(--accent-dim); color: var(--text); }
+    .nav-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .nav-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      background: rgba(20, 24, 40, 0.35);
+    }
+    .nav-backdrop[hidden] { display: none; }
+    @media (min-width: 801px) {
+      html.nav-collapsed .sidebar { display: none; }
+      html.nav-collapsed .nav-toggle { left: 12px; }
+    }
+    @media print {
+      .nav-toggle, .nav-backdrop { display: none; }
+    }
+
+    @media (max-width: 800px) {
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 40;
+        transform: translateX(-100%);
+        visibility: hidden;
+        transition: transform 0.2s ease, visibility 0.2s;
+        box-shadow: 4px 0 16px rgba(20, 24, 40, 0.12);
+      }
+      html.nav-open .sidebar { transform: none; visibility: visible; }
+      html:not(.nav-open) .nav-toggle { left: 12px; }
+      .main { padding: 60px 20px 80px; }
+    }
+  </style>
+
+  <script>
+    // Restore the folded sidebar before the first paint, so the page does not flash open.
+    try { if (localStorage.getItem("docs-nav-collapsed") === "1") document.documentElement.classList.add("nav-collapsed"); } catch (e) {}
+  </script>
+</head>
+<body>
+<button class="nav-toggle" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Hide navigation" title="Hide navigation">«</button>
+<div class="nav-backdrop" hidden></div>
+<div class="layout">
+
+  <!-- ══════════════ Sidebar ══════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__brand">
+      <div class="brand-label">About the Project</div>
+      <h2>Scope &amp; Limitations</h2>
+    </div>
+    <nav>
+      <a href="../"><span style="font-size:14px">←</span> All modules</a>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Introduction</summary>
+        <a href="#overview"><span style="font-size:14px">◈</span> Overview</a>
+        <a href="#responsibility"><span style="font-size:14px">⚖</span> Responsibility</a>
+        <a href="#engine"><span style="font-size:14px">▣</span> Engine and front end</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Features</summary>
+        <a href="#features"><span style="font-size:14px">✚</span> Feature matrix</a>
+        <a href="#features-fea"><span class="mbadge m-type">FEA</span> Analysis</a>
+        <a href="#features-rc"><span class="mbadge m-fn">RC</span> RC design</a>
+        <a href="#features-strengthening"><span class="mbadge m-const">STRG</span> Strengthening</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Basis</summary>
+        <a href="#assumptions"><span style="font-size:14px">◇</span> Assumptions</a>
+        <a href="#limitations"><span style="font-size:14px">⚠</span> Limitations</a>
+        <a href="#verification"><span style="font-size:14px">✔</span> Verification status</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Reference</summary>
+        <a href="#theory"><span style="font-size:14px">∫</span> Theory notes</a>
+        <a href="#reporting"><span style="font-size:14px">✎</span> Reporting a problem</a>
+        <a href="#summary"><span style="font-size:14px">☰</span> Documentation map</a>
+      </details>
+    </nav>
+  </aside>
+
+  <!-- ══════════════ Main ══════════════ -->
+  <main class="main">
+
+    <div class="page-header">
+      <div class="import-tag">
+        <span class="label">Package</span>
+        <code>@theerapat-s28/ts-structural-eng-tools</code>
+      </div>
+      <h1>About — Scope, Assumptions &amp; Limitations</h1>
+      <p>What the engine is for, what it calculates and on what basis, what it does not do, and who is responsible for the results. Read this page before you use the engine on a real structure.</p>
+    </div>
+
+    <!-- ══════════════ Overview ══════════════ -->
+    <div class="section" id="overview">
+      <div class="section__title">Overview</div>
+      <p>
+        <code>ts-structural-eng-tools</code> is an open-source, headless structural analysis and design engine
+        written in TypeScript. It has three parts:
+      </p>
+      <ul>
+        <li><strong>Analysis</strong> (<code>fea</code>): linear-elastic 3D analysis of frames, shells or both by the direct stiffness method, for user-defined load cases and factored load combinations.</li>
+        <li><strong>Reinforced-concrete design</strong> (<code>rc</code>): flexural and shear capacity of rectangular RC beam sections per ACI 318-19, stirrup checks and rebar layout.</li>
+        <li><strong>Strengthening</strong> (<code>strengthening</code>): steel-plate jacketing for flexure, side plates for shear, and the bolting between plate and concrete.</li>
+      </ul>
+      <p>
+        It is meant to be installed by front-end applications (web apps, desktop tools, scripts) as their
+        calculation core. The front end builds a model from its own interface, calls the engine, and draws the
+        results. Structural engineers can also call it directly from code to script and check calculations.
+      </p>
+      <p>
+        The source code is public and published under the ISC licence, so every formula behind a result can be
+        read and checked. The <a href="#theory">theory notes</a> explain the formulations, and the
+        <a href="#verification">verification status</a> says how they have been checked so far.
+      </p>
+    </div>
+
+    <!-- ══════════════ Responsibility ══════════════ -->
+    <div class="section" id="responsibility">
+      <div class="section__title">Responsibility and intended use</div>
+      <p>
+        A structural calculation that is wrong can cost lives, injuries and money. The engine is a
+        <strong>calculation aid</strong>. It does not replace the judgement of a qualified engineer, and it
+        has not been certified by any authority.
+      </p>
+      <div class="alert alert--error">
+        <span>⚠️</span>
+        <span>
+          <strong>The engineer responsible for the design is responsible for every result taken from this engine.</strong>
+          That covers choosing a suitable model, entering correct input, reading the warnings, checking the results
+          against hand calculations or independent software, and confirming that the design meets the codes and
+          regulations of the place where it will be built. The software is provided "as is", without warranty of any
+          kind; see the ISC licence in the repository.
+        </span>
+      </div>
+      <p>In practice this means:</p>
+      <ul>
+        <li><strong>Know the basis.</strong> Each result follows the assumptions on this page and on its theory page. Results from a model that breaks those assumptions (large displacements, material nonlinearity, dynamic response, a section shape that is not supported) are not valid, even when the engine returns numbers.</li>
+        <li><strong>Read every warning.</strong> A warning means the calculation is valid but a code provision, a modelling assumption or a detailing rule needs attention. Warnings cite the clause they come from.</li>
+        <li><strong>Errors are deliberate.</strong> When the assumptions of a calculation fail (a section that is not tension-controlled, an unstable structure), the engine throws an error rather than return a result it cannot stand behind. Do not work around an error to get a number.</li>
+        <li><strong>Check independently.</strong> Before a result is used for design or construction, check the governing values with an independent method. Pay particular attention to the first models you build and to model types you have not checked before.</li>
+        <li><strong>One design code.</strong> Design checks follow ACI 318-19 in SI units. Where another code applies, the design checks do not apply as they stand. The analysis results do not depend on a design code.</li>
+      </ul>
+      <div class="alert alert--warn">
+        <span>⚠️</span>
+        <span><strong>Applications that embed the engine</strong> should show its warnings and errors to their users and point them to this page, so the people who see the results also see the basis and the limits.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Engine and front end ══════════════ -->
+    <div class="section" id="engine">
+      <div class="section__title">Engine and front end</div>
+      <p>The package does the structural engineering and nothing else. It never draws, stores a project or chooses units for display.</p>
+      <table class="summary-table">
+        <thead><tr><th>The engine (this package)</th><th>The front-end application</th></tr></thead>
+        <tbody>
+          <tr><td>Model validation with located errors (<code>details</code> name the node, member, shell, field…)</td><td>Input forms, drawing tools, highlighting the reported problems</td></tr>
+          <tr><td>Analysis: load cases, combinations, envelopes, member diagrams, shell forces</td><td>Rendering the model, the mesh, deformed shapes, diagrams and contours</td></tr>
+          <tr><td>Design checks with code-clause warnings and <code>RCDesignError</code> / <code>FeaError</code></td><td>Display of results, member colours, view and display options</td></tr>
+          <tr><td>Typed inputs and results in SI units</td><td>Unit display, project files, undo history, other UI state</td></tr>
+        </tbody>
+      </table>
+      <p>Models and results are plain JSON, so the engine runs in the browser, in a Web Worker or in Node.js. It has no runtime dependencies.</p>
+    </div>
+
+    <!-- ══════════════ Features ══════════════ -->
+    <div class="section" id="features">
+      <div class="section__title">Feature matrix</div>
+      <p>
+        What each module provides today, what it does not, and what is planned. <strong>Supported</strong> features are
+        in the published package. <strong>Planned</strong> features are listed in the project roadmap
+        (<code>ROADMAP.md</code>) and are not available yet. <strong>Not supported</strong> features are outside
+        the engine's current basis.
+      </p>
+    </div>
+
+    <div class="section" id="features-fea">
+      <div class="section__title">Analysis <code style="font-size:13px">fea</code></div>
+      <table class="summary-table">
+        <thead><tr><th>Area</th><th>Feature</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Method</td><td>Direct stiffness method, linear elastic, small displacements, static</td><td>Supported</td><td><a href="../fea/theory/analysis-method.html">Analysis method</a></td></tr>
+          <tr><td>Members</td><td>3D prismatic beam–column, 6 DOF per node (Euler–Bernoulli)</td><td>Supported</td><td><a href="../fea/theory/frame-element.html">Frame element</a>. No shear deformation.</td></tr>
+          <tr><td>Members</td><td>Local axes from geometry plus a member angle</td><td>Supported</td><td>Local axes from a reference vector are planned</td></tr>
+          <tr><td>Members</td><td>End releases and partial-fixity springs on any end DOF</td><td>Supported</td><td>Reports release deformations</td></tr>
+          <tr><td>Members</td><td>Connection to model nodes lying on a member</td><td>Supported</td><td>Near-miss nodes are reported with a warning</td></tr>
+          <tr><td>Members</td><td>End offsets (rigid zones), Timoshenko shear deformation, member twist</td><td>Planned</td><td>Roadmap phase 2</td></tr>
+          <tr><td>Supports</td><td>Fixed and spring restraints per DOF, line restraints</td><td>Supported</td><td>Skewed supports and support settlement are planned</td></tr>
+          <tr><td>Supports</td><td>Tension-only or compression-only supports, gaps</td><td>Not supported</td><td>Nonlinear; breaks superposition</td></tr>
+          <tr><td>Loads</td><td>Nodal forces and moments</td><td>Supported</td><td></td></tr>
+          <tr><td>Loads</td><td>Member uniform, trapezoidal, point and torque loads; local or global directions; projected loads</td><td>Supported</td><td>Member point and distributed moments are planned</td></tr>
+          <tr><td>Loads</td><td>Self-weight with a multiplier per load case</td><td>Supported</td><td>Members need <code>unitWeight</code></td></tr>
+          <tr><td>Loads</td><td>Area loads on null areas (two-way, one-way, cantilever)</td><td>Supported</td><td>Null areas add no stiffness</td></tr>
+          <tr><td>Loads</td><td>Temperature loads, live-load patterning</td><td>Planned</td><td>Roadmap phase 2</td></tr>
+          <tr><td>Shells</td><td>Four-node flat shell: drilling-rotation membrane and thin (DKQ) plate</td><td>Supported</td><td><a href="../fea/theory/shell-element.html">Shell element</a></td></tr>
+          <tr><td>Shells</td><td>Membrane-only, plate-only or full shell; stiffness modifiers; engine meshing</td><td>Supported</td><td></td></tr>
+          <tr><td>Shells</td><td>Thick plates (transverse shear deformation), triangles, openings</td><td>Planned</td><td>Roadmap phase 5</td></tr>
+          <tr><td>Results</td><td>Displacements, reactions, member end forces, member diagrams with exact extremes</td><td>Supported</td><td>Global equilibrium check with a warning</td></tr>
+          <tr><td>Results</td><td>Shell forces, strip forces, pier and spandrel forces</td><td>Supported</td><td><a href="../fea/theory/strip-forces.html">Strip forces</a>, <a href="../fea/theory/pier-spandrel.html">Piers &amp; spandrels</a></td></tr>
+          <tr><td>Combinations</td><td>Linear (additive) combinations, nested, with an envelope over all combinations</td><td>Supported</td><td>Envelope-type combinations are planned</td></tr>
+          <tr><td>Combinations</td><td>Design demands for RC members (<code>memberDemandEnvelope</code>)</td><td>Supported</td><td>Feeds the <code>rc</code> functions</td></tr>
+          <tr><td>Lateral systems</td><td>Nodal constraints, rigid diaphragms, story results</td><td>Planned</td><td>Roadmap phase 3</td></tr>
+          <tr><td>Second order</td><td>Linearized P-Δ</td><td>Planned</td><td>Until then, second-order effects must be handled outside the engine</td></tr>
+          <tr><td>Dynamics</td><td>Mass, modal analysis, linear buckling, response spectrum</td><td>Planned</td><td>Roadmap phase 4</td></tr>
+          <tr><td>Nonlinear</td><td>Material nonlinearity, plasticity, large displacements, staged construction, time effects</td><td>Not supported</td><td>Outside the linear basis</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section" id="features-rc">
+      <div class="section__title">RC design <code style="font-size:13px">rc</code></div>
+      <table class="summary-table">
+        <thead><tr><th>Area</th><th>Feature</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Flexure</td><td>Rectangular sections, singly or doubly reinforced, tension-controlled</td><td>Supported</td><td><a href="../rc/theory/beam-design.html">RC beam design</a>. φ = 0.9.</td></tr>
+          <tr><td>Flexure</td><td>Sections in the transition or compression-controlled zone</td><td>Not supported</td><td>Throws <code>RCDesignError</code> 102</td></tr>
+          <tr><td>Flexure</td><td>T- and L-sections, flanged beams, columns (axial–flexure interaction)</td><td>Not supported</td><td></td></tr>
+          <tr><td>Shear</td><td>V<sub>c</sub> from the simplified expression, V<sub>s</sub> of vertical stirrups, stirrup requirement and spacing</td><td>Supported</td><td>See the review notes on the theory page</td></tr>
+          <tr><td>Detailing</td><td>Bar layer layout from clear-spacing rules, giving d and d′</td><td>Supported</td><td></td></tr>
+          <tr><td>Analysis input</td><td>Section properties for frame analysis with ACI cracked-section modifiers</td><td>Supported</td><td></td></tr>
+          <tr><td>Other checks</td><td>Torsion design, deflection, crack control, development length and splices, slabs, footings</td><td>Not supported</td><td>Must be checked separately</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section" id="features-strengthening">
+      <div class="section__title">Strengthening <code style="font-size:13px">strengthening</code></div>
+      <table class="summary-table">
+        <thead><tr><th>Area</th><th>Feature</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Flexure</td><td>Steel-plate jacketing (top and bottom plates), converted to equivalent reinforcement</td><td>Supported</td><td><a href="../strengthening/theory/steel-plates.html">Steel plate strengthening</a></td></tr>
+          <tr><td>Interface</td><td>Elastic shear flow at each plate interface, cracked or uncracked section</td><td>Supported</td><td></td></tr>
+          <tr><td>Interface</td><td>Anchor steel strength in shear and bolt pitch and count</td><td>Supported</td><td>Concrete breakout and pryout are not checked</td></tr>
+          <tr><td>Shear</td><td>Side plates as a supplementary web or as tension ties, with web-crushing and anchorage limits</td><td>Supported</td><td>Engineering models, not ACI 318 provisions</td></tr>
+          <tr><td>Other</td><td>FRP strengthening, section enlargement, external post-tensioning, debonding and plate-end peeling checks</td><td>Not supported</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════ Assumptions ══════════════ -->
+    <div class="section" id="assumptions">
+      <div class="section__title">Assumptions</div>
+      <p>Every result rests on the following assumptions. A model that breaks one of them needs a different tool or a separate check.</p>
+      <table class="summary-table">
+        <thead><tr><th>Topic</th><th>Assumption</th></tr></thead>
+        <tbody>
+          <tr><td>Material</td><td>Linear elastic and isotropic. No cracking, yielding, creep or shrinkage in the analysis; cracked stiffness enters only through section properties and modifiers that you choose.</td></tr>
+          <tr><td>Geometry</td><td>Small displacements and rotations: equilibrium is written on the undeformed shape, so there is no P-Δ or P-δ effect.</td></tr>
+          <tr><td>Loading</td><td>Static. Loads are applied at once, with no inertia, damping or load history.</td></tr>
+          <tr><td>Superposition</td><td>Every result is linear in the loads, so a combination is exactly the factored sum of its load cases.</td></tr>
+          <tr><td>Members</td><td>Straight, prismatic, Euler–Bernoulli beams: plane sections stay plane and normal to the axis, and shear deformation is ignored. Torsion is uniform (Saint-Venant), with no warping. The member axis passes through the shear centre and the centroid.</td></tr>
+          <tr><td>Connections</td><td>Rigid joints unless a release or a spring is given. Joint size is ignored (no rigid end zones yet).</td></tr>
+          <tr><td>Shells</td><td>Flat four-node facets with thin-plate (Kirchhoff) bending. Transverse shear deformation is ignored, which suits slabs and walls of ordinary span-to-thickness ratios.</td></tr>
+          <tr><td>Supports</td><td>Fixed or linear springs, active in both directions.</td></tr>
+          <tr><td>Units</td><td>SI, implicit in the numbers: mm, mm², MPa, kN, kN·m, kN/m. No unit conversion takes place inside the engine.</td></tr>
+          <tr><td>Design</td><td>ACI 318-19 (SI) for RC beams. Strengthening functions say on each export which clauses are code and which are engineering models.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════ Limitations ══════════════ -->
+    <div class="section" id="limitations">
+      <div class="section__title">Limitations</div>
+      <p>
+        These are the things most likely to matter on a real project. Each theory page also lists its own
+        limitations and the points that are still open for review.
+      </p>
+      <div class="sub-label">Analysis</div>
+      <ul>
+        <li><strong>No second-order analysis.</strong> P-Δ and member P-δ effects are not included. For sway frames and slender columns, apply moment magnification or a second-order analysis outside the engine.</li>
+        <li><strong>No dynamics.</strong> There is no modal or response-spectrum analysis. Seismic and dynamic wind loads must be found elsewhere and entered as static load cases.</li>
+        <li><strong>No diaphragm constraint.</strong> Floors act as rigid diaphragms only through the stiffness you model (shells or bracing). Null areas carry load but add no in-plane stiffness.</li>
+        <li><strong>No shear deformation in members.</strong> Deep beams, short coupling beams and squat walls modelled as members are stiffer than in reality.</li>
+        <li><strong>Mesh dependence.</strong> Shell results near point loads, column supports and re-entrant corners depend on the mesh. Refine it and check that the governing values converge.</li>
+        <li><strong>Envelope only over combinations.</strong> The envelope covers the combinations in the model. Live-load patterning must be set up as separate load cases and combinations.</li>
+      </ul>
+      <div class="sub-label">RC design</div>
+      <ul>
+        <li><strong>Rectangular, tension-controlled beam sections only.</strong> Columns, flanged sections and sections in the transition zone are not designed; the last throw error 102.</li>
+        <li><strong>Section checks, not member design.</strong> Flexure and shear are checked at a section. Torsion, deflection, crack width, bar development and splices, and seismic detailing are not checked.</li>
+        <li><strong>Simplified concrete shear strength.</strong> V<sub>c</sub> uses the simplified expression of ACI 318-19 Table 22.5.5.1 for every section. That table also has an expression for members with less than the minimum shear reinforcement, which includes the size effect and the reinforcement ratio and can give a lower V<sub>c</sub>; see the <a href="../rc/theory/beam-design.html#review">points for review</a>.</li>
+      </ul>
+      <div class="sub-label">Strengthening</div>
+      <ul>
+        <li><strong>Engineering models.</strong> ACI 318-19 has no provisions for bonded or bolted steel plates. The jacketing and side-plate methods are engineering models: confirm them against test data or a specialist review before relying on them.</li>
+        <li><strong>Not checked:</strong> plate debonding and end peeling, buckling of compression plates between bolts, concrete breakout and pryout of anchors, the condition of the existing structure, and the load already on the member when the plates are installed.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ Verification ══════════════ -->
+    <div class="section" id="verification">
+      <div class="section__title">Verification status</div>
+      <p>
+        The engine is checked by an automated test suite (<code>pnpm run test</code>), which runs on every change.
+        The tests compare results with closed-form solutions (for example fixed-end moments, cantilever and
+        simply supported deflections, and slope-deflection results for semi-rigid ends), with independent oracles
+        (the same structure modelled with subdivided members), with statics (reactions against applied loads), and,
+        for shells, with standard benchmark problems. Each theory page lists the checks that apply to it.
+      </p>
+      <div class="alert alert--warn">
+        <span>⚠️</span>
+        <span>
+          <strong>A consolidated verification report is in preparation.</strong> It will list each benchmark problem
+          with its published source, the reference value, the engine's value and the difference, with the numbers
+          produced by running the suite. Until it is published, rely on the checks described on each theory page
+          and on your own independent checks.
+        </span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Theory ══════════════ -->
+    <div class="section" id="theory">
+      <div class="section__title">Theory notes</div>
+      <p>Each theory page gives the formulation in full, the basis of each quantity (code clause or engineering method), how it is checked, its limitations and its references.</p>
+      <table class="summary-table">
+        <thead><tr><th>Page</th><th>Module</th><th>Covers</th></tr></thead>
+        <tbody>
+          <tr><td><a href="../fea/theory/frame-element.html">Frame element</a></td><td>fea</td><td>Local axes, the 12×12 beam stiffness, transformation, end releases and springs, fixed-end forces, member diagrams and deflections</td></tr>
+          <tr><td><a href="../fea/theory/analysis-method.html">Analysis method</a></td><td>fea</td><td>Degrees of freedom, assembly, supports, node ordering, skyline Cholesky, stability checks, load cases, reactions, combinations and envelopes</td></tr>
+          <tr><td><a href="../fea/theory/shell-element.html">Shell element</a></td><td>fea</td><td>Membrane with drilling rotations, DKQ plate, flat shell, meshing, benchmarks</td></tr>
+          <tr><td><a href="../fea/theory/strip-forces.html">Strip forces</a></td><td>fea</td><td>Integrating shell forces across design strips</td></tr>
+          <tr><td><a href="../fea/theory/pier-spandrel.html">Piers &amp; spandrels</a></td><td>fea</td><td>Wall section cuts from element nodal forces</td></tr>
+          <tr><td><a href="../rc/theory/beam-design.html">RC beam design</a></td><td>rc</td><td>Flexure by the equivalent stress block, shear, stirrup requirement, bar layout, section properties</td></tr>
+          <tr><td><a href="../strengthening/theory/steel-plates.html">Steel plate strengthening</a></td><td>strengthening</td><td>Plate jacketing, interface shear flow and bolts, side plates for shear</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════ Reporting ══════════════ -->
+    <div class="section" id="reporting">
+      <div class="section__title">Reporting a problem</div>
+      <p>
+        If a result looks wrong, please open an issue at
+        <a href="https://github.com/theerapat-s28/ts-structural-eng/issues">github.com/theerapat-s28/ts-structural-eng/issues</a>.
+        A report that can be reproduced gets fixed fastest: include the package version, the model or input as JSON,
+        the result you got, the result you expected, and where the expected value comes from (a hand calculation, a
+        textbook problem or another program).
+      </p>
+      <p>Corrections to the theory notes, such as a wrong clause number, are just as welcome.</p>
+    </div>
+
+    <!-- ══════════════ Summary ══════════════ -->
+    <div class="section" id="summary">
+      <div class="section__title">Documentation map</div>
+      <table class="summary-table">
+        <thead><tr><th>Page</th><th>What it is for</th></tr></thead>
+        <tbody>
+          <tr><td><a href="../">Landing page</a></td><td>Installation, quick start, units and the export summary</td></tr>
+          <tr><td>About (this page)</td><td>Introduction, responsibility, features, assumptions, limitations and verification status</td></tr>
+          <tr><td><a href="../fea/">FEA reference</a></td><td>Every <code>fea</code> export: model, loads, results, errors</td></tr>
+          <tr><td><a href="../rc/">RC Beam Design reference</a></td><td>Every <code>rc</code> export with parameters, warnings and errors</td></tr>
+          <tr><td><a href="../strengthening/">Strengthening reference</a></td><td>Every <code>strengthening</code> export with parameters, warnings and errors</td></tr>
+          <tr><td><a href="#theory">Theory notes</a></td><td>The formulations behind the results</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+<script>
+  // Sidebar: fold it away on wide screens (remembered), open it as a drawer on phones,
+  // and remember which nav groups are folded on this page. Works without storage too.
+  (function () {
+    var root = document.documentElement;
+    var button = document.querySelector(".nav-toggle");
+    var sidebar = document.getElementById("sidebar");
+    var backdrop = document.querySelector(".nav-backdrop");
+    if (!button || !sidebar || !backdrop) return;
+    var phone = window.matchMedia("(max-width: 800px)");
+    var read = function (key) { try { return localStorage.getItem(key); } catch (e) { return null; } };
+    var write = function (key, value) { try { localStorage.setItem(key, value); } catch (e) {} };
+
+    var isOpen = function () {
+      return phone.matches ? root.classList.contains("nav-open") : !root.classList.contains("nav-collapsed");
+    };
+    var sync = function () {
+      var open = isOpen();
+      var label = open ? "Hide navigation" : "Show navigation";
+      button.setAttribute("aria-expanded", String(open));
+      button.setAttribute("aria-label", label);
+      button.title = label;
+      button.textContent = open ? "«" : "☰";
+      backdrop.hidden = !(phone.matches && open);
+    };
+    var closeDrawer = function () { root.classList.remove("nav-open"); sync(); };
+
+    button.addEventListener("click", function () {
+      if (phone.matches) root.classList.toggle("nav-open");
+      else write("docs-nav-collapsed", root.classList.toggle("nav-collapsed") ? "1" : "0");
+      sync();
+    });
+    backdrop.addEventListener("click", closeDrawer);
+    sidebar.addEventListener("click", function (event) {
+      if (phone.matches && event.target.closest && event.target.closest("a")) closeDrawer();
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && root.classList.contains("nav-open")) { closeDrawer(); button.focus(); }
+    });
+    if (phone.addEventListener) phone.addEventListener("change", closeDrawer);
+    else if (phone.addListener) phone.addListener(closeDrawer);
+
+    // Folded nav groups, per page, by their label.
+    var key = "docs-nav-folded:" + location.pathname;
+    var folded = [];
+    try { folded = JSON.parse(read(key) || "[]"); } catch (e) { folded = []; }
+    var groups = Array.prototype.slice.call(sidebar.querySelectorAll("details.nav-group"));
+    var labelOf = function (group) { return group.querySelector("summary").textContent.trim(); };
+    groups.forEach(function (group) {
+      if (folded.indexOf(labelOf(group)) >= 0) group.open = false;
+      group.addEventListener("toggle", function () {
+        write(key, JSON.stringify(groups.filter(function (g) { return !g.open; }).map(labelOf)));
+      });
+    });
+
+    sync();
+  })();
+</script>
+</body>
+</html>

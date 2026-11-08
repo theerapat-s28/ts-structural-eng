@@ -22,6 +22,42 @@ What this means in practice:
 - **No runtime dependencies** and no DOM or Node-only APIs.
 - **ESM and CommonJS builds** with `.d.ts` types, tree-shakeable (`"sideEffects": false`), split into subpath exports.
 
+## Intended use and responsibility
+
+A structural calculation that is wrong can cost lives, injuries and money. This engine is a **calculation aid**: it does not replace the judgement of a qualified engineer, and it has not been certified by any authority.
+
+> [!WARNING]
+> **The engineer responsible for the design is responsible for every result taken from this engine.** That covers choosing a suitable model, entering correct input, reading the warnings, checking the results against hand calculations or independent software, and confirming that the design meets the codes and regulations of the place where it will be built. The software is provided "as is", without warranty of any kind (see [LICENSE](LICENSE)).
+
+- **Know the basis.** Each result follows the assumptions below and on its theory page. A model that breaks them gives numbers that are not valid.
+- **Read every warning.** A warning means the calculation is valid but a code provision, a modelling assumption or a detailing rule needs attention; it cites the clause it comes from.
+- **Errors are deliberate.** When the assumptions of a calculation fail, the engine throws rather than return a result it cannot stand behind.
+- **Check independently** before a result is used for design or construction.
+- **One design code.** Design checks follow ACI 318-19 in SI units. The analysis does not depend on a design code.
+
+Applications that embed the engine should show its warnings and errors to their users and point them to the [scope and limitations page](https://theerapat-s28.github.io/ts-structural-eng/about/).
+
+## Features
+
+| Module | Supported | Planned (see [ROADMAP.md](ROADMAP.md)) | Not supported |
+| --- | --- | --- | --- |
+| `fea` | Linear static 3D analysis by the direct stiffness method; Euler–Bernoulli members with end releases and partial-fixity springs; fixed and spring supports, line restraints; nodal, uniform, trapezoidal, point, torque and projected member loads; self-weight; area loads on null areas; four-node flat shells (drilling membrane + DKQ thin plate) with meshing and modifiers; strip, pier and spandrel forces; load cases, nested linear combinations, envelopes; design demands for RC | End offsets, shear deformation, support settlement, temperature loads, skewed supports, live-load patterning, rigid diaphragms and constraints, linearized P-Δ, modal, buckling and response-spectrum analysis, thick plates, triangular shells and openings | Material nonlinearity, large displacements, tension-only members and gaps, staged construction, time effects |
+| `rc` | Rectangular, tension-controlled beam sections (singly or doubly reinforced) per ACI 318-19: φMn, φVc, φVs, stirrup requirement and spacing, bar layout, section properties with cracked-section modifiers | — | Flanged sections, columns, transition-zone φ, torsion design, deflection, crack control, development length and splices, slabs, footings |
+| `strengthening` | Steel-plate jacketing for flexure, interface shear flow and bolts (anchor steel strength), side plates for shear by two engineering models with web-crushing and anchorage limits | — | FRP, section enlargement, external post-tensioning, debonding and peeling checks, anchor concrete breakout and pryout |
+
+## Assumptions and limitations
+
+Every result rests on these assumptions; the [scope and limitations page](https://theerapat-s28.github.io/ts-structural-eng/about/#limitations) has the full list.
+
+- **Linear elastic, small displacements, static.** No cracking or yielding in the analysis (cracked stiffness only through section properties and modifiers you choose), no P-Δ or P-δ, no dynamics. Results are linear in the loads, so combinations are exact superpositions.
+- **Members** are straight, prismatic Euler–Bernoulli beams with uniform torsion: no shear deformation, no warping, no rigid end zones yet.
+- **Shells** are flat four-node facets with thin-plate bending; results near point loads and column supports depend on the mesh.
+- **No diaphragm constraint.** Null areas carry load but add no stiffness; a floor is rigid in its plane only through the stiffness you model.
+- **RC design** covers rectangular, tension-controlled beam sections only, as section checks; Vc uses the simplified expression of ACI 318-19 Table 22.5.5.1 for every section.
+- **Strengthening** methods are engineering models, not ACI 318 provisions: confirm them against test data or a specialist review. Debonding, plate buckling, anchor breakout and pryout, and the load on the beam when it is strengthened are not checked.
+
+**Verification status.** The test suite (`pnpm run test`) compares results with closed-form solutions, independent subdivided models, statics and, for shells, standard benchmark problems; each theory page lists its checks. A consolidated verification report, listing each benchmark's published source, reference value, engine value and difference, is in preparation.
+
 ## Install
 
 ```bash
@@ -38,9 +74,14 @@ Import from a module's subpath — `/fea`, `/rc`, `/strengthening`, `/core` or `
 Full API reference, with parameter tables, worked examples, warnings and error codes:
 
 - **[API reference](https://theerapat-s28.github.io/ts-structural-eng/)** — landing page
+- **[Scope, assumptions and limitations](https://theerapat-s28.github.io/ts-structural-eng/about/)** — introduction, responsibility, feature matrix, assumptions, limitations and verification status
 - [FEA — Frame and shell analysis](https://theerapat-s28.github.io/ts-structural-eng/fea/) — `@theerapat-s28/ts-structural-eng-tools/fea`
 - [RC Beam Design](https://theerapat-s28.github.io/ts-structural-eng/rc/) — `@theerapat-s28/ts-structural-eng-tools/rc`
 - [Strengthening](https://theerapat-s28.github.io/ts-structural-eng/strengthening/) — `@theerapat-s28/ts-structural-eng-tools/strengthening`
+- [Frame element theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/frame-element.html) — local axes, the 12×12 beam stiffness, end releases and springs, fixed-end forces, member diagrams and deflections
+- [Analysis method theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/analysis-method.html) — assembly, supports, node ordering, the skyline Cholesky solver, stability checks, combinations and envelopes
+- [RC beam design theory notes](https://theerapat-s28.github.io/ts-structural-eng/rc/theory/beam-design.html) — the ACI 318-19 basis of flexure, shear, bar layout and section properties, with worked examples
+- [Steel plate strengthening theory notes](https://theerapat-s28.github.io/ts-structural-eng/strengthening/theory/steel-plates.html) — plate jacketing, interface shear flow and bolts, side plates for shear, and which parts are code
 - [Shell element theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/shell-element.html) — how the shell element's stiffness is formed, with its benchmarks
 - [Strip forces theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/strip-forces.html) — how strip forces are integrated from the shell forces, with their sign conventions and checks
 - [Pier and spandrel theory notes](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/pier-spandrel.html) — how wall pier and spandrel forces are summed from the element nodal forces, with their sign conventions and checks
@@ -470,10 +511,17 @@ tests/
 html-docs/                # HTML API reference, deployed to GitHub Pages
 ├── DESIGN.md             # Style guide for the doc pages
 ├── index.html            # Landing page
+├── about/index.html      # Introduction, responsibility, features, assumptions, limitations, verification status
 ├── rc/index.html
+├── rc/theory/
+│   └── beam-design.html    # RC beam design theory notes (flexure, shear, bar layout, section properties)
 ├── strengthening/index.html
+├── strengthening/theory/
+│   └── steel-plates.html   # Steel plate strengthening theory notes
 ├── fea/index.html
 ├── fea/theory/
+│   ├── frame-element.html  # Frame element theory notes (stiffness, releases, loads, diagrams)
+│   ├── analysis-method.html # Analysis method theory notes (assembly, solver, stability, combinations)
 │   ├── shell-element.html  # Shell element theory notes
 │   ├── strip-forces.html   # Strip forces: theory and how they are calculated
 │   └── pier-spandrel.html  # Pier and spandrel forces: theory and how they are calculated

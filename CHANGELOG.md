@@ -14,6 +14,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - **Faster connection of members on flat models.** Finding the nodes along each member could check every node of a flat model (a slab with all nodes at one elevation) for every beam, so `analyze` spent about a quarter of a second on a 14 400-element slab before solving, and `memberConnectivity` slowed down the same way on flat models with many nodes. Both now check only the nodes near each member. Results are unchanged.
 
+### Documentation
+
+- **New [scope, assumptions and limitations page](https://theerapat-s28.github.io/ts-structural-eng/about/).** It introduces the project and states who is responsible for results taken from the engine. It also gives a feature matrix for every module (supported, planned, not supported), the assumptions behind every result, the limitations most likely to matter on a real project, and the current verification status. Every doc page now has a short notice that links to it, and the README carries the same introduction, features and limitations.
+- **Four new theory pages**:
+  - [frame element](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/frame-element.html): local axes, the full 12×12 stiffness, end releases and springs, fixed-end forces, diagrams and deflections;
+  - [analysis method](https://theerapat-s28.github.io/ts-structural-eng/fea/theory/analysis-method.html): assembly, supports, node ordering, the skyline Cholesky solver, stability checks, combinations and envelopes;
+  - [RC beam design](https://theerapat-s28.github.io/ts-structural-eng/rc/theory/beam-design.html): the ACI 318-19 basis of flexure, shear, bar layout and section properties, with hand-checked worked examples;
+  - [steel plate strengthening](https://theerapat-s28.github.io/ts-structural-eng/strengthening/theory/steel-plates.html): jacketing, interface bolting and side plates, and which parts are code.
+
+  Each page lists its checks, its limitations and open points for review. One of those points affects results: `concreteShearCapacity` always uses the simplified Vc expression of ACI 318-19 Table 22.5.5.1, which can be unconservative for members with less than the minimum shear reinforcement. Results and the API are unchanged.
+
+- **Foldable navigation on every doc page.** A button at the top of the left panel folds it away and back, and the page remembers the choice. On phones, where the panel used to be hidden with no way to open it, the same button opens it as a drawer. Each group in the panel ("Getting Started", "Members", …) can also be folded on its own, and the page remembers which groups are folded.
+
 ## [3.4.2] — 2026-11-07
 
 ### Changed

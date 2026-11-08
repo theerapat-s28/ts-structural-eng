@@ -14,15 +14,25 @@ Each module gets its own subdirectory with a single `index.html`:
 html-docs/
 ├── DESIGN.md                ← this file
 ├── index.html               ← landing page, links to every module
+├── about/
+│   └── index.html           ← scope, responsibility, features, assumptions, limitations
 ├── rc/
-│   └── index.html
+│   ├── index.html           ← API reference
+│   └── theory/              ← theory notes for the module
 ├── strengthening/
-│   └── index.html
+│   ├── index.html
+│   └── theory/
 └── <module-name>/
-    └── index.html
+    ├── index.html
+    └── theory/<topic>.html
 ```
 
 Module names match the package subpath exports (`rc`, `strengthening`, `core`, `utils`).
+
+Besides the API reference pages there are two other kinds of page:
+
+- **About** (`about/index.html`): the project's introduction, the responsibility statement, the feature matrix, the assumptions and limitations, and the verification status. Keep it in step with the engine: when a feature lifts a limitation or adds one, update its row in the feature matrix and the limitations list (and the same sections of the README).
+- **Theory notes** (`<module>/theory/<topic>.html`): the full formulation behind a group of exports. Set `<title>` to `{Topic} — Theory Notes` and the sidebar brand label to `Theory Notes`. Use the same sections in this order: Overview (with a **Basis** table: quantity, basis, code or adaptation), the derivation, **Verification** (each check, its reference and its test file), **Limitations**, **Points for review**, **References**, and **Summary** last. The theory pages share an extra style block for equations (`.eq`, `.mat`, `.frac`) and figures; copy it from an existing theory page. List every theory page on the landing page (`#theory-notes`) and on the about page (`#theory`).
 
 This directory is published verbatim to GitHub Pages by `.github/workflows/pages.yml` on
 every push to `main` that touches it, so pages must work as plain static files — relative
@@ -41,7 +51,7 @@ module grid and Export Summary table in `html-docs/index.html`.
 └──────────────┴────────────────────────────────────────┘
 ```
 
-- Sidebar: `position: sticky`, full viewport height, scrollable.
+- Sidebar: `position: sticky`, full viewport height, scrollable. On wide screens it can be folded away so the main content takes the full width; at 800 px and below it is a slide-in drawer. See [Foldable Panel](#foldable-panel).
 - Main: `flex: 1`, centred with `margin: 0 auto`, generous bottom padding for scroll comfort.
 - The outer wrapper is `div.layout` with `display: flex`.
 
@@ -108,23 +118,244 @@ Fonts are loaded from Google Fonts:
 ### Sidebar
 
 ```html
-<aside class="sidebar">
-  <div class="sidebar__brand">
-    <div class="brand-label">API Reference</div>
-    <h2>Module Name</h2>
-  </div>
-  <nav>
-    <div class="nav-section-label">Section</div>
-    <a href="#anchor"><span class="mbadge m-fn">FN</span> functionName</a>
-    <a href="#anchor"><span class="mbadge m-type">TYPE</span> TypeName</a>
-    <a href="#anchor"><span style="font-size:14px">◈</span> Overview label</a>
-  </nav>
-</aside>
+<body>
+<button class="nav-toggle" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Hide navigation" title="Hide navigation">«</button>
+<div class="nav-backdrop" hidden></div>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__brand">
+      <div class="brand-label">API Reference</div>
+      <h2>Module Name</h2>
+    </div>
+    <nav>
+      <a href="../"><span style="font-size:14px">←</span> All modules</a>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Section</summary>
+        <a href="#anchor"><span class="mbadge m-fn">FN</span> functionName</a>
+        <a href="#anchor"><span class="mbadge m-type">TYPE</span> TypeName</a>
+        <a href="#anchor"><span style="font-size:14px">◈</span> Overview label</a>
+      </details>
+    </nav>
+  </aside>
+  …
 ```
 
-- Section groups are separated by `div.nav-section-label` with `margin-top: 8px` on subsequent groups.
+- Section groups are `details.nav-group` elements that fold one by one, and the whole panel folds away with `button.nav-toggle`. Both are specified in [Foldable Panel](#foldable-panel) below; every page must have them.
+- Links outside any group (the `← All modules` link) stay directly in `nav`.
 - Icon-only nav items (non-export) use an inline `span` with a unicode symbol at `font-size:14px`.
-- Active hover is handled by CSS only — no JavaScript needed.
+- Hover states are CSS only.
+
+### Foldable Panel
+
+The left panel folds in two ways, on every page:
+
+1. **The whole panel**, with the toggle button at its top-right corner.
+2. **Each group** in it ("Getting Started", "Members", …), by clicking its heading.
+
+#### Behaviour
+
+| Screen | Panel at load | Button | Click the button | Also closes the panel | Remembered |
+|---|---|---|---|---|---|
+| Wider than 800 px | Open, or folded if it was folded last time | `«` at the panel's top-right corner when open; `☰` at the page's top-left corner when folded | Folds the panel away, or brings it back (`html.nav-collapsed`) | — | Yes, across all pages (`docs-nav-collapsed`) |
+| 800 px or less | Closed: the panel is a drawer off the left edge | `☰` at the top-left corner; `«` on the open drawer | Slides the drawer in over a dimmed backdrop (`html.nav-open`) | A link in the panel, the backdrop, or Esc (focus returns to the button) | No: the drawer always starts closed |
+
+Groups start open. A folded group shows its chevron turned (▸ instead of ▾), and each page remembers its own folded groups (`docs-nav-folded:<path>`). Group folding is plain HTML (`<details>`), so it works even when JavaScript is off; only remembering it needs the script.
+
+```
+Wide screen, panel open        Wide screen, folded            Phone, drawer open
+┌──────────┬────────────┐      ┌─────────────────────┐        ┌──────────┬──────────┐
+│ Brand  « │            │      │☰                    │        │ Brand  « │░░░░░░░░░░│
+│ ▾ Group  │   Main     │      │       Main          │        │ ▾ Group  │░ page  ░░│
+│   link   │            │      │   (full width,      │        │   link   │░ behind░░│
+│ ▸ Group  │            │      │    max 880 px)      │        │ ▸ Group  │░░░░░░░░░░│
+└──────────┴────────────┘      └─────────────────────┘        └──────────┴──────────┘
+```
+
+#### Markup
+
+The button and the backdrop come first in `<body>`; the panel needs `id="sidebar"` (the button's `aria-controls` and the script use it). See the [Sidebar](#sidebar) markup above for the full structure.
+
+```html
+<body>
+<button class="nav-toggle" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Hide navigation" title="Hide navigation">«</button>
+<div class="nav-backdrop" hidden></div>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    …
+    <details class="nav-group" open>
+      <summary class="nav-section-label">Section</summary>
+      <a href="#anchor">…</a>
+    </details>
+```
+
+#### Styles
+
+Part of the `<style>` block every page copies. The first block sits where the sidebar rules are, the second just before the page's `@media (max-width: 800px)` block, and the third is that media block itself (it replaces the old rule that hid the sidebar on phones).
+
+```css
+/* Foldable nav groups: <details class="nav-group" open><summary class="nav-section-label"> */
+.nav-group + .nav-group,
+nav > a + .nav-group { margin-top: 8px; }
+summary.nav-section-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+  border-radius: 5px;
+  user-select: none;
+}
+summary.nav-section-label::-webkit-details-marker { display: none; }
+summary.nav-section-label::after {
+  content: "▾";
+  font-size: 11px;
+  letter-spacing: 0;
+  transition: transform 0.15s;
+}
+.nav-group:not([open]) > summary.nav-section-label::after { transform: rotate(-90deg); }
+summary.nav-section-label:hover { color: var(--text-muted); }
+summary.nav-section-label:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── Collapsible sidebar: toggle button, folded state, phone drawer ── */
+.sidebar__brand { padding-right: 40px; }
+.nav-toggle {
+  position: fixed;
+  top: 14px;
+  left: 208px;
+  z-index: 50;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+}
+.nav-toggle:hover { background: var(--accent-dim); color: var(--text); }
+.nav-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.nav-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(20, 24, 40, 0.35);
+}
+.nav-backdrop[hidden] { display: none; }
+@media (min-width: 801px) {
+  html.nav-collapsed .sidebar { display: none; }
+  html.nav-collapsed .nav-toggle { left: 12px; }
+}
+@media print {
+  .nav-toggle, .nav-backdrop { display: none; }
+}
+
+@media (max-width: 800px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 40;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 0.2s ease, visibility 0.2s;
+    box-shadow: 4px 0 16px rgba(20, 24, 40, 0.12);
+  }
+  html.nav-open .sidebar { transform: none; visibility: visible; }
+  html:not(.nav-open) .nav-toggle { left: 12px; }
+  .main { padding: 60px 20px 80px; }
+}
+```
+
+#### Scripts
+
+Two inline scripts, identical on every page; copy them unchanged.
+
+At the end of `<head>`, so a folded panel does not flash open while the page loads:
+
+```html
+<script>
+  // Restore the folded sidebar before the first paint, so the page does not flash open.
+  try { if (localStorage.getItem("docs-nav-collapsed") === "1") document.documentElement.classList.add("nav-collapsed"); } catch (e) {}
+</script>
+```
+
+Just before `</body>`:
+
+```html
+<script>
+  // Sidebar: fold it away on wide screens (remembered), open it as a drawer on phones,
+  // and remember which nav groups are folded on this page. Works without storage too.
+  (function () {
+    var root = document.documentElement;
+    var button = document.querySelector(".nav-toggle");
+    var sidebar = document.getElementById("sidebar");
+    var backdrop = document.querySelector(".nav-backdrop");
+    if (!button || !sidebar || !backdrop) return;
+    var phone = window.matchMedia("(max-width: 800px)");
+    var read = function (key) { try { return localStorage.getItem(key); } catch (e) { return null; } };
+    var write = function (key, value) { try { localStorage.setItem(key, value); } catch (e) {} };
+
+    var isOpen = function () {
+      return phone.matches ? root.classList.contains("nav-open") : !root.classList.contains("nav-collapsed");
+    };
+    var sync = function () {
+      var open = isOpen();
+      var label = open ? "Hide navigation" : "Show navigation";
+      button.setAttribute("aria-expanded", String(open));
+      button.setAttribute("aria-label", label);
+      button.title = label;
+      button.textContent = open ? "«" : "☰";
+      backdrop.hidden = !(phone.matches && open);
+    };
+    var closeDrawer = function () { root.classList.remove("nav-open"); sync(); };
+
+    button.addEventListener("click", function () {
+      if (phone.matches) root.classList.toggle("nav-open");
+      else write("docs-nav-collapsed", root.classList.toggle("nav-collapsed") ? "1" : "0");
+      sync();
+    });
+    backdrop.addEventListener("click", closeDrawer);
+    sidebar.addEventListener("click", function (event) {
+      if (phone.matches && event.target.closest && event.target.closest("a")) closeDrawer();
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && root.classList.contains("nav-open")) { closeDrawer(); button.focus(); }
+    });
+    if (phone.addEventListener) phone.addEventListener("change", closeDrawer);
+    else if (phone.addListener) phone.addListener(closeDrawer);
+
+    // Folded nav groups, per page, by their label.
+    var key = "docs-nav-folded:" + location.pathname;
+    var folded = [];
+    try { folded = JSON.parse(read(key) || "[]"); } catch (e) { folded = []; }
+    var groups = Array.prototype.slice.call(sidebar.querySelectorAll("details.nav-group"));
+    var labelOf = function (group) { return group.querySelector("summary").textContent.trim(); };
+    groups.forEach(function (group) {
+      if (folded.indexOf(labelOf(group)) >= 0) group.open = false;
+      group.addEventListener("toggle", function () {
+        write(key, JSON.stringify(groups.filter(function (g) { return !g.open; }).map(labelOf)));
+      });
+    });
+
+    sync();
+  })();
+</script>
+```
+
+#### Rules
+
+- **Storage.** Only `localStorage`, only for these two conveniences, and every access inside `try`/`catch`: the page must work the same where storage is blocked (private windows, file previews). Keep the keys `docs-nav-collapsed` and `docs-nav-folded:<path>` unchanged, or readers lose their saved state.
+- **Group labels are the saved keys.** A folded group is remembered by its heading text, so renaming a group simply opens it again; no migration is needed.
+- **Accessibility.** The button keeps `aria-controls="sidebar"`, and the script updates `aria-expanded`, `aria-label` and `title` with the state. Headings and the button show a focus ring (`:focus-visible`), and the closed drawer is `visibility: hidden`, so its links are out of the tab order.
+- **Breakpoint.** The 800 px in the CSS and in the script's `matchMedia("(max-width: 800px)")` must stay the same.
+- **Print.** The button and the backdrop are hidden when printing.
+- **No other scripts.** These two are the only JavaScript in the docs; pages must not need a build step or an external library.
 
 ### Kind Badges
 
@@ -188,6 +419,17 @@ Always the first element inside `main.main`. Includes the import path tag, title
   </div>
   <h1>Module Name</h1>
   <p>One-sentence description of what the module calculates.</p>
+</div>
+```
+
+### Notice Banner
+
+Every page except the about page carries a short notice directly after the page header, linking to the about page's limitations. Copy its CSS (`.notice-banner`, in the `<style>` block of any page) together with the markup, and adjust the relative path to `about/`.
+
+```html
+<div class="notice-banner" role="note">
+  <span>⚠️</span>
+  <span><strong>A calculation aid, not a substitute for engineering judgement.</strong> Results must be checked and accepted by the qualified engineer responsible for the design. <a href="../about/#limitations">Scope, assumptions and limitations →</a></span>
 </div>
 ```
 
@@ -404,6 +646,7 @@ Sidebar `href` values must match the `id` of the target element exactly.
 - [ ] Set `<title>` to `{Module} — API Reference`
 - [ ] Sidebar brand `<h2>` matches the module name
 - [ ] Page header has an `import-tag`, `<h1>`, and a one-sentence `<p>`
+- [ ] The notice banner follows the page header, linking to `about/#limitations`
 - [ ] Every export has its own `export-card` with a unique `id`
 - [ ] Every sidebar link `href` matches a real element `id`
 - [ ] Param tables use `.req` / `.opt` spans and a Unit column
@@ -413,5 +656,6 @@ Sidebar `href` values must match the `id` of the target element exactly.
 - [ ] Thrown `RCDesignError`s documented in `.alert--error` blocks naming the error code
 - [ ] Export Summary table is the last section
 - [ ] Sidebar starts with the `← All modules` link back to `../`
+- [ ] Sidebar groups are `details.nav-group open`, the sidebar has `id="sidebar"`, and the page has the `.nav-toggle` button, the `.nav-backdrop`, the [Foldable Panel](#foldable-panel) styles and both of its scripts
 - [ ] Module added to the grid and Export Summary table in `html-docs/index.html`
 - [ ] Saved at `html-docs/<module-name>/index.html`

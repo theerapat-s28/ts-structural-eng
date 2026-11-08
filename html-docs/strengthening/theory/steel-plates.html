@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Steel Plate Strengthening — Theory Notes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #f0f2f6;
+      --border: #e2e5ec;
+      --accent: #3b63d8;
+      --accent-dim: rgba(59, 99, 216, 0.08);
+      --green: #1f9d63;
+      --green-dim: rgba(31, 157, 99, 0.10);
+      --red: #d9463c;
+      --red-dim: rgba(217, 70, 60, 0.08);
+      --yellow: #b97d0a;
+      --yellow-dim: rgba(230, 160, 30, 0.12);
+      --purple: #8a4fd0;
+      --purple-dim: rgba(138, 79, 208, 0.10);
+      --text: #1f2430;
+      --text-muted: #5c6474;
+      --text-dim: #8a90a0;
+      --code-bg: #f8f9fb;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ─────────────────────────────────────── */
+    .sidebar {
+      width: 252px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px 40px;
+    }
+    .sidebar__brand { padding: 0 10px 18px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .brand-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .sidebar__brand h2 { font-size: 13.5px; font-weight: 600; }
+    .nav-section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      padding: 0 10px;
+      margin-bottom: 6px;
+    }
+    /* Foldable nav groups: <details class="nav-group" open><summary class="nav-section-label"> */
+    .nav-group + .nav-group,
+    nav > a + .nav-group { margin-top: 8px; }
+    summary.nav-section-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      list-style: none;
+      border-radius: 5px;
+      user-select: none;
+    }
+    summary.nav-section-label::-webkit-details-marker { display: none; }
+    summary.nav-section-label::after {
+      content: "▾";
+      font-size: 11px;
+      letter-spacing: 0;
+      transition: transform 0.15s;
+    }
+    .nav-group:not([open]) > summary.nav-section-label::after { transform: rotate(-90deg); }
+    summary.nav-section-label:hover { color: var(--text-muted); }
+    summary.nav-section-label:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      margin-bottom: 2px;
+    }
+    nav a:hover { background: var(--accent-dim); color: var(--text); }
+
+    /* ── Kind badges ─────────────────────────────────── */
+    .mbadge, .kind {
+      font-family: var(--mono);
+      font-weight: 700;
+      border-radius: 5px;
+      flex-shrink: 0;
+    }
+    .mbadge { font-size: 9.5px; padding: 2px 6px; min-width: 34px; text-align: center; }
+    .kind { font-size: 11.5px; padding: 3px 9px; }
+    .m-fn { color: var(--green); background: var(--green-dim); }
+    .m-type { color: var(--accent); background: var(--accent-dim); }
+    .m-const { color: var(--yellow); background: var(--yellow-dim); }
+    .m-error { color: var(--red); background: var(--red-dim); }
+
+    /* ── Scope badges ────────────────────────────────── */
+    .scope-badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .s-public { color: var(--accent); background: var(--accent-dim); }
+    .s-internal { color: var(--purple); background: var(--purple-dim); }
+
+    .std-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+      color: var(--yellow);
+      background: var(--yellow-dim);
+    }
+
+    /* ── Main ────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 40px 48px 120px;
+      min-width: 0;
+    }
+
+    .page-header { margin-bottom: 36px; }
+    .import-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .import-tag .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+    }
+    .import-tag code { background: none; padding: 0; font-size: 12.5px; }
+    .page-header h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+    .page-header p { color: var(--text-muted); max-width: 640px; }
+
+    .section { margin-bottom: 44px; scroll-margin-top: 24px; }
+    .section__title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section p { color: var(--text-muted); margin-bottom: 12px; }
+
+    /* ── Export cards ────────────────────────────────── */
+    .export-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 20px;
+      overflow: hidden;
+      scroll-margin-top: 24px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .export-card__header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .ex-sig { font-family: var(--mono); font-size: 13.5px; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+    .export-card__body { padding: 18px 20px 20px; }
+    .ex-desc { color: var(--text-muted); margin-bottom: 16px; }
+    .sub-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin: 18px 0 8px;
+    }
+    .sub-label:first-of-type { margin-top: 0; }
+
+    /* ── Code blocks ─────────────────────────────────── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .code-block__label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .code-block pre {
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .k { color: #0e7490; }
+    .s { color: #2f7d32; }
+    .n { color: var(--yellow); }
+    .b { color: var(--purple); }
+    .nl { color: var(--text-dim); }
+    .c { color: var(--text-dim); font-style: italic; }
+    .u { color: var(--accent); }
+
+    /* ── Inline code ─────────────────────────────────── */
+    code {
+      font-family: var(--mono);
+      font-size: 0.86em;
+      background: var(--surface-2);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+    pre code { background: none; padding: 0; color: inherit; }
+
+    /* ── Tables ──────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 13.5px; }
+    th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      font-weight: 600;
+      padding: 8px 12px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      color: var(--text-muted);
+    }
+    tr:last-child td { border-bottom: none; }
+    .param-table, .summary-table {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: block;
+      overflow-x: auto;
+    }
+    .param-table td:first-child {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .param-table td:nth-child(2) { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+    .req { color: var(--red); font-size: 12px; font-weight: 500; }
+    .opt { color: var(--text-dim); font-size: 12px; }
+    .summary-table .path-cell { font-family: var(--mono); font-size: 12.5px; color: var(--text); white-space: nowrap; }
+
+    /* ── Alerts ──────────────────────────────────────── */
+    .alert {
+      display: flex;
+      gap: 10px;
+      padding: 11px 14px;
+      border-radius: var(--radius);
+      font-size: 13.5px;
+      margin-bottom: 10px;
+      border: 1px solid;
+      color: var(--text-muted);
+    }
+    .alert strong { color: var(--text); }
+    .alert--error { background: var(--red-dim); border-color: rgba(217, 70, 60, 0.25); }
+    .alert--warn { background: var(--yellow-dim); border-color: rgba(185, 125, 10, 0.25); }
+    .alert--info { background: var(--accent-dim); border-color: rgba(59, 99, 216, 0.25); }
+
+    /* ── Flow steps ──────────────────────────────────── */
+    .flow-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 12px; }
+    .flow-step {
+      display: flex;
+      gap: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .step-num {
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-body { color: var(--text-muted); font-size: 13.5px; }
+    .step-body strong { color: var(--text); }
+
+    /* ── Model grid ──────────────────────────────────── */
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .model-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .model-card__title { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    .model-card__desc { font-size: 12.5px; color: var(--text-muted); }
+    /* ── Theory notes: lists, equations, matrices, figures ── */
+    .section ul, .section ol { color: var(--text-muted); margin: 0 0 12px 22px; }
+    .section li { margin-bottom: 6px; }
+    .section li strong, .section p strong { color: var(--text); }
+
+    .eq {
+      font-family: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', 'Times New Roman', serif;
+      font-size: 16.5px;
+      line-height: 2.1;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      margin-bottom: 12px;
+      overflow-x: auto;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .eq + .eq { margin-top: -4px; }
+    .eq .note { font-family: 'Inter', sans-serif; font-size: 12.5px; color: var(--text-dim); margin-left: 14px; }
+    .mat {
+      display: inline-grid;
+      vertical-align: middle;
+      column-gap: 14px;
+      padding: 2px 10px;
+      margin: 0 3px;
+      position: relative;
+      text-align: center;
+      line-height: 1.55;
+    }
+    .mat::before, .mat::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+      border: 1.4px solid var(--text);
+    }
+    .mat::before { left: 0; border-right: none; }
+    .mat::after { right: 0; border-left: none; }
+    .mat.c1 { grid-template-columns: auto; }
+    .mat.c2 { grid-template-columns: repeat(2, auto); }
+    .mat.c3 { grid-template-columns: repeat(3, auto); }
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      vertical-align: middle;
+      text-align: center;
+      line-height: 1.3;
+      margin: 0 3px;
+    }
+    .frac > span + span { border-top: 1px solid var(--text); }
+
+    .figure {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 16px 12px;
+      margin-bottom: 12px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .figure svg { max-width: 100%; height: auto; }
+    .figure figcaption { font-size: 12.5px; color: var(--text-muted); margin-top: 6px; }
+    .dg-edge { fill: var(--accent-dim); stroke: var(--text); stroke-width: 1.5; }
+    .dg-dash { fill: none; stroke: var(--text-dim); stroke-width: 1; stroke-dasharray: 4 3; }
+    .dg-arrow { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+    .dg-arrowhead { fill: var(--accent); }
+    .dg-node { fill: var(--accent); }
+    .dg-mid { fill: var(--surface); stroke: var(--yellow); stroke-width: 1.8; }
+    .dg-gauss { fill: var(--green); }
+    .dg-text { font-family: 'Inter', sans-serif; font-size: 12px; fill: var(--text-muted); }
+    .dg-label { font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; fill: var(--text); }
+    .dg-math { font-family: 'STIX Two Math', 'Cambria Math', 'Times New Roman', serif; font-size: 14px; font-style: italic; fill: var(--text); }
+
+
+    /* ── Notice banner: scope and responsibility, on every page ── */
+    .notice-banner {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 14px;
+      margin: -12px 0 28px;
+      border-radius: var(--radius);
+      background: var(--yellow-dim);
+      border: 1px solid rgba(185, 125, 10, 0.25);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .notice-banner strong { color: var(--text); }
+    .notice-banner a { color: var(--accent); font-weight: 500; text-decoration: none; }
+    .notice-banner a:hover { text-decoration: underline; }
+
+    /* ── Collapsible sidebar: toggle button, folded state, phone drawer ── */
+    .sidebar__brand { padding-right: 40px; }
+    .nav-toggle {
+      position: fixed;
+      top: 14px;
+      left: 208px;
+      z-index: 50;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(20, 24, 40, 0.06);
+    }
+    .nav-toggle:hover { background: var(--accent-dim); color: var(--text); }
+    .nav-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .nav-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      background: rgba(20, 24, 40, 0.35);
+    }
+    .nav-backdrop[hidden] { display: none; }
+    @media (min-width: 801px) {
+      html.nav-collapsed .sidebar { display: none; }
+      html.nav-collapsed .nav-toggle { left: 12px; }
+    }
+    @media print {
+      .nav-toggle, .nav-backdrop { display: none; }
+    }
+
+    @media (max-width: 800px) {
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 40;
+        transform: translateX(-100%);
+        visibility: hidden;
+        transition: transform 0.2s ease, visibility 0.2s;
+        box-shadow: 4px 0 16px rgba(20, 24, 40, 0.12);
+      }
+      html.nav-open .sidebar { transform: none; visibility: visible; }
+      html:not(.nav-open) .nav-toggle { left: 12px; }
+      .main { padding: 60px 20px 80px; }
+    }
+  </style>
+
+  <script>
+    // Restore the folded sidebar before the first paint, so the page does not flash open.
+    try { if (localStorage.getItem("docs-nav-collapsed") === "1") document.documentElement.classList.add("nav-collapsed"); } catch (e) {}
+  </script>
+</head>
+<body>
+<button class="nav-toggle" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Hide navigation" title="Hide navigation">«</button>
+<div class="nav-backdrop" hidden></div>
+<div class="layout">
+
+  <!-- ══════════════ Sidebar ══════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__brand">
+      <div class="brand-label">Theory Notes</div>
+      <h2>Steel Plate Strengthening</h2>
+    </div>
+    <nav>
+      <a href="../../"><span style="font-size:14px">←</span> All modules</a>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Getting Started</summary>
+        <a href="#overview"><span style="font-size:14px">◈</span> Overview</a>
+        <a href="#assumptions"><span style="font-size:14px">◇</span> Assumptions</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Flexure</summary>
+        <a href="#jacketing"><span style="font-size:14px">▤</span> Plate jacketing</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Interface</summary>
+        <a href="#transformed-section"><span style="font-size:14px">▦</span> Transformed section</a>
+        <a href="#shear-flow"><span style="font-size:14px">⇉</span> Shear flow</a>
+        <a href="#bolt-capacity"><span style="font-size:14px">⊙</span> Bolt capacity</a>
+        <a href="#bolt-requirement"><span style="font-size:14px">⋯</span> Bolt requirement</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Shear</summary>
+        <a href="#side-plates"><span style="font-size:14px">▥</span> Side plates</a>
+        <a href="#web-yielding"><span style="font-size:14px">⧄</span> Web yielding</a>
+        <a href="#tension-tie"><span style="font-size:14px">⟋</span> Tension tie</a>
+        <a href="#side-limits"><span style="font-size:14px">⊓</span> Limits &amp; anchorage</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Checks</summary>
+        <a href="#verification"><span style="font-size:14px">✔</span> Verification</a>
+        <a href="#limitations"><span style="font-size:14px">⚠</span> Limitations</a>
+        <a href="#review"><span style="font-size:14px">✎</span> Points for review</a>
+      </details>
+
+      <details class="nav-group" open>
+        <summary class="nav-section-label">Reference</summary>
+        <a href="#references"><span style="font-size:14px">☷</span> References</a>
+        <a href="#summary"><span style="font-size:14px">☰</span> Summary</a>
+      </details>
+    </nav>
+  </aside>
+
+  <!-- ══════════════ Main ══════════════ -->
+  <main class="main">
+
+    <div class="page-header">
+      <div class="import-tag">
+        <span class="label">Status</span>
+        <code>@theerapat-s28/ts-structural-eng-tools/strengthening</code>
+      </div>
+      <h1>Steel Plate Strengthening — Theory Notes</h1>
+      <p>The models behind the <code>strengthening</code> module: flexural strengthening of RC beams with bonded or bolted steel plates, the shear flow and bolts at the plate–concrete interface, and steel side plates for shear, with the parts that are code and the parts that are engineering models.</p>
+    </div>
+
+    <div class="notice-banner" role="note">
+      <span>⚠️</span>
+      <span><strong>A calculation aid, not a substitute for engineering judgement.</strong> Results must be checked and accepted by the qualified engineer responsible for the design. <a href="../../about/#limitations">Scope, assumptions and limitations →</a></span>
+    </div>
+
+    <!-- ══════════════ Overview ══════════════ -->
+    <div class="section" id="overview">
+      <div class="section__title">Overview</div>
+      <p>
+        Strengthening with steel plates adds steel to an existing RC beam: plates on the soffit (and sometimes the top)
+        for flexure, and plates on the sides of the web for shear. The module follows one rule wherever it can:
+        <strong>transform, then delegate</strong>. A plate is turned into an equivalent quantity that the <code>rc</code>
+        module already knows (reinforcement area, a shear contribution) and the capacity is calculated by the same
+        ACI 318-19 functions as an unstrengthened beam.
+      </p>
+      <div class="alert alert--warn">
+        <span>⚠️</span>
+        <span>
+          <strong>ACI 318-19 has no provisions for steel plates bonded or bolted to concrete.</strong> Where this page uses
+          ACI 318 clauses, they apply to the concrete and the anchors; the plate models themselves are engineering
+          adaptations of AISC 360 and ACI 440.2R. Confirm them against test data or a specialist review before relying on them.
+          The library says so in a warning on every side-plate result.
+        </span>
+      </div>
+
+      <div class="sub-label">Basis</div>
+      <table class="summary-table">
+        <thead><tr><th>Quantity</th><th>Basis</th><th>Code or adaptation</th></tr></thead>
+        <tbody>
+          <tr><td>Flexure of a jacketed beam</td><td>Plates converted to equivalent reinforcement by strength; ACI 318-19 22.2 stress block</td><td>Adaptation, then ACI 318-19</td></tr>
+          <tr><td>Interface shear flow q</td><td>Elastic transformed section, q = VQ/I</td><td>Mechanics of materials</td></tr>
+          <tr><td>Anchor strength in shear</td><td>V<sub>sa</sub> = 0.6 A<sub>se,V</sub> f<sub>uta</sub>, φ = 0.65</td><td>ACI 318-19, 17.7.1.2(b), Table 17.5.3, 17.6.1.2</td></tr>
+          <tr><td>Bolt pitch limit 300 mm</td><td>Restrains the plate between fasteners</td><td>Detailing practice, not a code value</td></tr>
+          <tr><td>Side plate as a web <span class="std-badge" title="Basis: AISC 360 G2.1 shear yielding of a steel web — not ACI 318-19">AISC 360 G2.1</span></td><td>Shear yielding at 0.6f<sub>y</sub>; slenderness limit 2.24√(E/f<sub>y</sub>)</td><td>Adaptation of AISC 360-22, G2.1</td></tr>
+          <tr><td>Side plate as tension ties <span class="std-badge" title="Basis: ACI 440.2R-17 §11.4 bonded shear reinforcement, with steel in place of FRP — not ACI 318-19">ACI 440.2R-17 §11.4</span></td><td>Bonded shear reinforcement crossing a 45° crack; ε<sub>fe</sub> ≤ 0.004, ψ<sub>f</sub> = 0.85</td><td>Adaptation of ACI 440.2R-17, 11.4</td></tr>
+          <tr><td>Web-crushing limit</td><td>V<sub>s</sub> + V<sub>p</sub> ≤ 0.66√f′<sub>c</sub> b<sub>w</sub> d</td><td>ACI 318-19, 22.5.1.2; ACI 440.2R-17, Eq. (11.4.3)</td></tr>
+          <tr><td>Strip spacing</td><td>Maximum shear reinforcement spacing</td><td>ACI 318-19, 9.7.6.2.2 (ACI 440.2R-17 11.4.2 defers to it)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════ Assumptions ══════════════ -->
+    <div class="section" id="assumptions">
+      <div class="section__title">Assumptions</div>
+      <ul>
+        <li><strong>Full composite action.</strong> Plate and concrete act together up to failure; the bolts or the bond are designed separately (<a href="#bolt-requirement">below</a>) to make that true.</li>
+        <li><strong>The plates yield.</strong> In flexure the plate is counted at its yield force, like reinforcement.</li>
+        <li><strong>No initial load.</strong> The beam is assumed unloaded when the plates are fixed. In practice the dead load is already on the beam, so the existing steel is already strained when the plate starts to work; this is not modelled.</li>
+        <li><strong>Sound existing structure.</strong> The existing concrete, reinforcement and cover are as specified, without corrosion or damage.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ Jacketing ══════════════ -->
+    <div class="section" id="jacketing">
+      <div class="section__title">Plate jacketing for flexure <code style="font-size:13px">rc-beam-steel-plate-jacketing.ts</code></div>
+      <p>
+        A plate of width b<sub>p</sub>, thickness t<sub>p</sub> and yield strength f<sub>y,p</sub> develops the same force as a
+        rebar area that is scaled by the strength ratio:
+      </p>
+      <div class="eq">
+        n = f<sub>y,p</sub> / f<sub>y</sub>,&nbsp;&nbsp; A<sub>p,eq</sub> = n · b<sub>p</sub> t<sub>p</sub><span class="note">f<sub>y</sub>: yield strength of the existing reinforcement</span>
+      </div>
+      <p>Depths stay measured from the top face of the concrete, so the stress block of <code>rectBeamMomentCapacity</code> covers concrete only:</p>
+      <ul>
+        <li><strong>Bottom plate</strong>: its centroid is at h + t<sub>b</sub>/2. It is added to the tension steel, at the combined centroid
+          <div class="eq" style="margin-top:8px">d<sub>new</sub> = <span class="frac"><span>d · A<sub>s</sub> + (h + t<sub>b</sub>/2) · A<sub>p,eq</sub></span><span>A<sub>s</sub> + A<sub>p,eq</sub></span></span>,&nbsp;&nbsp; A<sub>s,new</sub> = A<sub>s</sub> + A<sub>p,eq</sub></div>
+        </li>
+        <li><strong>Top plate</strong>: its centroid is t<sub>t</sub>/2 <em>above</em> the concrete face, at d′ = −t<sub>t</sub>/2. It is added to the compression steel at the combined centroid, which turns a singly reinforced section into a doubly reinforced one.</li>
+      </ul>
+      <p>The modified section is then passed to <code>rectBeamMomentCapacity</code>, so every check of the <a href="../../rc/theory/beam-design.html">RC beam design</a> applies, including the tension-control check. The result gives the capacity <code>before</code> and <code>after</code> strengthening.</p>
+
+      <div class="sub-label">Worked example</div>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript</div>
+        <pre><span class="u">calculateSteelJacketedBeamMomentCapacity</span>(
+  { <span class="k">Es</span>: <span class="n">200000</span>, <span class="k">fy</span>: <span class="n">400</span>, <span class="k">fc_</span>: <span class="n">28</span>, <span class="k">b</span>: <span class="n">300</span>, <span class="k">h</span>: <span class="n">500</span>, <span class="k">d</span>: <span class="n">440</span>, <span class="k">As</span>: <span class="n">942</span> }, <span class="c">// MPa, mm, mm²</span>
+  { <span class="k">Es</span>: <span class="n">200000</span>, <span class="k">fy</span>: <span class="n">250</span>, <span class="k">bottomSteelWidth</span>: <span class="n">200</span>, <span class="k">bottomSteelThickness</span>: <span class="n">6</span> },
+);
+<span class="c">// before.phiMn = 140.26 kN·m   (c: 62.09, a: 52.77)</span>
+<span class="c">// after.phiMn  = 256.15 kN·m   (As: 1692, d: 467.926, c: 111.52, a: 94.79)</span></pre>
+      </div>
+      <p>By hand: n = 250/400 = 0.625, A<sub>p,eq</sub> = 0.625 × 200 × 6 = 750 mm², d<sub>new</sub> = (440 × 942 + 503 × 750)/1692 = 467.93 mm, a = 1692 × 400/(0.85 × 28 × 300) = 94.79 mm and φM<sub>n</sub> = 0.9 × 1692 × 400 × (467.93 − 47.40) = 256.15 kN·m.</p>
+      <div class="alert alert--error">
+        <span>⚠️</span>
+        <span>Throws <strong>RCDesignError 102</strong> when the jacketed section is not tension-controlled. Adding plate steel raises the compression depth, so a section that passed before strengthening can fail after it: the same beam with A<sub>s</sub> = 1520 mm² and a 250 × 8 mm plate throws 102.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Transformed section ══════════════ -->
+    <div class="section" id="transformed-section">
+      <div class="section__title">Elastic transformed section <code style="font-size:13px">rc-beam-plate-interface-bolts.ts</code></div>
+      <p>
+        The interface design uses the elastic section at service-type behaviour, not the strength model above. Depths y
+        are measured from a datum at the top of the top plate (the top face of the concrete when there is none). Steel is
+        transformed to concrete with the modular ratios
+      </p>
+      <div class="eq">
+        n<sub>s</sub> = E<sub>s</sub> / E<sub>c</sub>,&nbsp;&nbsp; n<sub>p</sub> = E<sub>p</sub> / E<sub>c</sub>,&nbsp;&nbsp; E<sub>c</sub> = 4700√f′<sub>c</sub>
+      </div>
+      <p><strong>Cracked section</strong> (the default): the neutral axis ȳ makes the first moment of the transformed areas zero, with only the concrete above ȳ counted:</p>
+      <div class="eq">
+        ½ b (ȳ − y<sub>c</sub>)² = Σ<sub>i</sub> n<sub>i</sub> A<sub>i</sub> ( y<sub>i</sub> − ȳ )<span class="note">y<sub>c</sub>: concrete top face; sum over plates and bars with their sign</span>
+      </div>
+      <p>
+        Compression bars displace concrete that the block already counts, so they take (n<sub>s</sub> − 1)A′<sub>s</sub>. If they
+        turn out to lie below ȳ, the equation is solved again with n<sub>s</sub>A′<sub>s</sub> and a warning citing
+        <strong>ACI318-19, 22.2.2.1</strong>. The quadratic's root inside the concrete depth is taken; if there is none,
+        <code>RCDesignError</code> 204 is thrown. <strong>Uncracked section</strong>: the gross concrete plus (n<sub>s</sub> − 1) times
+        the bars and n<sub>p</sub> times the plates, with ȳ at the centroid. In both cases
+      </p>
+      <div class="eq">
+        I<sub>tr</sub> = Σ<sub>i</sub> [ I<sub>i</sub> + A<sub>i</sub> ( y<sub>i</sub> − ȳ )² ]
+      </div>
+    </div>
+
+    <!-- ══════════════ Shear flow ══════════════ -->
+    <div class="section" id="shear-flow">
+      <div class="section__title">Interface shear flow</div>
+      <p>The horizontal shear per unit length at the interface between a plate and the concrete is</p>
+      <div class="eq">
+        q = <span class="frac"><span>V · Q</span><span>I<sub>tr</sub></span></span>,&nbsp;&nbsp; Q = n<sub>p</sub> A<sub>p</sub> | y<sub>p</sub> − ȳ |<span class="note">Q: first moment of the plate beyond the interface</span>
+      </div>
+      <p>ȳ and I<sub>tr</sub> come from one solve with every plate present, so adding a top plate also changes the shear flow at the bottom interface.</p>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript</div>
+        <pre><span class="u">plateInterfaceShearFlow</span>({ <span class="k">section</span>, <span class="k">plates</span>, <span class="k">V</span>: <span class="n">150</span> }); <span class="c">// same beam and plate as above; V in kN</span>
+<span class="c">// bottom: { q: 220.32 N/mm, Q: 3086503 mm³, leverArm: 319.84 mm }, top: null</span>
+<span class="c">// calculationDetails: { Ec: 24870.06, ns: 8.042, np: 8.042, ybar: 183.16, Itr: 2101397661, sectionState: "cracked" }</span></pre>
+      </div>
+      <p>By hand: 150ȳ² = 8.042 × 942 × (440 − ȳ) + 8.042 × 1200 × (503 − ȳ) gives ȳ = 183.16 mm; Q = 8.042 × 1200 × (503 − 183.16) = 3.087 × 10⁶ mm³, and q = 150 000 × 3.087 × 10⁶ / 2.101 × 10⁹ = 220.3 N/mm.</p>
+      <div class="alert alert--error">
+        <span>⚠️</span>
+        <span>Throws <strong>RCDesignError 201</strong> when V ≤ 0 or there is no plate, <strong>203</strong> for inconsistent geometry, <strong>204</strong> when no cracked neutral axis lies within the concrete.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Bolt capacity ══════════════ -->
+    <div class="section" id="bolt-capacity">
+      <div class="section__title">Anchor strength in shear</div>
+      <div class="eq">
+        φV<sub>bolt</sub> = 0.65 · 0.6 · A<sub>se,V</sub> · f<sub>uta</sub> · n<sub>planes</sub>,&nbsp;&nbsp;
+        f<sub>uta</sub> ≤ min(1.9 f<sub>ya</sub>, 860 MPa)
+        <span class="note">ACI 318-19, 17.7.1.2(b), Table 17.5.3, 17.6.1.2</span>
+      </div>
+      <p>For A<sub>se,V</sub> = 84.3 mm², f<sub>uta</sub> = 400 MPa and f<sub>ya</sub> = 240 MPa: the cap is min(456, 860) = 456 MPa, which does not bind, V<sub>sa</sub> = 0.6 × 84.3 × 400 = 20.23 kN and φV<sub>bolt</sub> = 13.15 kN. A value from a manufacturer or an evaluation report can be given instead as <code>phiVboltOverride</code>.</p>
+      <div class="alert alert--warn">
+        <span>⚠️</span>
+        <span>Always pushes a warning that only the anchor steel is checked — <strong>ACI318-19, 17.7.2</strong>. Concrete breakout (17.7.2) and pryout (17.7.3) depend on edge distance, spacing and embedment and must be checked separately; they often govern near the soffit of a beam.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Bolt requirement ══════════════ -->
+    <div class="section" id="bolt-requirement">
+      <div class="section__title">Bolt requirement</div>
+      <p>For each plate, with n bolts per row and a transfer length L<sub>t</sub> over which the plate force is developed:</p>
+      <div class="eq">
+        s = n · φV<sub>bolt</sub> / q ≤ 300 mm,&nbsp;&nbsp; rows = ⌈L<sub>t</sub> / s⌉ + 1,&nbsp;&nbsp; N<sub>q</sub> = rows · n
+      </div>
+      <div class="eq">
+        N<sub>F</sub> = ⌈ A<sub>p</sub> f<sub>y,p</sub> / φV<sub>bolt</sub> ⌉,&nbsp;&nbsp; N = max(N<sub>q</sub>, N<sub>F</sub>)<span class="note">the bolts must also develop the plate's full yield force</span>
+      </div>
+      <p>
+        The result says which governs (<code>governedBy</code>). For the example above with 2 bolts per row over 1500 mm:
+        s = 2 × 13.15/0.2203 = 119.4 mm, rows = ⌈1500/119.4⌉ + 1 = 14, N<sub>q</sub> = 28, N<sub>F</sub> = ⌈300/13.15⌉ = 23, so 28 bolts
+        at 119.4 mm (shear flow governs). A pitch above 300 mm is capped with a warning, and a pitch below 4d<sub>a</sub> gets a
+        warning citing <strong>ACI318-19, 17.9.2</strong>.
+      </p>
+    </div>
+
+    <!-- ══════════════ Side plates ══════════════ -->
+    <div class="section" id="side-plates">
+      <div class="section__title">Side plates for shear <code style="font-size:13px">rc-beam-side-plate-shear.ts</code></div>
+      <p>
+        Plates of thickness t<sub>p</sub> on one or both faces (n<sub>s</sub> = 1 or 2) of the web engage a depth d<sub>p</sub> ≤ d.
+        They are continuous, or strips of width w<sub>p</sub> at pitch s inclined at α to the beam axis. Both layouts share one
+        coverage ratio:
+      </p>
+      <div class="eq">
+        ρ<sub>c</sub> = w<sub>p</sub> / s for strips,&nbsp;&nbsp; ρ<sub>c</sub> = 1 and α = 90° for a continuous plate
+      </div>
+      <p>The strength before strengthening is φV<sub>c</sub> + φV<sub>s</sub> from the <code>rc</code> functions (φV<sub>s</sub> = 0 without stirrups). Two models give the plate contribution V<sub>p</sub>; <code>compareSidePlateShearCapacity</code> runs both and reports the lower result as governing.</p>
+    </div>
+
+    <div class="section" id="web-yielding">
+      <div class="section__title">Model 1: supplementary web <span class="std-badge" title="Basis: AISC 360 G2.1 shear yielding of a steel web — not ACI 318-19">AISC 360 G2.1</span></div>
+      <p>The plate is a steel web that reaches the von Mises shear yield stress τ<sub>y</sub> = 0.6f<sub>y</sub>:</p>
+      <div class="eq">
+        V<sub>p</sub> = n<sub>s</sub> · 0.6 f<sub>y</sub> · t<sub>p</sub> · d<sub>p</sub> · ρ<sub>c</sub>
+      </div>
+      <p>A web panel yields in shear before it buckles when d<sub>p</sub>/t<sub>p</sub> ≤ 2.24√(E<sub>s</sub>/f<sub>y</sub>) (AISC 360-22, G2.1(a)). The concrete restrains the plate on one face, so a more slender plate gets a warning citing <strong>AISC360-22, G2.1</strong> rather than a reduced strength. For strips, ρ<sub>c</sub> = w<sub>p</sub>/s is an approximation: a narrow strip works more as a tie than as a web panel, which is the second model.</p>
+    </div>
+
+    <div class="section" id="tension-tie">
+      <div class="section__title">Model 2: tension ties <span class="std-badge" title="Basis: ACI 440.2R-17 §11.4 bonded shear reinforcement, with steel in place of FRP — not ACI 318-19">ACI 440.2R-17 §11.4</span></div>
+      <p>The plate is bonded shear reinforcement crossing a 45° crack, as in ACI 440.2R-17 11.4 with steel in place of FRP:</p>
+      <div class="eq">
+        V<sub>p</sub> = ψ<sub>f</sub> · n<sub>s</sub> · t<sub>p</sub> w<sub>p</sub> f<sub>fe</sub> (sin α + cos α) d<sub>p</sub> / s,&nbsp;&nbsp;
+        f<sub>fe</sub> = min( f<sub>y</sub>, 0.004 E<sub>s</sub> ),&nbsp;&nbsp; ψ<sub>f</sub> = 0.85
+      </div>
+      <p>The strain cap of 0.004 keeps the crack tight enough for aggregate interlock. For structural steel 0.004E<sub>s</sub> = 800 MPa, above any normal f<sub>y</sub>, so the cap rarely binds and the tie reaches yield. For a continuous plate (w<sub>p</sub> = s, α = 90°) this model therefore usually gives more than the web model.</p>
+    </div>
+
+    <div class="section" id="side-limits">
+      <div class="section__title">Limits, anchorage and the result</div>
+      <ol>
+        <li><strong>Web crushing.</strong> The web can host at most V<sub>s</sub> + V<sub>p</sub> = 0.66√f′<sub>c</sub> b<sub>w</sub> d (ACI 318-19 22.5.1.2; ACI 440.2R-17 Eq. 11.4.3). V<sub>p</sub> is cut to the headroom 0.66√f′<sub>c</sub> b<sub>w</sub> d − V<sub>s</sub>, with a warning. If the existing stirrups already use it all, <code>RCDesignError</code> 206 is thrown, since no plate force can be developed.</li>
+        <li><strong>Strip spacing.</strong> s must not exceed min(d/2, 600 mm), or min(d/4, 300 mm) once V<sub>s</sub> + V<sub>p</sub> &gt; 0.33√f′<sub>c</sub> b<sub>w</sub> d (ACI 318-19 9.7.6.2.2), so that a diagonal crack cannot pass between strips.</li>
+        <li><strong>Anchorage</strong> (optional). The bolt rows crossing the 45° crack number max(1, ⌊d<sub>p</sub> / row spacing⌋), and φV<sub>anch</sub> = n<sub>s</sub> · rows · bolts per row · φV<sub>bolt</sub>. Without anchorage a warning says the plate is assumed fully developed.</li>
+        <li><strong>Result.</strong> φV<sub>p</sub> = min(0.75 V<sub>p,eff</sub>, φV<sub>anch</sub>) and φV<sub>n,after</sub> = φV<sub>n,before</sub> + φV<sub>p</sub>. <code>governedBy</code> is <code>plateCapacity</code>, <code>webCrushing</code> or <code>anchorage</code>.</li>
+      </ol>
+
+      <div class="sub-label">Worked example: strips</div>
+      <div class="code-block">
+        <div class="code-block__label">TypeScript</div>
+        <pre><span class="u">compareSidePlateShearCapacity</span>(
+  { <span class="k">fc_</span>: <span class="n">28</span>, <span class="k">bw</span>: <span class="n">300</span>, <span class="k">d</span>: <span class="n">440</span>, <span class="k">Av</span>: <span class="n">157</span>, <span class="k">fyt</span>: <span class="n">400</span>, <span class="k">s</span>: <span class="n">200</span> }, <span class="c">// MPa, mm, mm²</span>
+  { <span class="k">fy</span>: <span class="n">250</span>, <span class="k">thickness</span>: <span class="n">3</span>, <span class="k">depth</span>: <span class="n">400</span>, <span class="k">configuration</span>: <span class="s">"strips"</span>, <span class="k">width</span>: <span class="n">60</span>, <span class="k">spacing</span>: <span class="n">200</span>,
+    <span class="k">anchorage</span>: { <span class="k">bolt</span>: { <span class="k">Ase</span>: <span class="n">84.3</span>, <span class="k">futa</span>: <span class="n">400</span>, <span class="k">fya</span>: <span class="n">240</span>, <span class="k">diameter</span>: <span class="n">12</span> }, <span class="k">boltsPerRow</span>: <span class="n">3</span>, <span class="k">rowSpacing</span>: <span class="n">200</span> } },
+);
+<span class="c">// before: phiVn 192.68 kN (phiVc 89.06 + phiVs 103.62)</span>
+<span class="c">// webYielding: Vp 108 kN → phiVp 81.00, phiVn 273.68, governedBy "plateCapacity"</span>
+<span class="c">// tensionTie:  Vp 153 kN → phiVp 114.75, phiVn 307.43, governedBy "plateCapacity"</span>
+<span class="c">// anchorage:   2 rows × 3 bolts × 2 faces × 13.15 = 157.80 kN (does not govern)</span>
+<span class="c">// governing:   { method: "webYielding", phiVn: 273.68, phiVp: 81 }</span></pre>
+      </div>
+      <p>
+        By hand: ρ<sub>c</sub> = 60/200 = 0.3; web model V<sub>p</sub> = 2 × 150 × 3 × 400 × 0.3 = 108 kN; tie model
+        V<sub>p</sub> = 0.85 × 2 × 3 × 60 × 250 × 1 × 400/200 = 153 kN. Both are below the headroom 461.0 − 138.16 = 322.84 kN.
+        This example also returns two warnings worth reading: d<sub>p</sub>/t<sub>p</sub> = 133.3 &gt; 63.4 (shear buckling may
+        precede yielding), and the strip pitch of 200 mm exceeds 110 mm, because V<sub>s</sub> + V<sub>p</sub> = 246.16 kN passes
+        0.33√f′<sub>c</sub> b<sub>w</sub> d = 230.5 kN and halves the allowed spacing to d/4.
+      </p>
+      <p>The same beam with continuous 6 mm plates shows the web-crushing limit: the web model gives V<sub>p</sub> = 720 kN and the tie model 1020 kN, both cut to the headroom of 322.84 kN, so φV<sub>p</sub> = 242.13 kN and φV<sub>n</sub> = 434.81 kN, <code>governedBy: "webCrushing"</code>.</p>
+      <div class="alert alert--error">
+        <span>⚠️</span>
+        <span>Throws <strong>RCDesignError 205</strong> for inconsistent side-plate geometry, <strong>206</strong> when the existing V<sub>s</sub> leaves no headroom, <strong>202</strong> for an invalid bolt capacity.</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ Verification ══════════════ -->
+    <div class="section" id="verification">
+      <div class="section__title">Verification</div>
+      <table class="summary-table">
+        <thead><tr><th>Check</th><th>Reference</th><th>Test file</th></tr></thead>
+        <tbody>
+          <tr><td>Jacketed capacity with bottom, top and both plates; datum convention; before = unjacketed</td><td>Hand calculation by the transformation above</td><td><code>tests/strengthening/rc-beam-steel-plate-jacketing.test.ts</code></td></tr>
+          <tr><td>Cracked transformed section, shear flow, bolt capacity and count</td><td>Hand calculation, cracked transformed section</td><td><code>tests/strengthening/rc-beam-plate-interface-bolts.test.ts</code></td></tr>
+          <tr><td>Both side-plate models, inclination, web-crushing cap, anchorage, sections without stirrups, geometry errors, detailing warnings</td><td>Hand calculation of the baseline section and each model</td><td><code>tests/strengthening/rc-beam-side-plate-shear.test.ts</code></td></tr>
+        </tbody>
+      </table>
+      <p>These tests check that the code computes the models as written. They cannot show that the models predict real strengths: that needs comparison with test data, which belongs in the planned verification report (see <a href="../../about/#verification">Verification status</a>).</p>
+    </div>
+
+    <!-- ══════════════ Limitations ══════════════ -->
+    <div class="section" id="limitations">
+      <div class="section__title">Limitations</div>
+      <ul>
+        <li><strong>Debonding and peeling</strong> at the plate ends, and the anchorage of the plate beyond the point where it is needed, are not checked. They are the most common failure modes of plated beams.</li>
+        <li><strong>Compression plates</strong> are not checked for buckling between bolts.</li>
+        <li><strong>Concrete breakout and pryout</strong> of the anchors are not evaluated.</li>
+        <li><strong>Initial strain</strong> from the load on the beam when it is strengthened is ignored; the existing steel may yield before the plate reaches its yield stress.</li>
+        <li><strong>Eccentricity.</strong> A side plate on one face loads the section eccentrically; the torsion is not captured, only warned about.</li>
+        <li><strong>Fire and corrosion</strong> protection of the plates and the adhesive are outside the calculation.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ Review ══════════════ -->
+    <div class="section" id="review">
+      <div class="section__title">Points for review</div>
+      <ul>
+        <li><strong>ACI 440.2R-17 subsections.</strong> The subsections that carry the 0.004 effective strain cap and ψ<sub>f</sub> = 0.85 are not yet confirmed against the guide, so they are cited as §11.4 only (a TODO in <code>rc-beam-side-plate-shear.ts</code>). The FRP guide's own strain limits depend on the wrapping scheme and bond-reduction factors; whether they carry over to steel plates is itself a question for review.</li>
+        <li><strong>Strain in the plate.</strong> The flexural model counts the bottom plate at f<sub>y,p</sub>, and the tension-control check is made at the combined centroid d<sub>new</sub>. Whether the existing bars and the plate both reach yield is not checked layer by layer, and the plate's own E<sub>p</sub> is not used in flexure (only in the interface model).</li>
+        <li><strong>Equivalent area by strength.</strong> Scaling the plate area by f<sub>y,p</sub>/f<sub>y</sub> keeps the force right but places the plate's compression or tension at the rebar's yield strain. A strain-compatibility model with each steel at its own E and f<sub>y</sub> would be more general.</li>
+        <li><strong>Bolt pitch limit.</strong> The 300 mm maximum pitch is detailing practice, not a code value; projects may need their own limit.</li>
+        <li><strong>Anchorage crack geometry.</strong> The count of bolt rows crossing the crack assumes its horizontal projection is d<sub>p</sub> (a 45° crack).</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════ References ══════════════ -->
+    <div class="section" id="references">
+      <div class="section__title">References</div>
+      <ol>
+        <li>ACI Committee 318 (2019). <em>Building Code Requirements for Structural Concrete (ACI 318-19) and Commentary</em>. American Concrete Institute. (Chapter 17 anchoring, 22.5 shear, 9.7.6.2.2 spacing.)</li>
+        <li>American Institute of Steel Construction (2022). <em>Specification for Structural Steel Buildings (ANSI/AISC 360-22)</em>. Section G2.1, shear strength of webs.</li>
+        <li>ACI Committee 440 (2017). <em>Guide for the Design and Construction of Externally Bonded FRP Systems for Strengthening Concrete Structures (ACI 440.2R-17)</em>. American Concrete Institute. Chapter 11, shear strengthening.</li>
+        <li>Oehlers, D. J. &amp; Bradford, M. A. (1995). <em>Composite Steel and Concrete Structural Members: Fundamental Behaviour</em>. Pergamon. (Shear connection and longitudinal shear flow.)</li>
+      </ol>
+    </div>
+
+    <!-- ══════════════ Summary ══════════════ -->
+    <div class="section" id="summary">
+      <div class="section__title">Summary</div>
+      <table class="summary-table">
+        <thead><tr><th>Function</th><th>Model</th><th>Basis</th></tr></thead>
+        <tbody>
+          <tr><td class="path-cell">calculateSteelJacketedBeamMomentCapacity</td><td>Plates → A<sub>p,eq</sub> = (f<sub>y,p</sub>/f<sub>y</sub>) b<sub>p</sub>t<sub>p</sub>, then <code>rectBeamMomentCapacity</code></td><td>Adaptation; ACI 318-19 22.2</td></tr>
+          <tr><td class="path-cell">plateInterfaceShearFlow</td><td>q = VQ/I<sub>tr</sub>, cracked or uncracked transformed section</td><td>Mechanics</td></tr>
+          <tr><td class="path-cell">boltShearCapacity</td><td>φV = 0.65 · 0.6 A<sub>se</sub> f<sub>uta</sub></td><td>ACI 318-19 17.7.1.2(b)</td></tr>
+          <tr><td class="path-cell">plateInterfaceBoltRequirement</td><td>s = nφV/q ≤ 300 mm; N = max(N<sub>q</sub>, N<sub>F</sub>)</td><td>Mechanics; practice</td></tr>
+          <tr><td class="path-cell">sidePlateShearCapacityByWebYielding</td><td>V<sub>p</sub> = n<sub>s</sub> 0.6f<sub>y</sub> t<sub>p</sub> d<sub>p</sub> ρ<sub>c</sub></td><td>AISC 360-22 G2.1 (adapted)</td></tr>
+          <tr><td class="path-cell">sidePlateShearCapacityByTensionTie</td><td>V<sub>p</sub> = ψ<sub>f</sub> n<sub>s</sub> t<sub>p</sub>w<sub>p</sub>f<sub>fe</sub>(sin α + cos α)d<sub>p</sub>/s</td><td>ACI 440.2R-17 11.4 (adapted)</td></tr>
+          <tr><td class="path-cell">compareSidePlateShearCapacity</td><td>Lower of the two</td><td>—</td></tr>
+        </tbody>
+      </table>
+      <p>See the <a href="../#overview" style="color:var(--accent)">Strengthening reference</a> for parameters, return shapes, warnings and errors.</p>
+    </div>
+
+  </main>
+</div>
+<script>
+  // Sidebar: fold it away on wide screens (remembered), open it as a drawer on phones,
+  // and remember which nav groups are folded on this page. Works without storage too.
+  (function () {
+    var root = document.documentElement;
+    var button = document.querySelector(".nav-toggle");
+    var sidebar = document.getElementById("sidebar");
+    var backdrop = document.querySelector(".nav-backdrop");
+    if (!button || !sidebar || !backdrop) return;
+    var phone = window.matchMedia("(max-width: 800px)");
+    var read = function (key) { try { return localStorage.getItem(key); } catch (e) { return null; } };
+    var write = function (key, value) { try { localStorage.setItem(key, value); } catch (e) {} };
+
+    var isOpen = function () {
+      return phone.matches ? root.classList.contains("nav-open") : !root.classList.contains("nav-collapsed");
+    };
+    var sync = function () {
+      var open = isOpen();
+      var label = open ? "Hide navigation" : "Show navigation";
+      button.setAttribute("aria-expanded", String(open));
+      button.setAttribute("aria-label", label);
+      button.title = label;
+      button.textContent = open ? "«" : "☰";
+      backdrop.hidden = !(phone.matches && open);
+    };
+    var closeDrawer = function () { root.classList.remove("nav-open"); sync(); };
+
+    button.addEventListener("click", function () {
+      if (phone.matches) root.classList.toggle("nav-open");
+      else write("docs-nav-collapsed", root.classList.toggle("nav-collapsed") ? "1" : "0");
+      sync();
+    });
+    backdrop.addEventListener("click", closeDrawer);
+    sidebar.addEventListener("click", function (event) {
+      if (phone.matches && event.target.closest && event.target.closest("a")) closeDrawer();
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && root.classList.contains("nav-open")) { closeDrawer(); button.focus(); }
+    });
+    if (phone.addEventListener) phone.addEventListener("change", closeDrawer);
+    else if (phone.addListener) phone.addListener(closeDrawer);
+
+    // Folded nav groups, per page, by their label.
+    var key = "docs-nav-folded:" + location.pathname;
+    var folded = [];
+    try { folded = JSON.parse(read(key) || "[]"); } catch (e) { folded = []; }
+    var groups = Array.prototype.slice.call(sidebar.querySelectorAll("details.nav-group"));
+    var labelOf = function (group) { return group.querySelector("summary").textContent.trim(); };
+    groups.forEach(function (group) {
+      if (folded.indexOf(labelOf(group)) >= 0) group.open = false;
+      group.addEventListener("toggle", function () {
+        write(key, JSON.stringify(groups.filter(function (g) { return !g.open; }).map(labelOf)));
+      });
+    });
+
+    sync();
+  })();
+</script>
+</body>
+</html>
